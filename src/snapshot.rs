@@ -39,7 +39,7 @@ use crate::{
 };
 
 /// A complete snapshot of the game state.
-/// 
+///
 /// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
 pub struct Snapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
