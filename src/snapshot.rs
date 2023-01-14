@@ -39,6 +39,8 @@ use crate::{
 };
 
 /// A complete snapshot of the game state.
+/// 
+/// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
 pub struct Snapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
     pub(crate) scene: DynamicScene,
@@ -74,13 +76,11 @@ impl Snapshot {
     }
 }
 
-#[allow(missing_docs)]
-pub struct ResourcesSerializer<'a> {
+struct ResourcesSerializer<'a> {
     pub resources: &'a [Box<dyn Reflect>],
     pub registry: &'a TypeRegistryArc,
 }
 
-#[allow(missing_docs)]
 impl<'a> ResourcesSerializer<'a> {
     pub fn new(resources: &'a [Box<dyn Reflect>], registry: &'a TypeRegistryArc) -> Self {
         Self {
@@ -108,12 +108,10 @@ impl<'a> Serialize for ResourcesSerializer<'a> {
     }
 }
 
-#[allow(missing_docs)]
-pub struct ResourcesDeserializer<'a> {
+struct ResourcesDeserializer<'a> {
     pub registry: &'a TypeRegistryInternal,
 }
 
-#[allow(missing_docs)]
 impl<'a> ResourcesDeserializer<'a> {
     pub fn new(registry: &'a TypeRegistryInternal) -> Self {
         Self { registry }
@@ -191,14 +189,17 @@ impl<'a, 'de> Visitor<'de> for ResourcesVisitor<'a> {
 const SNAPSHOT_STRUCT: &str = "Snapshot";
 const SNAPSHOT_FIELDS: &[&str] = &["resources", "scene"];
 
-#[allow(missing_docs)]
+/// A serializer for Snapshot that uses reflection.
 pub struct SnapshotSerializer<'a> {
+    /// The Snapshot to be serialized.
     pub snapshot: &'a Snapshot,
+
+    /// The TypeRegistry to use for reflection.
     pub registry: &'a TypeRegistryArc,
 }
 
-#[allow(missing_docs)]
 impl<'a> SnapshotSerializer<'a> {
+    /// Returns a new instance of `SnapshotSerializer`.
     pub fn new(snapshot: &'a Snapshot, registry: &'a TypeRegistryArc) -> Self {
         Self { snapshot, registry }
     }
@@ -221,13 +222,14 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
     }
 }
 
-#[allow(missing_docs)]
+/// A deserializer for Snapshot that uses reflection.
 pub struct SnapshotDeserializer<'a> {
+    /// The TypeRegistry to use for reflection.
     pub registry: &'a TypeRegistryInternal,
 }
 
-#[allow(missing_docs)]
 impl<'a> SnapshotDeserializer<'a> {
+    /// Returns a new instance of `SnapshotDeserializer`.
     pub fn new(registry: &'a TypeRegistryInternal) -> Self {
         Self { registry }
     }
@@ -244,6 +246,13 @@ impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
             registry: self.registry,
         })
     }
+}
+
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "lowercase")]
+enum SnapshotFields {
+    Resources,
+    Scene,
 }
 
 struct SnapshotVisitor<'a> {
@@ -278,6 +287,34 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
     where
         V: MapAccess<'de>,
     {
-        todo!()
+        let mut resources = None;
+        let mut scene = None;
+
+        while let Some(key) = map.next_key()? {
+            match key {
+                SnapshotFields::Resources => {
+                    if resources.is_some() {
+                        return Err(de::Error::duplicate_field(SNAPSHOT_FIELDS[0]));
+                    }
+                    resources =
+                        Some(map.next_value_seed(ResourcesDeserializer::new(self.registry))?);
+                }
+
+                SnapshotFields::Scene => {
+                    if scene.is_some() {
+                        return Err(de::Error::duplicate_field(SNAPSHOT_FIELDS[1]));
+                    }
+
+                    scene = Some(map.next_value_seed(SceneDeserializer {
+                        type_registry: self.registry,
+                    })?);
+                }
+            }
+        }
+
+        let resources = resources.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
+        let scene = scene.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
+
+        Ok(Self::Value { resources, scene })
     }
 }
