@@ -74,7 +74,10 @@ fn savestate(
     if keys.just_released(KeyCode::Space) {
         info!("Checkpoint");
         world.checkpoint();
-    } else if keys.just_released(KeyCode::Left) {
+    } else if keys.just_released(KeyCode::Return) {
+        info!("Save");
+        world.save("example");
+    }else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
         world.rollback(1);
     } else if keys.just_released(KeyCode::Right) {
