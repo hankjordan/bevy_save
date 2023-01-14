@@ -101,7 +101,7 @@ impl WorldSaveableExt for World {
     }
 
     fn checkpoint(&mut self) {
-        let snap = self.snapshot();
+        let snap = self.snapshot().into_rollback(self);
 
         let mut state = self.resource_mut::<Rollbacks>();
 
@@ -112,15 +112,13 @@ impl WorldSaveableExt for World {
         let mut state = self.resource_mut::<Rollbacks>();
 
         if let Some(snap) = state.rollback(checkpoints).cloned() {
-            snap.apply(self);
+            snap.rollback(self);
         }
     }
 
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let registry = self.resource::<AppTypeRegistry>();
         let snap = self.snapshot();
-
-        // TODO: Include Rollbacks in the save Snapshot
 
         let ser = SnapshotSerializer::new(&snap, registry);
 

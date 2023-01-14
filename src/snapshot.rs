@@ -36,6 +36,7 @@ use serde::{
 use crate::{
     reflect::CloneReflect,
     scene::SceneDeserializer,
+    SaveableRegistry,
 };
 
 /// A complete snapshot of the game state.
@@ -46,16 +47,15 @@ pub struct Snapshot {
     pub(crate) scene: DynamicScene,
 }
 
-impl Clone for Snapshot {
-    fn clone(&self) -> Self {
-        Self {
-            resources: self.resources.clone_value(),
-            scene: self.scene.clone_value(),
-        }
-    }
-}
-
 impl Snapshot {
+    /// Retains only the Resources specified by the predicate.
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Box<dyn Reflect>) -> bool,
+    {
+        self.resources.retain(f);
+    }
+
     /// Apply the `Snapshot` to the `World`, restoring it to the saved state.
     pub fn apply(&self, world: &mut World) {
         world.clear_entities();
@@ -73,6 +73,43 @@ impl Snapshot {
                 }
             }
         }
+    }
+
+    /// Convert the `Snapshot` into a `RollbackSnapshot` following rollback rules.
+    pub fn into_rollback(mut self, world: &mut World) -> RollbackSnapshot {
+        let saveables = world.resource::<SaveableRegistry>();
+
+        self.retain(|reg| saveables.can_rollback(reg.type_name()));
+
+        RollbackSnapshot { snapshot: self }
+    }
+}
+
+impl Clone for Snapshot {
+    fn clone(&self) -> Self {
+        Self {
+            resources: self.resources.clone_value(),
+            scene: self.scene.clone_value(),
+        }
+    }
+}
+
+impl From<RollbackSnapshot> for Snapshot {
+    fn from(rollback: RollbackSnapshot) -> Self {
+        rollback.snapshot
+    }
+}
+
+/// A rollback snapshot of the game state.
+#[derive(Clone)]
+pub struct RollbackSnapshot {
+    snapshot: Snapshot,
+}
+
+impl RollbackSnapshot {
+    /// Apply the `RollbackSnapshot` to the `World`.
+    pub fn rollback(&self, world: &mut World) {
+        self.snapshot.apply(world);
     }
 }
 

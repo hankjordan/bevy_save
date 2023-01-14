@@ -1,19 +1,19 @@
 use bevy::prelude::*;
 
-use crate::Snapshot;
+use crate::RollbackSnapshot;
 
 /// The global registry of snapshots used for rollback / rollforward.
 #[derive(Resource, Default)]
 pub struct Rollbacks {
-    snapshots: Vec<Snapshot>,
+    snapshots: Vec<RollbackSnapshot>,
     active: Option<usize>,
 }
 
 impl Rollbacks {
-    /// Given a new `Snapshot`, insert it and set it as the currently active rollback.
-    /// 
+    /// Given a new `RollbackSnapshot`, insert it and set it as the currently active rollback.
+    ///
     /// If you rollback and then insert a checkpoint, it will erase all rollforward snapshots.
-    pub fn checkpoint(&mut self, snapshot: Snapshot) {
+    pub fn checkpoint(&mut self, snapshot: RollbackSnapshot) {
         let active = self.active.unwrap_or(0);
 
         self.snapshots.truncate(active + 1);
@@ -24,14 +24,14 @@ impl Rollbacks {
     }
 
     /// Rolls back the given number of checkpoints.
-    /// 
+    ///
     /// If checkpoints is negative, it rolls forward.
-    /// 
+    ///
     /// This function will always clamp itself to valid snapshots.
     /// Rolling back or further farther than what is valid will just return the oldest / newest snapshot.
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
-    pub fn rollback(&mut self, checkpoints: isize) -> Option<&Snapshot> {
+    pub fn rollback(&mut self, checkpoints: isize) -> Option<&RollbackSnapshot> {
         if let Some(active) = self.active {
             let raw = active as isize - checkpoints;
             let new = raw.clamp(0, self.snapshots.len() as isize - 1) as usize;

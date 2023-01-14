@@ -102,6 +102,8 @@ fn main() {
         .register_saveable::<Health>()
         .register_saveable::<Player>()
 
+        .ignore_rollback::<Balance>()
+
         .add_startup_system(setup)
 
         .add_system(damage)
