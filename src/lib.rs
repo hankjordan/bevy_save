@@ -18,6 +18,7 @@ mod app;
 mod reflect;
 mod registry;
 mod rollbacks;
+mod scene;
 mod snapshot;
 mod world;
 

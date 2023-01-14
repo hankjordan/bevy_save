@@ -3,7 +3,10 @@ use std::{
         self,
         File,
     },
-    io::Write,
+    io::{
+        BufReader,
+        Write,
+    },
     path::PathBuf,
 };
 
@@ -13,13 +16,20 @@ use bevy::{
 };
 use lazy_static::lazy_static;
 use platform_dirs::AppDirs;
-use rmp_serde::Serializer;
-use serde::Serialize;
+use rmp_serde::{
+    Deserializer,
+    Serializer,
+};
+use serde::{
+    de::DeserializeSeed,
+    Serialize,
+};
 
 use crate::{
     Rollbacks,
     SaveableRegistry,
     Snapshot,
+    SnapshotDeserializer,
     SnapshotSerializer,
 };
 
@@ -48,6 +58,11 @@ lazy_static! {
             .data_dir
             .join("saves")
     };
+}
+
+/// Returns the absolute path to a save file given its name.
+pub fn get_save_file(name: &str) -> PathBuf {
+    SAVE_DIR.join(format!("{name}.sav"))
 }
 
 impl WorldSaveableExt for World {
@@ -106,7 +121,7 @@ impl WorldSaveableExt for World {
 
         IoTaskPool::get()
             .spawn(async move {
-                File::create(SAVE_DIR.join(format!("{name}.sav")))
+                File::create(get_save_file(&name))
                     .and_then(|mut file| file.write(buf.as_slice()))
                     .expect("Error writing Snapshot to file");
             })
@@ -114,6 +129,20 @@ impl WorldSaveableExt for World {
     }
 
     fn load(&mut self, name: &str) {
-        todo!()
+        let registry = self.resource::<AppTypeRegistry>().clone();
+
+        let path = get_save_file(name);
+        let file = File::open(path).expect("Could not open save file");
+
+        let mut reader = BufReader::new(file);
+
+        let reg = registry.read();
+        let de = SnapshotDeserializer::new(&reg);
+
+        let snap = de
+            .deserialize(&mut Deserializer::new(&mut reader))
+            .expect("Error deserializing Snapshot from file");
+
+        snap.apply(self);
     }
 }

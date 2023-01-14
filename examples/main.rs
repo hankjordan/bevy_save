@@ -77,7 +77,10 @@ fn savestate(
     } else if keys.just_released(KeyCode::Return) {
         info!("Save");
         world.save("example");
-    }else if keys.just_released(KeyCode::Left) {
+    } else if keys.just_released(KeyCode::Back) {
+        info!("Load");
+        world.load("example");
+    } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
         world.rollback(1);
     } else if keys.just_released(KeyCode::Right) {
