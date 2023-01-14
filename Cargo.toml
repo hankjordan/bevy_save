@@ -11,5 +11,5 @@ repository = "https://github.com/hankjordan/bevy_save"
 bevy = { version = "0.9" }
 
 [dependencies]
-bevy = { version = "0.9", default-features = false }
+bevy = { version = "0.9", default-features = false, features = ["bevy_scene"] }
 serde = { version = "1.0", optional = true }
