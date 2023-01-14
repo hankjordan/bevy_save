@@ -1,16 +1,26 @@
 use std::{
-    fs,
+    fs::{
+        self,
+        File,
+    },
+    io::Write,
     path::PathBuf,
 };
 
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    tasks::IoTaskPool,
+};
 use lazy_static::lazy_static;
 use platform_dirs::AppDirs;
+use rmp_serde::Serializer;
+use serde::Serialize;
 
 use crate::{
     Rollbacks,
     SaveableRegistry,
     Snapshot,
+    SnapshotSerializer,
 };
 
 /// Extension trait that adds save-related methods to Bevy's `World`.
@@ -77,17 +87,30 @@ impl WorldSaveableExt for World {
     }
 
     fn save(&self, name: &str) {
-        info!("Directory {:?}", *SAVE_DIR);
-
         fs::create_dir_all(&*SAVE_DIR).expect("Could not create save directory");
 
         let registry = self.resource::<AppTypeRegistry>();
 
         let snap = self.snapshot();
 
-        // Include Rollbacks in the save Snapshot
+        // TODO: Include Rollbacks in the save Snapshot
 
-        todo!()
+        let ser = SnapshotSerializer::new(&snap, registry);
+
+        let mut buf = Vec::new();
+
+        ser.serialize(&mut Serializer::new(&mut buf))
+            .expect("Error serializing Snapshot");
+
+        let name = name.to_owned();
+
+        IoTaskPool::get()
+            .spawn(async move {
+                File::create(SAVE_DIR.join(format!("{name}.sav")))
+                    .and_then(|mut file| file.write(buf.as_slice()))
+                    .expect("Error writing Snapshot to file");
+            })
+            .detach();
     }
 
     fn load(&mut self, name: &str) {
