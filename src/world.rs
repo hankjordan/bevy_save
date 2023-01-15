@@ -26,6 +26,7 @@ use serde::{
 };
 
 use crate::{
+    Capture,
     Rollbacks,
     SaveableRegistry,
     Snapshot,
@@ -35,7 +36,7 @@ use crate::{
 
 /// Extension trait that adds save-related methods to Bevy's `World`.
 pub trait WorldSaveableExt: Sized {
-    /// Returns a snapshot of the current World state.
+    /// Returns a `Snapshot` of the current World state.
     fn snapshot(&self) -> Snapshot;
 
     /// Creates a checkpoint for rollback.
@@ -97,7 +98,10 @@ impl WorldSaveableExt for World {
 
         let scene = DynamicScene::from_world(self, registry);
 
-        Snapshot { resources, scene }
+        let capture = Capture { resources, scene };
+        let rollbacks = self.resource::<Rollbacks>().clone();
+
+        Snapshot { capture, rollbacks }
     }
 
     fn checkpoint(&mut self) {
@@ -131,7 +135,7 @@ impl WorldSaveableExt for World {
     ) -> Result<(), D::Error> {
         let registry = self.resource::<AppTypeRegistry>().clone();
         let reg = registry.read();
-        
+
         let de = SnapshotDeserializer::new(&reg);
 
         let snap = de.deserialize(deserializer)?;

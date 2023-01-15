@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use crate::RollbackSnapshot;
 
 /// The global registry of snapshots used for rollback / rollforward.
-#[derive(Resource, Default)]
+#[derive(Resource, Clone, Default)]
 pub struct Rollbacks {
-    snapshots: Vec<RollbackSnapshot>,
-    active: Option<usize>,
+    pub(crate) snapshots: Vec<RollbackSnapshot>,
+    pub(crate) active: Option<usize>,
 }
 
 impl Rollbacks {

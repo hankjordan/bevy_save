@@ -102,6 +102,8 @@ fn main() {
         .register_saveable::<Health>()
         .register_saveable::<Player>()
 
+        // While it is still included in saves, the Balance resource will not rollback / rollforward alongside other types.
+        // This could be used to track rollback state, or to prevent players from making changes to their decisions during rollback.
         .ignore_rollback::<Balance>()
 
         .add_startup_system(setup)

@@ -10,6 +10,10 @@ pub use crate::{
     reflect::*,
     registry::*,
     rollbacks::*,
+    serde::{
+        SnapshotDeserializer,
+        SnapshotSerializer,
+    },
     snapshot::*,
     world::*,
 };
@@ -19,6 +23,7 @@ mod reflect;
 mod registry;
 mod rollbacks;
 mod scene;
+mod serde;
 mod snapshot;
 mod world;
 
