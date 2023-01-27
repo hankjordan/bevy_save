@@ -15,7 +15,7 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
 
 ### Save file management
 
-`bevy_save` automatically uses your app's cargo package name to create a unique, permanent save directory in the correct place for whatever platform it is running on.
+`bevy_save` automatically uses your app's workspace name to create a unique, permanent save directory in the correct place for whatever platform it is running on.
 
 Supports Windows, Linux, and MacOS.
 
@@ -39,7 +39,7 @@ NOTE: We do not track Bevy main.
 
 |Bevy Version|Crate Version          |
 |------------|-----------------------|
-|`0.9`       |`0.1`, `0.2`           |
+|`0.9`       |`0.1`, `0.2`, `0.3`    |
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.9-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg

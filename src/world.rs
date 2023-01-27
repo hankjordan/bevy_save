@@ -1,4 +1,5 @@
 use std::{
+    env,
     fs::{
         self,
         File,
@@ -7,7 +8,10 @@ use std::{
         BufReader,
         Write,
     },
-    path::PathBuf,
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use bevy::{
@@ -68,8 +72,32 @@ pub trait WorldSaveableExt: Sized {
 }
 
 lazy_static! {
+    static ref APP_NAME: String = {
+        env::var("OUT_DIR")
+            .ok()
+            .map(|v| Path::new(&v).to_path_buf())
+            .and_then(|path| {
+                for ancestor in path.ancestors() {
+                    if let Some(last) = ancestor.file_name() {
+                        if last == "target" {
+                            return ancestor
+                                .parent()
+                                .and_then(|p| p.file_name())
+                                .and_then(|p| p.to_str())
+                                .map(|p| p.to_owned());
+                        }
+                    }
+                }
+
+                None
+            })
+            .expect("Could not find parent workspace.")
+    };
+}
+
+lazy_static! {
     static ref SAVE_DIR: PathBuf = {
-        AppDirs::new(Some(env!("CARGO_PKG_NAME")), true)
+        AppDirs::new(Some(&APP_NAME), true)
             .unwrap()
             .data_dir
             .join("saves")
