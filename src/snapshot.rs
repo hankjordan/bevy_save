@@ -27,7 +27,7 @@ impl Capture {
         for reflect in &self.resources {
             if let Some(reg) = registry.get_with_name(reflect.type_name()) {
                 if let Some(res) = reg.data::<ReflectResource>() {
-                    res.apply(world, reflect.as_reflect());
+                    res.insert(world, reflect.as_reflect());
                 }
             }
         }
