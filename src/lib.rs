@@ -10,10 +10,7 @@ pub use crate::{
     reflect::*,
     registry::*,
     rollbacks::*,
-    serde::{
-        SnapshotDeserializer,
-        SnapshotSerializer,
-    },
+    serde::*,
     snapshot::*,
     world::*,
 };

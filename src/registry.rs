@@ -38,7 +38,7 @@ impl SaveableRegistry {
         !self.ignore_rollback.contains(name)
     }
 
-    /// Returns an Iterator of registered saveable types.
+    /// Returns an [`Iterator`] of registered saveable types.
     pub fn types(&self) -> impl Iterator<Item = &TypeRegistration> {
         self.types.values()
     }

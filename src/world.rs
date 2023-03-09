@@ -36,15 +36,15 @@ use crate::{
     SnapshotSerializer,
 };
 
-/// Extension trait that adds save-related methods to Bevy's `World`.
+/// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
-    /// Returns a `Snapshot` of the current World state.
+    /// Returns a [`Snapshot`] of the current [`World`] state.
     fn snapshot(&self) -> Snapshot;
 
     /// Creates a checkpoint for rollback.
     fn checkpoint(&mut self);
 
-    /// Rolls back / forward the World state.
+    /// Rolls back / forward the [`World`] state.
     fn rollback(&mut self, checkpoints: isize);
 
     /// Analogue of [`serde::Serialize`]
@@ -53,7 +53,7 @@ pub trait WorldSaveableExt: Sized {
     /// See [`serde::Serialize`]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>;
 
-    /// Analogue of [`serde::Deserialize`], but applies result to current `World` instead of creating a new one.
+    /// Analogue of [`serde::Deserialize`], but applies result to current [`World`] instead of creating a new one.
     ///
     /// # Errors
     /// See [`serde::Deserialize`]

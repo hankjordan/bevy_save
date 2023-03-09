@@ -10,7 +10,7 @@ pub struct Rollbacks {
 }
 
 impl Rollbacks {
-    /// Given a new `RollbackSnapshot`, insert it and set it as the currently active rollback.
+    /// Given a new [`RollbackSnapshot`], insert it and set it as the currently active rollback.
     ///
     /// If you rollback and then insert a checkpoint, it will erase all rollforward snapshots.
     pub fn checkpoint(&mut self, snapshot: RollbackSnapshot) {

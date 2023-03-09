@@ -501,14 +501,14 @@ enum SnapshotFields {
     Rollbacks,
 }
 
-/// A serializer for `Snapshot` that uses reflection.
+/// A serializer for [`Snapshot`] that uses reflection.
 pub struct SnapshotSerializer<'a> {
     snapshot: &'a Snapshot,
     registry: &'a TypeRegistryArc,
 }
 
 impl<'a> SnapshotSerializer<'a> {
-    /// Returns a new instance of `SnapshotSerializer`.
+    /// Returns a new instance of [`SnapshotSerializer`].
     pub fn new(snapshot: &'a Snapshot, registry: &'a TypeRegistryArc) -> Self {
         Self { snapshot, registry }
     }
@@ -531,13 +531,13 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
     }
 }
 
-/// A deserializer for `Snapshot` that uses reflection.
+/// A deserializer for [`Snapshot`] that uses reflection.
 pub struct SnapshotDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
 impl<'a> SnapshotDeserializer<'a> {
-    /// Returns a new instance of `SnapshotDeserializer`.
+    /// Returns a new instance of [`SnapshotDeserializer`].
     pub fn new(registry: &'a TypeRegistryInternal) -> Self {
         Self { registry }
     }

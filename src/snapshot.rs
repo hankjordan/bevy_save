@@ -62,7 +62,7 @@ impl Clone for Capture {
 
 /// A complete snapshot of the game state.
 ///
-/// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
+/// Can be serialized via [`crate::SnapshotSerializer`] and deserialized via [`crate::SnapshotDeserializer`].
 pub struct Snapshot {
     pub(crate) capture: Capture,
     pub(crate) rollbacks: Rollbacks,
@@ -77,13 +77,13 @@ impl Snapshot {
         self.capture.resources.retain(f);
     }
 
-    /// Apply the `Snapshot` to the `World`, restoring it to the saved state.
+    /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
     pub fn apply(&self, world: &mut World) {
         self.capture.apply(world);
         world.insert_resource(self.rollbacks.clone());
     }
 
-    /// Convert the `Snapshot` into a `RollbackSnapshot` following rollback rules.
+    /// Convert the [`Snapshot`] into a [`RollbackSnapshot`] following rollback rules.
     pub fn into_rollback(mut self, world: &mut World) -> RollbackSnapshot {
         let saveables = world.resource::<SaveableRegistry>();
 
@@ -97,14 +97,14 @@ impl Snapshot {
 
 /// A rollback snapshot of the game state.
 ///
-/// `RollbackSnapshot` excludes Resources that opt out of rollback, including the [`Rollbacks`] resource.
+/// [`RollbackSnapshot`] excludes resources that opt out of rollback, including the [`Rollbacks`] resource.
 #[derive(Clone)]
 pub struct RollbackSnapshot {
     pub(crate) capture: Capture,
 }
 
 impl RollbackSnapshot {
-    /// Apply the `RollbackSnapshot` to the `World`.
+    /// Apply the [`RollbackSnapshot`] to the [`World`].
     pub fn rollback(&self, world: &mut World) {
         self.capture.apply(world);
     }

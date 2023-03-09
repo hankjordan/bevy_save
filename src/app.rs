@@ -8,7 +8,7 @@ use crate::{
     SaveableRegistry,
 };
 
-/// Extension trait that adds save-related methods to Bevy's `App`.
+/// Extension trait that adds save-related methods to Bevy's [`App`].
 pub trait AppSaveableExt {
     /// Register a type as saveable - it will be included in rollback and affected by save/load.
     fn register_saveable<T: 'static + GetTypeRegistration>(&mut self) -> &mut Self;

@@ -3,7 +3,7 @@ use bevy::{
     scene::DynamicEntity,
 };
 
-/// Clone-like trait for duplicating Reflect-related types.
+/// Clone-like trait for duplicating [`Reflect`]-related types.
 pub trait CloneReflect {
     /// Clone the value via Reflection.
     #[must_use]
