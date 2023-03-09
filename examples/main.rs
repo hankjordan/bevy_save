@@ -66,8 +66,8 @@ fn status(
     }
 }
 
-fn savestate(
-    world: &mut World,
+fn interact(
+    world: &mut World
 ) {
     let keys = world.resource::<Input<KeyCode>>();
 
@@ -86,6 +86,21 @@ fn savestate(
     } else if keys.just_released(KeyCode::Right) {
         info!("Rollforward");
         world.rollback(-1);
+    } else if keys.just_pressed(KeyCode::E) {
+        info!("Info");
+
+        for entity in world.iter_entities() {
+            info!("Entity: {:?}", entity.id());
+
+            for component_id in entity.archetype().components() {
+                if let Some(component) = world.components().get_info(component_id) {
+                    info!("{:?}: {:?}", entity.id(), component.name());
+                }
+            }
+        }
+    } else if keys.just_pressed(KeyCode::S) {
+        info!("Spawn Entity");
+        world.spawn_empty();
     }
 }
 
@@ -111,8 +126,7 @@ fn main() {
         .add_system(damage)
         .add_system(heal)
         .add_system(status)
-
-        .add_system(savestate)
-
+        .add_system(interact)
+        
         .run();
 }

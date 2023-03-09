@@ -16,10 +16,27 @@ pub(crate) struct Capture {
 
 impl Capture {
     pub fn apply(&self, world: &mut World) {
-        world.clear_entities();
         world.clear_trackers();
 
-        let _s = self.scene.write_to_world(world, &mut EntityMap::default());
+        let mut map = EntityMap::default();
+
+        for entity in &self.scene.entities {
+            let entity = Entity::from_raw(entity.entity);
+            map.insert(entity, entity);
+            world.get_or_spawn(entity);
+        }
+
+        let invalid = world
+            .query_filtered::<Entity, Without<Window>>()
+            .iter(world)
+            .filter(|e| map.get(*e).is_err())
+            .collect::<Vec<_>>();
+
+        for entity in invalid {
+            world.despawn(entity);
+        }
+
+        let _s = self.scene.write_to_world(world, &mut map);
 
         let registry_arc = world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
@@ -79,7 +96,7 @@ impl Snapshot {
 }
 
 /// A rollback snapshot of the game state.
-/// 
+///
 /// `RollbackSnapshot` excludes Resources that opt out of rollback, including the [`Rollbacks`] resource.
 #[derive(Clone)]
 pub struct RollbackSnapshot {

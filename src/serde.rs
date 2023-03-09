@@ -8,12 +8,16 @@ use bevy::{
         serde::{
             TypedReflectDeserializer,
             TypedReflectSerializer,
+            UntypedReflectDeserializer,
         },
         Reflect,
         TypeRegistryArc,
         TypeRegistryInternal,
     },
-    scene::serde::SceneSerializer,
+    scene::serde::{
+        SceneDeserializer,
+        SceneSerializer,
+    },
 };
 use serde::{
     de::{
@@ -33,10 +37,6 @@ use serde::{
 };
 
 use crate::{
-    scene::{
-        SceneDeserializer,
-        UntypedReflectDeserializer,
-    },
     Capture,
     RollbackSnapshot,
     Rollbacks,

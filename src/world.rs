@@ -27,6 +27,7 @@ use serde::{
 };
 
 use crate::{
+    scene::DynamicScene2,
     Capture,
     Rollbacks,
     SaveableRegistry,
@@ -86,7 +87,6 @@ pub fn get_save_file(name: &str) -> PathBuf {
 
 impl WorldSaveableExt for World {
     fn snapshot(&self) -> Snapshot {
-        let registry = self.resource::<AppTypeRegistry>();
         let saveables = self.resource::<SaveableRegistry>();
 
         let mut resources = Vec::new();
@@ -99,9 +99,14 @@ impl WorldSaveableExt for World {
             }
         }
 
-        let scene = DynamicScene::from_world(self, registry);
+        let scene = DynamicScene2::from_world_with_filter(self, |info| {
+            !info.name().starts_with("bevy_window") && !info.name().starts_with("bevy_winit")
+        }).into();
 
-        let capture = Capture { resources, scene };
+        let capture = Capture {
+            resources,
+            scene,
+        };
         let rollbacks = self.resource::<Rollbacks>().clone();
 
         Snapshot { capture, rollbacks }
