@@ -12,6 +12,11 @@ bevy = { version = "0.10" }
 bevy-inspector-egui = "0.18"
 serde_json = "1.0"
 
+[features]
+default = ["bevy_render", "bevy_sprite"]
+bevy_render = ["bevy/bevy_render"]
+bevy_sprite = ["bevy/bevy_sprite"]
+
 [dependencies]
 bevy = { version = "0.10", default-features = false }
 rmp-serde = "1.1"

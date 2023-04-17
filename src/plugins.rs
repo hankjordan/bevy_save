@@ -35,13 +35,18 @@ pub struct SaveablesPlugin;
 impl Plugin for SaveablesPlugin {
     fn build(&self, app: &mut App) {
         app
-            // Register Bevy types as saveable
-            .register_saveable::<ComputedVisibility>()
             .register_saveable::<GlobalTransform>()
+            .register_saveable::<Transform>();
+
+        #[cfg(feature = "bevy_render")]
+        app
+            .register_saveable::<ComputedVisibility>()
             .register_saveable::<Handle<Image>>()
+            .register_saveable::<Visibility>();
+
+        #[cfg(feature = "bevy_sprite")]
+        app
             .register_saveable::<Sprite>()
-            .register_saveable::<Transform>()
-            .register_saveable::<Visibility>()
 
             // Fix `bevy_reflect: Add ReflectComponent registration for Sprite #8206`
             .register_type_data::<Sprite, ReflectComponent>()
