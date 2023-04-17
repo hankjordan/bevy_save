@@ -19,10 +19,14 @@ impl RawSnapshot {
     where
         F: Fn(&&TypeRegistration) -> bool,
     {
+        let registry_arc = world.resource::<AppTypeRegistry>();
+        let registry = registry_arc.read();
+
         let saveables = world.resource::<SaveableRegistry>();
 
         let resources = saveables
             .types()
+            .filter_map(|name| registry.get_with_name(name))
             .filter(&filter)
             .filter_map(|reg| reg.data::<ReflectResource>())
             .filter_map(|res| res.reflect(world))

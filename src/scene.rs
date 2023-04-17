@@ -12,7 +12,7 @@ use bevy::{
 use crate::prelude::*;
 
 /// A collection of serializable dynamic entities, each with its own run-time defined set of components.
-/// 
+///
 /// Similar to `DynamicScene` but is filterable and only returns components registered with the [`SaveableRegistry`].
 pub struct SaveableScene {
     /// The entities and their saveable components
