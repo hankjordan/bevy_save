@@ -1,26 +1,38 @@
 use std::collections::BTreeMap;
 
 use bevy::{
-    ecs::component::ComponentInfo,
+    ecs::{
+        entity::EntityMap,
+        reflect::ReflectMapEntities,
+    },
     prelude::*,
-    scene::DynamicEntity,
+    reflect::TypeRegistration,
 };
 
-pub struct DynamicScene2 {
-    pub entities: Vec<DynamicEntity>,
+use crate::prelude::*;
+
+/// A collection of serializable dynamic entities, each with its own run-time defined set of components.
+/// Similar to [`DynamicScene`] but is filterable and only returns components registered with the [`SaveableRegistry`].
+pub struct SaveableScene {
+    /// The entities and their saveable components
+    pub entities: Vec<SaveableEntity>,
 }
 
-impl DynamicScene2 {
+impl SaveableScene {
+    /// Creates a [`SaveableScene`] containing all saveable entities and components.
     pub fn from_world(world: &World) -> Self {
         Self::from_world_with_filter(world, |_| true)
     }
 
+    /// Creates a [`SaveableScene`] containing all saveable entities and components matching the filter.
     pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
     where
-        F: Fn(&&ComponentInfo) -> bool,
+        F: Fn(&&TypeRegistration) -> bool,
     {
         let type_registry = world.resource::<AppTypeRegistry>();
         let registry = type_registry.read();
+
+        let saveables = world.resource::<SaveableRegistry>();
 
         let mut extracted = BTreeMap::new();
 
@@ -31,7 +43,7 @@ impl DynamicScene2 {
                 continue;
             }
 
-            let mut entry = DynamicEntity {
+            let mut entry = SaveableEntity {
                 entity: index,
                 components: Vec::new(),
             };
@@ -42,8 +54,10 @@ impl DynamicScene2 {
                 let reflect = world
                     .components()
                     .get_info(component_id)
+                    .filter(|info| saveables.contains(info.name()))
+                    .and_then(|info| info.type_id())
+                    .and_then(|id| registry.get(id))
                     .filter(&filter)
-                    .and_then(|info| registry.get(info.type_id().unwrap()))
                     .and_then(|reg| reg.data::<ReflectComponent>())
                     .and_then(|reflect| reflect.reflect(entity));
 
@@ -51,7 +65,7 @@ impl DynamicScene2 {
                     entry.components.push(reflect.clone_value());
                 }
             }
-
+            
             extracted.insert(index, entry);
         }
 
@@ -59,12 +73,73 @@ impl DynamicScene2 {
             entities: extracted.into_values().collect(),
         }
     }
+
+    /// Apply the [`SaveableScene`] to the [`World`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
+        self.apply_with_map(world, &mut EntityMap::default())
+    }
+
+    /// Apply the [`SaveableScene`] to the [`World`], mapping entities to new ids with the [`EntityMap`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply_with_map(
+        &self,
+        world: &mut World,
+        map: &mut EntityMap,
+    ) -> Result<(), SaveableError> {
+        let reg = world.resource::<AppTypeRegistry>().clone();
+        let registry = reg.read();
+
+        for scene_entity in &self.entities {
+            let entity = *map
+                .entry(Entity::from_raw(scene_entity.entity))
+                .or_insert_with(|| world.spawn_empty().id());
+
+            let entity_mut = &mut world.entity_mut(entity);
+
+            for component in &scene_entity.components {
+                let registration =
+                    registry
+                        .get_with_name(component.type_name())
+                        .ok_or_else(|| SaveableError::UnregisteredType {
+                            type_name: component.type_name().to_string(),
+                        })?;
+
+                let reflect_component =
+                    registration.data::<ReflectComponent>().ok_or_else(|| {
+                        SaveableError::UnregisteredComponent {
+                            type_name: component.type_name().to_string(),
+                        }
+                    })?;
+
+                reflect_component.apply_or_insert(entity_mut, &**component);
+            }
+        }
+
+        for registration in registry.iter() {
+            if let Some(map_entities_reflect) = registration.data::<ReflectMapEntities>() {
+                map_entities_reflect
+                    .map_entities(world, map)
+                    .map_err(SaveableError::MapEntitiesError)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
-impl From<DynamicScene2> for bevy::scene::DynamicScene {
-    fn from(scene: DynamicScene2) -> Self {
-        Self {
-            entities: scene.entities,
+impl CloneReflect for SaveableScene {
+    fn clone_value(&self) -> Self {
+        let mut entities = Vec::new();
+
+        for entity in &self.entities {
+            entities.push(entity.clone_value());
         }
+
+        Self { entities }
     }
 }

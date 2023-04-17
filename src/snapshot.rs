@@ -1,61 +1,135 @@
 use bevy::{
     ecs::entity::EntityMap,
     prelude::*,
+    reflect::TypeRegistration,
 };
 
-use crate::{
-    reflect::CloneReflect,
-    Rollbacks,
-    SaveableRegistry,
-};
+use crate::prelude::*;
 
-pub(crate) struct Capture {
+pub(crate) struct RawSnapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
-    pub(crate) scene: DynamicScene,
+    pub(crate) entities: SaveableScene,
 }
 
-impl Capture {
-    pub fn apply(&self, world: &mut World) {
-        world.clear_trackers();
+impl RawSnapshot {
+    fn from_world_with_filter<F>(world: &World, filter: F) -> Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        let saveables = world.resource::<SaveableRegistry>();
 
-        let mut map = EntityMap::default();
-
-        for entity in &self.scene.entities {
-            let entity = Entity::from_raw(entity.entity);
-            map.insert(entity, entity);
-            world.get_or_spawn(entity);
-        }
-
-        let invalid = world
-            .query_filtered::<Entity, Without<Window>>()
-            .iter(world)
-            .filter(|e| map.get(*e).is_err())
+        let resources = saveables
+            .types()
+            .filter(&filter)
+            .filter_map(|reg| reg.data::<ReflectResource>())
+            .filter_map(|res| res.reflect(world))
+            .map(|reflect| reflect.clone_value())
             .collect::<Vec<_>>();
 
-        for entity in invalid {
-            world.despawn(entity);
+        let entities = SaveableScene::from_world_with_filter(world, filter);
+
+        Self {
+            resources,
+            entities,
         }
+    }
 
-        let _s = self.scene.write_to_world(world, &mut map);
-
+    fn apply_with_map(&self, world: &mut World, map: &mut EntityMap) -> Result<(), SaveableError> {
         let registry_arc = world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
 
-        for reflect in &self.resources {
-            if let Some(reg) = registry.get_with_name(reflect.type_name()) {
-                if let Some(res) = reg.data::<ReflectResource>() {
-                    res.insert(world, reflect.as_reflect());
+        for resource in &self.resources {
+            let reg = registry
+                .get_with_name(resource.type_name())
+                .ok_or_else(|| SaveableError::UnregisteredType {
+                    type_name: resource.type_name().to_string(),
+                })?;
+
+            let data = reg.data::<ReflectResource>().ok_or_else(|| {
+                SaveableError::UnregisteredResource {
+                    type_name: resource.type_name().to_string(),
                 }
-            }
+            })?;
+
+            data.insert(world, resource.as_reflect());
+        }
+
+        self.entities.apply_with_map(world, map)
+    }
+}
+
+impl CloneReflect for RawSnapshot {
+    fn clone_value(&self) -> Self {
+        Self {
+            resources: self.resources.clone_value(),
+            entities: self.entities.clone_value(),
         }
     }
 }
 
-impl Clone for Capture {
-    fn clone(&self) -> Self {
+impl CloneReflect for Snapshot {
+    fn clone_value(&self) -> Self {
         Self {
-            resources: self.resources.clone_value(),
-            scene: self.scene.clone_value(),
+            inner: self.inner.clone_value(),
+            rollbacks: self.rollbacks.clone_value(),
+        }
+    }
+}
+
+/// A rollback snapshot of the game state.
+///
+/// [`Rollback`] excludes types that opt out of rollback.
+pub struct Rollback {
+    pub(crate) inner: RawSnapshot,
+}
+
+impl Rollback {
+    /// Returns a [`Rollback`] of the current [`World`] state.
+    /// This excludes [`Rollbacks`] and any saveable that ignores rollbacking.
+    pub fn from_world(world: &World) -> Self {
+        Self::from_world_with_filter(world, |_| true)
+    }
+
+    /// Returns a [`Rollback`] of the current [`World`] state, filtered by `filter`.
+    /// This excludes [`Rollbacks`] and any saveable that ignores rollbacking.
+    pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        let registry = world.resource::<SaveableRegistry>();
+
+        let inner = RawSnapshot::from_world_with_filter(world, |reg| {
+            registry.can_rollback(reg.type_name()) && filter(reg)
+        });
+
+        Self { inner }
+    }
+
+    /// Apply the [`Rollback`] to the [`World`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
+        self.apply_with_map(world, &mut EntityMap::default())
+    }
+
+    /// Apply the [`Rollback`] to the [`World`], mapping entities to new ids with the [`EntityMap`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply_with_map(
+        &self,
+        world: &mut World,
+        map: &mut EntityMap,
+    ) -> Result<(), SaveableError> {
+        self.inner.apply_with_map(world, map)
+    }
+}
+
+impl CloneReflect for Rollback {
+    fn clone_value(&self) -> Self {
+        Self {
+            inner: self.inner.clone_value(),
         }
     }
 }
@@ -64,48 +138,47 @@ impl Clone for Capture {
 ///
 /// Can be serialized via [`crate::SnapshotSerializer`] and deserialized via [`crate::SnapshotDeserializer`].
 pub struct Snapshot {
-    pub(crate) capture: Capture,
+    pub(crate) inner: RawSnapshot,
     pub(crate) rollbacks: Rollbacks,
 }
 
 impl Snapshot {
-    /// Retains only the Resources specified by the predicate.
-    pub fn retain<F>(&mut self, f: F)
+    /// Returns a [`Snapshot`] of the current [`World`] state.
+    /// Includes [`Rollbacks`].
+    pub fn from_world(world: &World) -> Self {
+        Self::from_world_with_filter(world, |_| true)
+    }
+
+    /// Returns a [`Snapshot`] of the current [`World`] state filtered by `filter`.
+    pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
     where
-        F: FnMut(&Box<dyn Reflect>) -> bool,
+        F: Fn(&&TypeRegistration) -> bool,
     {
-        self.capture.resources.retain(f);
+        let inner = RawSnapshot::from_world_with_filter(world, filter);
+        let rollbacks = world.resource::<Rollbacks>().clone_value();
+
+        Self { inner, rollbacks }
     }
 
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
-    pub fn apply(&self, world: &mut World) {
-        self.capture.apply(world);
-        world.insert_resource(self.rollbacks.clone());
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
+        self.apply_with_map(world, &mut EntityMap::default())
     }
 
-    /// Convert the [`Snapshot`] into a [`RollbackSnapshot`] following rollback rules.
-    pub fn into_rollback(mut self, world: &mut World) -> RollbackSnapshot {
-        let saveables = world.resource::<SaveableRegistry>();
-
-        self.retain(|reg| saveables.can_rollback(reg.type_name()));
-
-        RollbackSnapshot {
-            capture: self.capture,
-        }
-    }
-}
-
-/// A rollback snapshot of the game state.
-///
-/// [`RollbackSnapshot`] excludes resources that opt out of rollback, including the [`Rollbacks`] resource.
-#[derive(Clone)]
-pub struct RollbackSnapshot {
-    pub(crate) capture: Capture,
-}
-
-impl RollbackSnapshot {
-    /// Apply the [`RollbackSnapshot`] to the [`World`].
-    pub fn rollback(&self, world: &mut World) {
-        self.capture.apply(world);
+    /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state, mapping entities to new ids with the [`EntityMap`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    pub fn apply_with_map(
+        &self,
+        world: &mut World,
+        map: &mut EntityMap,
+    ) -> Result<(), SaveableError> {
+        self.inner.apply_with_map(world, map)?;
+        world.insert_resource(self.rollbacks.clone_value());
+        Ok(())
     }
 }

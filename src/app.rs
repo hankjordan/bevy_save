@@ -3,40 +3,47 @@ use bevy::{
     reflect::GetTypeRegistration,
 };
 
-use crate::{
-    Rollbacks,
-    SaveableRegistry,
-};
+use crate::prelude::*;
 
 /// Extension trait that adds save-related methods to Bevy's [`App`].
-pub trait AppSaveableExt {
+pub trait SaveableAppExt {
     /// Register a type as saveable - it will be included in rollback and affected by save/load.
-    fn register_saveable<T: 'static + GetTypeRegistration>(&mut self) -> &mut Self;
+    fn register_saveable<T: GetTypeRegistration>(&mut self) -> &mut Self;
 
-    /// Set a type to ignore rollback - if registered it will be included in save/load but it won't change during rollback.
-    fn ignore_rollback<T: 'static + GetTypeRegistration>(&mut self) -> &mut Self;
+    /// Set a type to ignore rollback - it will be included in save/load but it won't change during rollback.
+    fn ignore_rollback<T: GetTypeRegistration>(&mut self) -> &mut Self;
+
+    /// Set a type to allow rollback - it will be included in rollback and affected by save/load.
+    fn allow_rollback<T: GetTypeRegistration>(&mut self) -> &mut Self;
 }
 
-impl AppSaveableExt for App {
-    fn register_saveable<T: 'static + GetTypeRegistration>(&mut self) -> &mut Self {
+impl SaveableAppExt for App {
+    fn register_saveable<T: GetTypeRegistration>(&mut self) -> &mut Self {
         self ////
-            .init_resource::<Rollbacks>()
             .init_resource::<SaveableRegistry>()
-            ////
-            .register_type::<T>()
-            ////
-            .add_startup_system(register_saveable::<T>)
+            .init_resource::<Rollbacks>()
+            .register_type::<T>();
+
+        let mut registry = self.world.resource_mut::<SaveableRegistry>();
+
+        registry.register::<T>();
+
+        self
     }
 
-    fn ignore_rollback<T: 'static + GetTypeRegistration>(&mut self) -> &mut Self {
-        self.add_startup_system(ignore_rollback::<T>)
+    fn ignore_rollback<T: GetTypeRegistration>(&mut self) -> &mut Self {
+        let mut registry = self.world.resource_mut::<SaveableRegistry>();
+
+        registry.ignore_rollback::<T>();
+        
+        self
     }
-}
 
-fn register_saveable<T: 'static + GetTypeRegistration>(mut registry: ResMut<SaveableRegistry>) {
-    registry.register::<T>();
-}
+    fn allow_rollback<T: GetTypeRegistration>(&mut self) -> &mut Self {
+        let mut registry = self.world.resource_mut::<SaveableRegistry>();
 
-fn ignore_rollback<T: 'static + GetTypeRegistration>(mut registry: ResMut<SaveableRegistry>) {
-    registry.ignore_rollback::<T>();
+        registry.allow_rollback::<T>();
+        
+        self
+    }
 }

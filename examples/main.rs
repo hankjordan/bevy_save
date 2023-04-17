@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
 
 #[derive(Resource, Reflect, Default, Debug)]
@@ -82,10 +83,10 @@ fn interact(
         world.load("example");
     } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
-        world.rollback(1);
+        world.rollback(1).expect("Failed to rollback");
     } else if keys.just_released(KeyCode::Right) {
         info!("Rollforward");
-        world.rollback(-1);
+        world.rollback(-1).expect("Failed to rollforward");
     } else if keys.just_pressed(KeyCode::E) {
         info!("Info");
 
@@ -111,6 +112,8 @@ fn main() {
             ..default()
         }))
 
+        .add_plugin(WorldInspectorPlugin::new())
+    
         .insert_resource(Balance { amount: 42 })
 
         .register_saveable::<Balance>()
@@ -118,7 +121,7 @@ fn main() {
         .register_saveable::<Player>()
 
         // While it is still included in saves, the Balance resource will not rollback / rollforward alongside other types.
-        // This could be used to track rollback state, or to prevent players from making changes to their decisions during rollback.
+        // This could be used to track rollback state or to prevent players from making changes to their decisions during rollback.
         .ignore_rollback::<Balance>()
 
         .add_startup_system(setup)

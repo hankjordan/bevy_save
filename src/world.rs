@@ -12,6 +12,7 @@ use std::{
 };
 
 use bevy::{
+    ecs::entity::EntityMap,
     prelude::*,
     tasks::IoTaskPool,
 };
@@ -22,15 +23,18 @@ use rmp_serde::{
     Serializer,
 };
 use serde::{
-    de::DeserializeSeed,
+    de::{
+        DeserializeSeed,
+        Error,
+    },
     Serialize,
 };
 
 use crate::{
-    scene::DynamicScene2,
-    Capture,
+    CloneReflect,
+    Rollback,
     Rollbacks,
-    SaveableRegistry,
+    SaveableError,
     Snapshot,
     SnapshotDeserializer,
     SnapshotSerializer,
@@ -45,7 +49,17 @@ pub trait WorldSaveableExt: Sized {
     fn checkpoint(&mut self);
 
     /// Rolls back / forward the [`World`] state.
-    fn rollback(&mut self, checkpoints: isize);
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    fn rollback(&mut self, checkpoints: isize) -> Result<(), SaveableError>;
+
+    /// Rolls back / forward the [`World`] state.
+    /// Maps entities to new ids with the [`EntityMap`].
+    /// 
+    /// # Errors
+    /// - See [`SaveableError`]
+    fn rollback_with_map(&mut self, checkpoints: isize, map: &mut EntityMap) -> Result<(), SaveableError>;
 
     /// Analogue of [`serde::Serialize`]
     ///
@@ -56,10 +70,23 @@ pub trait WorldSaveableExt: Sized {
     /// Analogue of [`serde::Deserialize`], but applies result to current [`World`] instead of creating a new one.
     ///
     /// # Errors
-    /// See [`serde::Deserialize`]
+    /// - See [`SaveableError`]
+    /// - See [`serde::Deserialize`]
     fn deserialize<'de, D: serde::Deserializer<'de>>(
         &mut self,
         deserializer: D,
+    ) -> Result<(), D::Error>;
+
+    /// Analogue of [`serde::Deserialize`], but applies result to current [`World`] instead of creating a new one.
+    /// Maps entities to new ids with the [`EntityMap`].
+    ///
+    /// # Errors
+    /// - See [`SaveableError`]
+    /// - See [`serde::Deserialize`]
+    fn deserialize_with_map<'de, D: serde::Deserializer<'de>>(
+        &mut self,
+        deserializer: D,
+        map: &mut EntityMap,
     ) -> Result<(), D::Error>;
 
     /// Saves the game state to a named save.
@@ -67,6 +94,10 @@ pub trait WorldSaveableExt: Sized {
 
     /// Loads the game state from a named save.
     fn load(&mut self, name: &str);
+
+    /// Loads the game state from a named save.
+    /// Maps entities to new ids with the [`EntityMap`].
+    fn load_with_map(&mut self, name: &str, map: &mut EntityMap);
 }
 
 include!(concat!(env!("OUT_DIR"), "/workspace.rs"));
@@ -87,45 +118,27 @@ pub fn get_save_file(name: &str) -> PathBuf {
 
 impl WorldSaveableExt for World {
     fn snapshot(&self) -> Snapshot {
-        let saveables = self.resource::<SaveableRegistry>();
-
-        let mut resources = Vec::new();
-
-        for reg in saveables.types() {
-            if let Some(res) = reg.data::<ReflectResource>() {
-                if let Some(reflect) = res.reflect(self) {
-                    resources.push(reflect.clone_value());
-                }
-            }
-        }
-
-        let scene = DynamicScene2::from_world_with_filter(self, |info| {
-            !info.name().starts_with("bevy_window") && !info.name().starts_with("bevy_winit")
-        }).into();
-
-        let capture = Capture {
-            resources,
-            scene,
-        };
-        let rollbacks = self.resource::<Rollbacks>().clone();
-
-        Snapshot { capture, rollbacks }
+        Snapshot::from_world(self)
     }
 
     fn checkpoint(&mut self) {
-        let snap = self.snapshot().into_rollback(self);
-
+        let rollback = Rollback::from_world(self);
         let mut state = self.resource_mut::<Rollbacks>();
-
-        state.checkpoint(snap);
+        state.checkpoint(rollback);
     }
 
-    fn rollback(&mut self, checkpoints: isize) {
+    fn rollback(&mut self, checkpoints: isize) -> Result<(), SaveableError> {
+        self.rollback_with_map(checkpoints, &mut EntityMap::default())
+    }
+
+    fn rollback_with_map(&mut self, checkpoints: isize, map: &mut EntityMap) -> Result<(), SaveableError> {
         let mut state = self.resource_mut::<Rollbacks>();
 
-        if let Some(snap) = state.rollback(checkpoints).cloned() {
-            snap.rollback(self);
+        if let Some(snap) = state.rollback(checkpoints).map(|r| r.clone_value()) {
+            snap.apply_with_map(self, map)?;
         }
+
+        Ok(())
     }
 
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -141,6 +154,14 @@ impl WorldSaveableExt for World {
         &mut self,
         deserializer: D,
     ) -> Result<(), D::Error> {
+        self.deserialize_with_map(deserializer, &mut EntityMap::default())
+    }
+
+    fn deserialize_with_map<'de, D: serde::Deserializer<'de>>(
+        &mut self,
+        deserializer: D,
+        map: &mut EntityMap,
+    ) -> Result<(), D::Error> {
         let registry = self.resource::<AppTypeRegistry>().clone();
         let reg = registry.read();
 
@@ -148,7 +169,7 @@ impl WorldSaveableExt for World {
 
         let snap = de.deserialize(deserializer)?;
 
-        snap.apply(self);
+        snap.apply_with_map(self, map).map_err(D::Error::custom)?;
 
         Ok(())
     }
@@ -173,12 +194,16 @@ impl WorldSaveableExt for World {
     }
 
     fn load(&mut self, name: &str) {
+        self.load_with_map(name, &mut EntityMap::default());
+    }
+
+    fn load_with_map(&mut self, name: &str, map: &mut EntityMap) {
         let path = get_save_file(name);
         let file = File::open(path).expect("Could not open save file");
 
         let mut reader = BufReader::new(file);
 
-        self.deserialize(&mut Deserializer::new(&mut reader))
+        self.deserialize_with_map(&mut Deserializer::new(&mut reader), map)
             .expect("Error deserializing save from file");
     }
 }

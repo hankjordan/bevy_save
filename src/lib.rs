@@ -7,16 +7,21 @@
 
 pub use crate::{
     app::*,
-    reflect::*,
+    clone::*,
+    entity::*,
+    error::*,
     registry::*,
     rollbacks::*,
+    scene::*,
     serde::*,
     snapshot::*,
     world::*,
 };
 
 mod app;
-mod reflect;
+mod clone;
+mod entity;
+mod error;
 mod registry;
 mod rollbacks;
 mod scene;
