@@ -42,6 +42,9 @@ use crate::{
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
+    /// Returns a one-to-one [`EntityMap`] for the [`World`].
+    fn entity_map(&self) -> EntityMap;
+
     /// Returns a [`Snapshot`] of the current [`World`] state.
     fn snapshot(&self) -> Snapshot;
 
@@ -49,17 +52,21 @@ pub trait WorldSaveableExt: Sized {
     fn checkpoint(&mut self);
 
     /// Rolls back / forward the [`World`] state.
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     fn rollback(&mut self, checkpoints: isize) -> Result<(), SaveableError>;
 
     /// Rolls back / forward the [`World`] state.
     /// Maps entities to new ids with the [`EntityMap`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
-    fn rollback_with_map(&mut self, checkpoints: isize, map: &mut EntityMap) -> Result<(), SaveableError>;
+    fn rollback_with_map(
+        &mut self,
+        checkpoints: isize,
+        map: &mut EntityMap,
+    ) -> Result<(), SaveableError>;
 
     /// Analogue of [`serde::Serialize`]
     ///
@@ -117,6 +124,16 @@ pub fn get_save_file(name: &str) -> PathBuf {
 }
 
 impl WorldSaveableExt for World {
+    fn entity_map(&self) -> EntityMap {
+        let mut map = EntityMap::default();
+
+        for entity in self.iter_entities() {
+            map.insert(entity.id(), entity.id());
+        }
+
+        map
+    }
+
     fn snapshot(&self) -> Snapshot {
         Snapshot::from_world(self)
     }
@@ -128,10 +145,14 @@ impl WorldSaveableExt for World {
     }
 
     fn rollback(&mut self, checkpoints: isize) -> Result<(), SaveableError> {
-        self.rollback_with_map(checkpoints, &mut EntityMap::default())
+        self.rollback_with_map(checkpoints, &mut self.entity_map())
     }
 
-    fn rollback_with_map(&mut self, checkpoints: isize, map: &mut EntityMap) -> Result<(), SaveableError> {
+    fn rollback_with_map(
+        &mut self,
+        checkpoints: isize,
+        map: &mut EntityMap,
+    ) -> Result<(), SaveableError> {
         let mut state = self.resource_mut::<Rollbacks>();
 
         if let Some(snap) = state.rollback(checkpoints).map(|r| r.clone_value()) {
@@ -154,7 +175,7 @@ impl WorldSaveableExt for World {
         &mut self,
         deserializer: D,
     ) -> Result<(), D::Error> {
-        self.deserialize_with_map(deserializer, &mut EntityMap::default())
+        self.deserialize_with_map(deserializer, &mut self.entity_map())
     }
 
     fn deserialize_with_map<'de, D: serde::Deserializer<'de>>(
@@ -194,7 +215,7 @@ impl WorldSaveableExt for World {
     }
 
     fn load(&mut self, name: &str) {
-        self.load_with_map(name, &mut EntityMap::default());
+        self.load_with_map(name, &mut self.entity_map());
     }
 
     fn load_with_map(&mut self, name: &str, map: &mut EntityMap) {

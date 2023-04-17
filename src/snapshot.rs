@@ -1,5 +1,8 @@
 use bevy::{
-    ecs::entity::EntityMap,
+    ecs::{
+        entity::EntityMap,
+        reflect::ReflectMapEntities,
+    },
     prelude::*,
     reflect::TypeRegistration,
 };
@@ -52,6 +55,12 @@ impl RawSnapshot {
             })?;
 
             data.insert(world, resource.as_reflect());
+
+            if let Some(mapper) = reg.data::<ReflectMapEntities>() {
+                mapper
+                    .map_entities(world, map)
+                    .map_err(SaveableError::MapEntitiesError)?;
+            }
         }
 
         self.entities.apply_with_map(world, map)
@@ -106,15 +115,15 @@ impl Rollback {
     }
 
     /// Apply the [`Rollback`] to the [`World`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
-        self.apply_with_map(world, &mut EntityMap::default())
+        self.apply_with_map(world, &mut world.entity_map())
     }
 
     /// Apply the [`Rollback`] to the [`World`], mapping entities to new ids with the [`EntityMap`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply_with_map(
@@ -161,15 +170,15 @@ impl Snapshot {
     }
 
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
-        self.apply_with_map(world, &mut EntityMap::default())
+        self.apply_with_map(world, &mut world.entity_map())
     }
 
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state, mapping entities to new ids with the [`EntityMap`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply_with_map(

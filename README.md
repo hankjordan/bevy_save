@@ -65,9 +65,21 @@ As Entity ids are not intended to be used as unique identifiers, `bevy_save` sup
 - `World::rollback_with_map()` allows you to apply an `EntityMap` while rolling back / forward.
 
 This is also available directly on the snapshot types:
+
 - `Snapshot::apply_with_map()`
 - `Rollback::apply_with_map()`
 - `SaveableScene::apply_with_map()`
+
+If you use the methods that do not accept an `EntityMap` (`deserialize`, `load`, `rollback`, `apply`),
+the entities are assumed to have a one-to-one mapping with the currently spawned entities (1->1, 2->2, 3->3).
+
+Any entities that do not have a mapping are automatically assigned a new id.
+
+#### MapEntities
+
+`bevy_save` also supports `MapEntities` via reflection to allow you to update entity ids within components and resources.
+
+See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.10.1/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ## License
 

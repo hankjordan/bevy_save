@@ -48,7 +48,7 @@ impl SaveableRegistry {
     /// Exclude a type from rollback.
     ///
     /// The type is still included in saves.
-    /// 
+    ///
     /// # Panics
     /// - If called on a type that has not been registered
     pub fn ignore_rollback<T: GetTypeRegistration>(&mut self) {
@@ -57,7 +57,7 @@ impl SaveableRegistry {
     }
 
     /// Include a type in rollbacks.
-    /// 
+    ///
     /// # Panics
     /// - If called on a type that has not been registered
     pub fn allow_rollback<T: GetTypeRegistration>(&mut self) {
@@ -71,7 +71,7 @@ impl SaveableRegistry {
     }
 
     /// Returns whether or not a type name is included in rollback.
-    /// 
+    ///
     /// # Panics
     /// - If called on a type that has not been registered
     pub fn can_rollback(&self, type_name: &str) -> bool {

@@ -658,10 +658,7 @@ impl<'a, 'de> Visitor<'de> for RollbackVisitor<'a> {
     where
         D: Deserializer<'de>,
     {
-        let inner =
-            deserializer.deserialize_newtype_struct(ROLLBACK_STRUCT, RawSnapshotVisitor {
-                registry: self.registry,
-            })?;
+        let inner = RawSnapshotDeserializer::new(self.registry).deserialize(deserializer)?;
         Ok(Rollback { inner })
     }
 }

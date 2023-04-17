@@ -35,7 +35,7 @@ impl SaveableAppExt for App {
         let mut registry = self.world.resource_mut::<SaveableRegistry>();
 
         registry.ignore_rollback::<T>();
-        
+
         self
     }
 
@@ -43,7 +43,7 @@ impl SaveableAppExt for App {
         let mut registry = self.world.resource_mut::<SaveableRegistry>();
 
         registry.allow_rollback::<T>();
-        
+
         self
     }
 }

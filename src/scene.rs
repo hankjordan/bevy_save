@@ -65,7 +65,7 @@ impl SaveableScene {
                     entry.components.push(reflect.clone_value());
                 }
             }
-            
+
             extracted.insert(index, entry);
         }
 
@@ -75,15 +75,15 @@ impl SaveableScene {
     }
 
     /// Apply the [`SaveableScene`] to the [`World`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
-        self.apply_with_map(world, &mut EntityMap::default())
+        self.apply_with_map(world, &mut world.entity_map())
     }
 
     /// Apply the [`SaveableScene`] to the [`World`], mapping entities to new ids with the [`EntityMap`].
-    /// 
+    ///
     /// # Errors
     /// - See [`SaveableError`]
     pub fn apply_with_map(
@@ -91,8 +91,8 @@ impl SaveableScene {
         world: &mut World,
         map: &mut EntityMap,
     ) -> Result<(), SaveableError> {
-        let reg = world.resource::<AppTypeRegistry>().clone();
-        let registry = reg.read();
+        let registry_arc = world.resource::<AppTypeRegistry>().clone();
+        let registry = registry_arc.read();
 
         for scene_entity in &self.entities {
             let entity = *map
@@ -102,27 +102,25 @@ impl SaveableScene {
             let entity_mut = &mut world.entity_mut(entity);
 
             for component in &scene_entity.components {
-                let registration =
-                    registry
-                        .get_with_name(component.type_name())
-                        .ok_or_else(|| SaveableError::UnregisteredType {
-                            type_name: component.type_name().to_string(),
-                        })?;
-
-                let reflect_component =
-                    registration.data::<ReflectComponent>().ok_or_else(|| {
-                        SaveableError::UnregisteredComponent {
-                            type_name: component.type_name().to_string(),
-                        }
+                let reg = registry
+                    .get_with_name(component.type_name())
+                    .ok_or_else(|| SaveableError::UnregisteredType {
+                        type_name: component.type_name().to_string(),
                     })?;
 
-                reflect_component.apply_or_insert(entity_mut, &**component);
+                let data = reg.data::<ReflectComponent>().ok_or_else(|| {
+                    SaveableError::UnregisteredComponent {
+                        type_name: component.type_name().to_string(),
+                    }
+                })?;
+
+                data.apply_or_insert(entity_mut, &**component);
             }
         }
 
-        for registration in registry.iter() {
-            if let Some(map_entities_reflect) = registration.data::<ReflectMapEntities>() {
-                map_entities_reflect
+        for reg in registry.iter() {
+            if let Some(mapper) = reg.data::<ReflectMapEntities>() {
+                mapper
                     .map_entities(world, map)
                     .map_err(SaveableError::MapEntitiesError)?;
             }
