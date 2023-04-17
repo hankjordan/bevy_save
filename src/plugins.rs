@@ -37,12 +37,15 @@ impl Plugin for SaveablesPlugin {
         app
             .register_saveable::<GlobalTransform>()
             .register_saveable::<Transform>();
-
+        
         #[cfg(feature = "bevy_render")]
         app
             .register_saveable::<ComputedVisibility>()
-            .register_saveable::<Handle<Image>>()
             .register_saveable::<Visibility>();
+
+        #[cfg(all(feature = "bevy_render", feature = "bevy_asset"))]
+        app
+            .register_saveable::<Handle<Image>>();
 
         #[cfg(feature = "bevy_sprite")]
         app
