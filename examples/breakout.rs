@@ -1,9 +1,19 @@
 //! A simplified implementation of the classic game "Breakout".
 
 use bevy::{
+    ecs::system::{
+        SystemParam,
+        SystemState,
+    },
     prelude::*,
-    sprite::collide_aabb::{collide, Collision},
-    sprite::MaterialMesh2dBundle,
+    sprite::{
+        collide_aabb::{
+            collide,
+            Collision,
+        },
+        MaterialMesh2dBundle,
+    },
+    utils::Instant,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
@@ -44,6 +54,14 @@ const GAP_BETWEEN_BRICKS_AND_SIDES: f32 = 20.0;
 const SCOREBOARD_FONT_SIZE: f32 = 40.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 
+const HELP_FONT_SIZE: f32 = 16.0;
+const HELP_TEXT_PADDING: Val = Val::Px(5.0);
+
+const TOAST_FONT_SIZE: f32 = 32.0;
+const TOAST_TEXT_PADDING: Val = Val::Px(5.0);
+const TOAST_TEXT_COLOR: Color = Color::rgb(0.5, 0.1, 0.1);
+const TOAST_DURATION: f32 = 0.5;
+
 const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
 const PADDLE_COLOR: Color = Color::rgb(0.3, 0.3, 0.7);
 const BALL_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
@@ -52,6 +70,7 @@ const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 
+#[rustfmt::skip]
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.build().set(AssetPlugin {
@@ -93,8 +112,16 @@ fn main() {
         .register_saveable::<Brick>()
         .register_saveable::<Scoreboard>()
 
-        // Handle input for triggering save / load
+        // Register our types as inspectable
+        .register_type::<ScoreboardText>()
+        .register_type::<Toast>()
+
+        // Setup
+        .add_startup_system(setup_help)
+
+        // Systems
         .add_system(handle_save_input)
+        .add_system(update_toasts)
 
         .run();
 }
@@ -204,6 +231,10 @@ struct Scoreboard {
     score: usize,
 }
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+struct ScoreboardText;
+
 // Add the game's entities to our world
 fn setup(
     mut commands: Commands,
@@ -251,16 +282,13 @@ fn setup(
     ));
 
     // Scoreboard
-    commands.spawn(
+    commands.spawn((
         TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: TEXT_COLOR,
-                },
-            ),
+            TextSection::new("Score: ", TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: TEXT_COLOR,
+            }),
             TextSection::from_style(TextStyle {
                 font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: SCOREBOARD_FONT_SIZE,
@@ -276,7 +304,8 @@ fn setup(
             },
             ..default()
         }),
-    );
+        ScoreboardText,
+    ));
 
     // Walls
     commands.spawn(WallBundle::new(WallLocation::Left));
@@ -377,7 +406,10 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>) {
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
+fn update_scoreboard(
+    scoreboard: Res<Scoreboard>,
+    mut query: Query<&mut Text, With<ScoreboardText>>,
+) {
     let mut text = query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
 }
@@ -450,25 +482,118 @@ fn play_collision_sound(
     }
 }
 
-fn handle_save_input(
-    world: &mut World
-) {
+fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(
+        TextBundle::from_sections([
+            TextSection::new("Enter - Save | Backspace - Load\n", TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: HELP_FONT_SIZE,
+                color: TEXT_COLOR,
+            }),
+            TextSection::new(
+                "Space - Checkpoint | A - Rollback | D - Rollforward\n",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: HELP_FONT_SIZE,
+                    color: TEXT_COLOR,
+                },
+            ),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: HELP_TEXT_PADDING,
+                left: HELP_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+    );
+}
+
+#[derive(Component, Reflect)]
+pub struct Toast {
+    time: Instant,
+}
+
+impl Default for Toast {
+    fn default() -> Self {
+        Self {
+            time: Instant::now(),
+        }
+    }
+}
+
+fn update_toasts(mut commands: Commands, toasts: Query<(Entity, &Toast)>) {
+    for (entity, toast) in &toasts {
+        if toast.time.elapsed().as_secs_f32() > TOAST_DURATION {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+#[derive(SystemParam)]
+struct Toaster<'w, 's> {
+    commands: Commands<'w, 's>,
+    asset_server: Res<'w, AssetServer>,
+    toasts: Query<'w, 's, Entity, With<Toast>>,
+}
+
+impl<'w, 's> Toaster<'w, 's> {
+    fn show(&mut self, text: &str) {
+        for entity in &self.toasts {
+            self.commands.entity(entity).despawn_recursive();
+        }
+
+        self.commands.spawn((
+            TextBundle::from_sections([TextSection::new(text, TextStyle {
+                font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: TOAST_FONT_SIZE,
+                color: TOAST_TEXT_COLOR,
+            })])
+            .with_style(Style {
+                position_type: PositionType::Absolute,
+                position: UiRect {
+                    bottom: TOAST_TEXT_PADDING,
+                    right: TOAST_TEXT_PADDING,
+                    ..default()
+                },
+                ..default()
+            }),
+            Toast::default(),
+        ));
+    }
+}
+
+fn handle_save_input(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
+    let mut text = None;
+
     if keys.just_released(KeyCode::Space) {
-        info!("Checkpoint");
         world.checkpoint();
+        text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
-        info!("Save");
         world.save("breakout");
+        text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
-        info!("Load");
         world.load("breakout");
+        text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
-        info!("Rollback");
         world.rollback(1).expect("Failed to rollback");
+        text = Some("Rollback");
     } else if keys.just_released(KeyCode::D) {
-        info!("Rollforward");
         world.rollback(-1).expect("Failed to rollforward");
+        text = Some("Rollforward");
+    }
+
+    if let Some(text) = text {
+        let mut state: SystemState<Toaster> = SystemState::new(world);
+        let mut toaster = state.get_mut(world);
+
+        info!(text);
+        toaster.show(text);
+        
+        state.apply(world);
     }
 }
