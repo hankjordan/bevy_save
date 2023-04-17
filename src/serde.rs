@@ -613,7 +613,7 @@ impl<'a> Serialize for RollbackSerializer<'a> {
     {
         serializer.serialize_newtype_struct(
             ROLLBACK_STRUCT,
-            &RawSnapshotSerializer::new(&self.rollback.inner, self.registry),
+            &RawSnapshotSerializer::new(&self.rollback.snapshot, self.registry),
         )
     }
 }
@@ -658,8 +658,8 @@ impl<'a, 'de> Visitor<'de> for RollbackVisitor<'a> {
     where
         D: Deserializer<'de>,
     {
-        let inner = RawSnapshotDeserializer::new(self.registry).deserialize(deserializer)?;
-        Ok(Rollback { inner })
+        let snapshot = RawSnapshotDeserializer::new(self.registry).deserialize(deserializer)?;
+        Ok(Rollback { snapshot })
     }
 }
 
@@ -877,12 +877,12 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
 // Snapshot |----------------------------------------------------------------------------------------------------------
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
-const SNAPSHOT_FIELDS: &[&str] = &["inner", "rollbacks"];
+const SNAPSHOT_FIELDS: &[&str] = &["snapshot", "rollbacks"];
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
 enum SnapshotFields {
-    Inner,
+    Snapshot,
     Rollbacks,
 }
 
@@ -904,12 +904,12 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
     where
         S: serde::Serializer,
     {
-        let inner = RawSnapshotSerializer::new(&self.snapshot.inner, self.registry);
+        let snapshot = RawSnapshotSerializer::new(&self.snapshot.snapshot, self.registry);
         let rollbacks = RollbacksSerializer::new(&self.snapshot.rollbacks, self.registry);
 
         let mut state = serializer.serialize_struct(SNAPSHOT_STRUCT, SNAPSHOT_FIELDS.len())?;
 
-        state.serialize_field(SNAPSHOT_FIELDS[0], &inner)?;
+        state.serialize_field(SNAPSHOT_FIELDS[0], &snapshot)?;
         state.serialize_field(SNAPSHOT_FIELDS[1], &rollbacks)?;
 
         state.end()
@@ -956,7 +956,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
     where
         V: SeqAccess<'de>,
     {
-        let inner = seq
+        let snapshot = seq
             .next_element_seed(RawSnapshotDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
 
@@ -964,23 +964,23 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
             .next_element_seed(RollbacksDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
 
-        Ok(Self::Value { inner, rollbacks })
+        Ok(Self::Value { snapshot, rollbacks })
     }
 
     fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
     where
         V: MapAccess<'de>,
     {
-        let mut inner = None;
+        let mut snapshot = None;
         let mut rollbacks = None;
 
         while let Some(key) = map.next_key()? {
             match key {
-                SnapshotFields::Inner => {
-                    if inner.is_some() {
+                SnapshotFields::Snapshot => {
+                    if snapshot.is_some() {
                         return Err(de::Error::duplicate_field(SNAPSHOT_FIELDS[0]));
                     }
-                    inner = Some(map.next_value_seed(RawSnapshotDeserializer::new(self.registry))?);
+                    snapshot = Some(map.next_value_seed(RawSnapshotDeserializer::new(self.registry))?);
                 }
 
                 SnapshotFields::Rollbacks => {
@@ -994,9 +994,9 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
             }
         }
 
-        let inner = inner.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
+        let snapshot = snapshot.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
         let rollbacks = rollbacks.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
 
-        Ok(Self::Value { inner, rollbacks })
+        Ok(Self::Value { snapshot, rollbacks })
     }
 }

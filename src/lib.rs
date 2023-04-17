@@ -8,6 +8,7 @@
 pub use crate::{
     app::*,
     clone::*,
+    dir::*,
     entity::*,
     error::*,
     registry::*,
@@ -20,6 +21,7 @@ pub use crate::{
 
 mod app;
 mod clone;
+mod dir;
 mod entity;
 mod error;
 mod registry;

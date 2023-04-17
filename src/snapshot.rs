@@ -79,7 +79,7 @@ impl CloneReflect for RawSnapshot {
 impl CloneReflect for Snapshot {
     fn clone_value(&self) -> Self {
         Self {
-            inner: self.inner.clone_value(),
+            snapshot: self.snapshot.clone_value(),
             rollbacks: self.rollbacks.clone_value(),
         }
     }
@@ -89,7 +89,7 @@ impl CloneReflect for Snapshot {
 ///
 /// [`Rollback`] excludes types that opt out of rollback.
 pub struct Rollback {
-    pub(crate) inner: RawSnapshot,
+    pub(crate) snapshot: RawSnapshot,
 }
 
 impl Rollback {
@@ -107,11 +107,11 @@ impl Rollback {
     {
         let registry = world.resource::<SaveableRegistry>();
 
-        let inner = RawSnapshot::from_world_with_filter(world, |reg| {
+        let snapshot = RawSnapshot::from_world_with_filter(world, |reg| {
             registry.can_rollback(reg.type_name()) && filter(reg)
         });
 
-        Self { inner }
+        Self { snapshot }
     }
 
     /// Apply the [`Rollback`] to the [`World`].
@@ -131,14 +131,14 @@ impl Rollback {
         world: &mut World,
         map: &mut EntityMap,
     ) -> Result<(), SaveableError> {
-        self.inner.apply_with_map(world, map)
+        self.snapshot.apply_with_map(world, map)
     }
 }
 
 impl CloneReflect for Rollback {
     fn clone_value(&self) -> Self {
         Self {
-            inner: self.inner.clone_value(),
+            snapshot: self.snapshot.clone_value(),
         }
     }
 }
@@ -147,7 +147,7 @@ impl CloneReflect for Rollback {
 ///
 /// Can be serialized via [`crate::SnapshotSerializer`] and deserialized via [`crate::SnapshotDeserializer`].
 pub struct Snapshot {
-    pub(crate) inner: RawSnapshot,
+    pub(crate) snapshot: RawSnapshot,
     pub(crate) rollbacks: Rollbacks,
 }
 
@@ -163,10 +163,10 @@ impl Snapshot {
     where
         F: Fn(&&TypeRegistration) -> bool,
     {
-        let inner = RawSnapshot::from_world_with_filter(world, filter);
+        let snapshot = RawSnapshot::from_world_with_filter(world, filter);
         let rollbacks = world.resource::<Rollbacks>().clone_value();
 
-        Self { inner, rollbacks }
+        Self { snapshot, rollbacks }
     }
 
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
@@ -186,7 +186,7 @@ impl Snapshot {
         world: &mut World,
         map: &mut EntityMap,
     ) -> Result<(), SaveableError> {
-        self.inner.apply_with_map(world, map)?;
+        self.snapshot.apply_with_map(world, map)?;
         world.insert_resource(self.rollbacks.clone_value());
         Ok(())
     }

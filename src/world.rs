@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::{
         self,
         File,
@@ -8,7 +7,6 @@ use std::{
         BufReader,
         Write,
     },
-    path::PathBuf,
 };
 
 use bevy::{
@@ -16,8 +14,6 @@ use bevy::{
     prelude::*,
     tasks::IoTaskPool,
 };
-use lazy_static::lazy_static;
-use platform_dirs::AppDirs;
 use rmp_serde::{
     Deserializer,
     Serializer,
@@ -31,6 +27,7 @@ use serde::{
 };
 
 use crate::{
+    get_save_file,
     CloneReflect,
     Rollback,
     Rollbacks,
@@ -38,6 +35,7 @@ use crate::{
     Snapshot,
     SnapshotDeserializer,
     SnapshotSerializer,
+    SAVE_DIR,
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
@@ -105,22 +103,6 @@ pub trait WorldSaveableExt: Sized {
     /// Loads the game state from a named save.
     /// Maps entities to new ids with the [`EntityMap`].
     fn load_with_map(&mut self, name: &str, map: &mut EntityMap);
-}
-
-include!(concat!(env!("OUT_DIR"), "/workspace.rs"));
-
-lazy_static! {
-    static ref SAVE_DIR: PathBuf = {
-        AppDirs::new(Some(WORKSPACE), true)
-            .unwrap()
-            .data_dir
-            .join("saves")
-    };
-}
-
-/// Returns the absolute path to a save file given its name.
-pub fn get_save_file(name: &str) -> PathBuf {
-    SAVE_DIR.join(format!("{name}.sav"))
 }
 
 impl WorldSaveableExt for World {

@@ -18,6 +18,7 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
 Supports Windows, Linux, and MacOS. WASM support is in progress.
 
 - `World::save()` and `World::load()` uses your app's save directory to save and load your game state to disk, handling all serialization and deserialization for you.
+- This uses a predefined binary format, if you want to use your own serializer see `"examples/json.rs"`.
 
 ### Snapshots and Rollback
 

@@ -10,6 +10,7 @@ repository = "https://github.com/hankjordan/bevy_save"
 [dev-dependencies]
 bevy = { version = "0.10" }
 bevy-inspector-egui = "0.18"
+serde_json = "1.0"
 
 [dependencies]
 bevy = { version = "0.10", default-features = false }

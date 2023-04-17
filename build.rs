@@ -30,5 +30,12 @@ fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let dest = Path::new(&out_dir).join("workspace.rs");
 
-    fs::write(dest, format!("const WORKSPACE: &str = {:?};", workspace)).unwrap();
+    fs::write(
+        dest,
+        format!(
+            "/// The name of the project's workspace.\npub const WORKSPACE: &str = {:?};",
+            workspace
+        ),
+    )
+    .unwrap();
 }

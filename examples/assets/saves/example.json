@@ -1,0 +1,266 @@
+{
+  "snapshot": {
+    "resources": {
+      "json::FancyMap": {
+        "map": {
+          "MyKey": 123,
+          "More!": -555,
+          "Another": 456
+        },
+        "float": 42.005,
+        "bool": true
+      }
+    },
+    "entities": {
+      "entities": {
+        "0": {
+          "components": {}
+        },
+        "1": {
+          "components": {
+            "bevy_transform::components::transform::Transform": {
+              "translation": {
+                "x": 0.0,
+                "y": 1.0,
+                "z": 2.0
+              },
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+              }
+            },
+            "bevy_transform::components::global_transform::GlobalTransform": [
+              {
+                "matrix3": {
+                  "x_axis": {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "y_axis": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                  },
+                  "z_axis": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.0
+                  }
+                },
+                "translation": {
+                  "x": 0.0,
+                  "y": 1.0,
+                  "z": 2.0
+                }
+              }
+            ],
+            "bevy_render::view::visibility::Visibility": "Inherited",
+            "bevy_render::view::visibility::ComputedVisibility": {
+              "flags": {
+                "bits": 2
+              }
+            },
+            "json::Velocity": [
+              {
+                "x": 1.0,
+                "y": 2.0
+              }
+            ]
+          }
+        },
+        "2": {
+          "components": {
+            "bevy_transform::components::transform::Transform": {
+              "translation": {
+                "x": -4.0,
+                "y": 1.0,
+                "z": 2.0
+              },
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+              }
+            },
+            "bevy_transform::components::global_transform::GlobalTransform": [
+              {
+                "matrix3": {
+                  "x_axis": {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "y_axis": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                  },
+                  "z_axis": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.0
+                  }
+                },
+                "translation": {
+                  "x": -4.0,
+                  "y": 1.0,
+                  "z": 2.0
+                }
+              }
+            ],
+            "bevy_render::view::visibility::Visibility": "Inherited",
+            "bevy_render::view::visibility::ComputedVisibility": {
+              "flags": {
+                "bits": 2
+              }
+            },
+            "json::Velocity": [
+              {
+                "x": 16.0,
+                "y": 2.0
+              }
+            ]
+          }
+        },
+        "3": {
+          "components": {
+            "bevy_transform::components::transform::Transform": {
+              "translation": {
+                "x": 0.0,
+                "y": 4.0,
+                "z": 2.0
+              },
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+              }
+            },
+            "bevy_transform::components::global_transform::GlobalTransform": [
+              {
+                "matrix3": {
+                  "x_axis": {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "y_axis": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                  },
+                  "z_axis": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.0
+                  }
+                },
+                "translation": {
+                  "x": 0.0,
+                  "y": 4.0,
+                  "z": 2.0
+                }
+              }
+            ],
+            "bevy_render::view::visibility::Visibility": "Inherited",
+            "bevy_render::view::visibility::ComputedVisibility": {
+              "flags": {
+                "bits": 2
+              }
+            },
+            "json::Velocity": [
+              {
+                "x": 1.0,
+                "y": -2.0
+              }
+            ]
+          }
+        },
+        "4": {
+          "components": {
+            "bevy_transform::components::transform::Transform": {
+              "translation": {
+                "x": 0.0,
+                "y": 1.0,
+                "z": 8.0
+              },
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+              }
+            },
+            "bevy_transform::components::global_transform::GlobalTransform": [
+              {
+                "matrix3": {
+                  "x_axis": {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0
+                  },
+                  "y_axis": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 0.0
+                  },
+                  "z_axis": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.0
+                  }
+                },
+                "translation": {
+                  "x": 0.0,
+                  "y": 1.0,
+                  "z": 8.0
+                }
+              }
+            ],
+            "bevy_render::view::visibility::Visibility": "Inherited",
+            "bevy_render::view::visibility::ComputedVisibility": {
+              "flags": {
+                "bits": 2
+              }
+            },
+            "json::Velocity": [
+              {
+                "x": 0.0,
+                "y": -2.0
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "rollbacks": {
+    "rollbacks": [],
+    "active": null
+  }
+}

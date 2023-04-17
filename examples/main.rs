@@ -1,3 +1,5 @@
+//! A simple, console-only example of how to use `bevy_save`.
+
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
