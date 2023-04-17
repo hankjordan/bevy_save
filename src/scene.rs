@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{
+    BTreeMap,
+    HashSet,
+};
 
 use bevy::{
     ecs::{
@@ -95,11 +98,27 @@ impl SaveableScene {
         let registry_arc = world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
 
-        for scene_entity in &self.entities {
-            let entity = *map
-                .entry(Entity::from_raw(scene_entity.entity))
-                .or_insert_with(|| world.spawn_empty().id());
+        // Apply the EntityMap to the saved entities
+        let valid = self
+            .entities
+            .iter()
+            .filter_map(|e| e.map(map))
+            .collect::<HashSet<_>>();
 
+        // Despawn any entities not contained in the mapped set
+        let invalid = world
+            .iter_entities()
+            .map(|e| e.id())
+            .filter(|e| !valid.contains(e))
+            .collect::<Vec<_>>();
+
+        for entity in invalid {
+            world.despawn(entity);
+        }
+
+        // Spawn the scene
+        for scene_entity in &self.entities {
+            let entity = scene_entity.map(map).unwrap_or(world.spawn_empty().id());
             let entity_mut = &mut world.entity_mut(entity);
 
             for component in &scene_entity.components {

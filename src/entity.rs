@@ -1,4 +1,7 @@
-use bevy::reflect::Reflect;
+use bevy::{
+    ecs::entity::EntityMap,
+    prelude::*,
+};
 
 use crate::prelude::*;
 
@@ -10,6 +13,13 @@ pub struct SaveableEntity {
     /// A vector of boxed components that belong to the given entity and
     /// implement the `Reflect` trait.
     pub components: Vec<Box<dyn Reflect>>,
+}
+
+impl SaveableEntity {
+    /// Attempts to map the stored index with the given [`EntityMap`].
+    pub fn map(&self, map: &EntityMap) -> Option<Entity> {
+        map.get(Entity::from_raw(self.entity)).ok()
+    }
 }
 
 impl CloneReflect for SaveableEntity {

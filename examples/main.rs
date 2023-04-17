@@ -114,8 +114,12 @@ fn main() {
             ..default()
         }))
 
+        // Inspector
         .add_plugin(WorldInspectorPlugin::new())
     
+        // Bevy Save
+        .add_plugins(SavePlugins)
+
         .insert_resource(Balance { amount: 42 })
 
         .register_saveable::<Balance>()

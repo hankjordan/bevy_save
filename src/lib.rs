@@ -11,6 +11,7 @@ pub use crate::{
     dir::*,
     entity::*,
     error::*,
+    plugins::*,
     registry::*,
     rollbacks::*,
     scene::*,
@@ -24,6 +25,7 @@ mod clone;
 mod dir;
 mod entity;
 mod error;
+mod plugins;
 mod registry;
 mod rollbacks;
 mod scene;

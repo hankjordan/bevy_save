@@ -81,19 +81,9 @@ fn main() {
 
         // Inspector
         .add_plugin(WorldInspectorPlugin::new())
-        
-        // Fix `bevy_reflect: Add ReflectComponent registration for Sprite #8206`
-        .register_type_data::<Sprite, ReflectComponent>()
-        .register_type::<Option<Vec2>>()
-        .register_type::<Option<Rect>>()
 
-        // Register Bevy types as saveable
-        .register_saveable::<ComputedVisibility>()
-        .register_saveable::<GlobalTransform>()
-        .register_saveable::<Handle<Image>>()
-        .register_saveable::<Sprite>()
-        .register_saveable::<Transform>()
-        .register_saveable::<Visibility>()
+        // Bevy Save
+        .add_plugins(SavePlugins)
 
         // Register our types as saveable
         .register_saveable::<Paddle>()

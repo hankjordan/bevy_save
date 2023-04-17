@@ -101,13 +101,11 @@ fn main() {
             ..default()
         }))
 
+        // Inspector
         .add_plugin(WorldInspectorPlugin::new())        
 
-        // Register Bevy types as saveable
-        .register_saveable::<ComputedVisibility>()
-        .register_saveable::<GlobalTransform>()
-        .register_saveable::<Transform>()
-        .register_saveable::<Visibility>()
+        // Bevy Save
+        .add_plugins(SavePlugins)
 
         // Register our types as saveable
         .register_saveable::<FancyMap>()
