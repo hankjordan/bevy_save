@@ -14,7 +14,6 @@ pub use crate::{
     plugins::*,
     registry::*,
     rollbacks::*,
-    scene::*,
     serde::*,
     snapshot::*,
     world::*,

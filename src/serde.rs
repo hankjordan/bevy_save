@@ -36,11 +36,11 @@ use serde::{
 };
 
 use crate::{
+    scene::SaveableScene,
     RawSnapshot,
     Rollback,
     Rollbacks,
     SaveableEntity,
-    SaveableScene,
     Snapshot,
 };
 
@@ -164,7 +164,7 @@ const ENTITY_STRUCT: &str = "Entity";
 const ENTITY_FIELD_COMPONENTS: &str = "components";
 
 /// A serializer for [`SaveableScene`] that uses reflection.
-pub struct SceneSerializer<'a> {
+pub(crate) struct SceneSerializer<'a> {
     scene: &'a SaveableScene,
     registry: &'a TypeRegistryArc,
 }
@@ -251,7 +251,7 @@ enum EntityField {
 }
 
 /// A deserializer for [`SaveableScene`] that uses reflection.
-pub struct SceneDeserializer<'a> {
+pub(crate) struct SceneDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
@@ -538,9 +538,7 @@ impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
             .ok_or_else(|| de::Error::missing_field(RAW_SNAPSHOT_FIELDS[0]))?;
 
         let entities = seq
-            .next_element_seed(SceneDeserializer {
-                registry: self.registry,
-            })?
+            .next_element_seed(SceneDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(RAW_SNAPSHOT_FIELDS[1]))?;
 
         Ok(Self::Value {
@@ -571,9 +569,7 @@ impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
                         return Err(de::Error::duplicate_field(RAW_SNAPSHOT_FIELDS[1]));
                     }
 
-                    entities = Some(map.next_value_seed(SceneDeserializer {
-                        registry: self.registry,
-                    })?);
+                    entities = Some(map.next_value_seed(SceneDeserializer::new(self.registry))?);
                 }
             }
         }
@@ -964,7 +960,10 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
             .next_element_seed(RollbacksDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
 
-        Ok(Self::Value { snapshot, rollbacks })
+        Ok(Self::Value {
+            snapshot,
+            rollbacks,
+        })
     }
 
     fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
@@ -980,7 +979,8 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
                     if snapshot.is_some() {
                         return Err(de::Error::duplicate_field(SNAPSHOT_FIELDS[0]));
                     }
-                    snapshot = Some(map.next_value_seed(RawSnapshotDeserializer::new(self.registry))?);
+                    snapshot =
+                        Some(map.next_value_seed(RawSnapshotDeserializer::new(self.registry))?);
                 }
 
                 SnapshotFields::Rollbacks => {
@@ -997,6 +997,9 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
         let snapshot = snapshot.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
         let rollbacks = rollbacks.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
 
-        Ok(Self::Value { snapshot, rollbacks })
+        Ok(Self::Value {
+            snapshot,
+            rollbacks,
+        })
     }
 }

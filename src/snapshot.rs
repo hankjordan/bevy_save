@@ -7,7 +7,10 @@ use bevy::{
     reflect::TypeRegistration,
 };
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    scene::SaveableScene,
+};
 
 pub(crate) struct RawSnapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
@@ -170,7 +173,10 @@ impl Snapshot {
         let snapshot = RawSnapshot::from_world_with_filter(world, filter);
         let rollbacks = world.resource::<Rollbacks>().clone_value();
 
-        Self { snapshot, rollbacks }
+        Self {
+            snapshot,
+            rollbacks,
+        }
     }
 
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.

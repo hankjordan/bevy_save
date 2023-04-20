@@ -24,11 +24,10 @@ Supports Windows, Linux, and MacOS. WASM support is in progress.
 
 `bevy_save` is not just about save files, it is about total control over game state.
 
-This crate introduces three different snapshot types which may be used directly:
+This crate introduces a few snapshot types which may be used directly:
 
 - `Snapshot` is a serializable snapshot of all saveable resources, entities, and components.
 - `Rollback` is a serializable snapshot of all saveable resources, entities, and components that are included in rollbacks.
-- `SaveableScene` is a serializable snapshot of all saveable entities and components.
 
 Or via the `World` extension methods:
 
@@ -55,7 +54,6 @@ While types that are not registered with `SaveableRegistry` are automatically fi
 
 - `Snapshot::from_world_with_filter()`
 - `Rollback::from_world_with_filter()`
-- `SaveableScene::from_world_with_filter()`
 
 ### Entity mapping
 
@@ -69,7 +67,6 @@ This is also available directly on the snapshot types:
 
 - `Snapshot::apply_with_map()`
 - `Rollback::apply_with_map()`
-- `SaveableScene::apply_with_map()`
 
 If you use the methods that do not accept an `EntityMap` (`deserialize`, `load`, `rollback`, `apply`),
 the entities are assumed to have a one-to-one mapping with the currently spawned entities (1->1, 2->2, 3->3).

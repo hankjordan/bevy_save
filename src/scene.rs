@@ -17,13 +17,14 @@ use crate::prelude::*;
 /// A collection of serializable dynamic entities, each with its own run-time defined set of components.
 ///
 /// Similar to `DynamicScene` but is filterable and only returns components registered with the [`SaveableRegistry`].
-pub struct SaveableScene {
+pub(crate) struct SaveableScene {
     /// The entities and their saveable components
     pub entities: Vec<SaveableEntity>,
 }
 
 impl SaveableScene {
     /// Creates a [`SaveableScene`] containing all saveable entities and components.
+    #[allow(dead_code)]
     pub fn from_world(world: &World) -> Self {
         Self::from_world_with_filter(world, |_| true)
     }
@@ -82,6 +83,7 @@ impl SaveableScene {
     ///
     /// # Errors
     /// - See [`SaveableError`]
+    #[allow(dead_code)]
     pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
         self.apply_with_map(world, &mut world.entity_map())
     }
