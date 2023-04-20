@@ -27,7 +27,6 @@ mod error;
 mod plugins;
 mod registry;
 mod rollbacks;
-mod scene;
 mod serde;
 mod snapshot;
 mod world;

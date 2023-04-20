@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// The global registry of snapshots used for rollback / rollforward.
 #[derive(Resource, Default)]
 pub struct Rollbacks {
-    pub(crate) rollbacks: Vec<Rollback>,
+    pub(crate) checkpoints: Vec<Rollback>,
     pub(crate) active: Option<usize>,
 }
 
@@ -16,10 +16,10 @@ impl Rollbacks {
     pub fn checkpoint(&mut self, rollback: Rollback) {
         let active = self.active.unwrap_or(0);
 
-        self.rollbacks.truncate(active + 1);
-        self.rollbacks.push(rollback);
+        self.checkpoints.truncate(active + 1);
+        self.checkpoints.push(rollback);
 
-        self.active = Some(self.rollbacks.len() - 1);
+        self.active = Some(self.checkpoints.len() - 1);
     }
 
     /// Rolls back the given number of checkpoints.
@@ -33,10 +33,10 @@ impl Rollbacks {
     pub fn rollback(&mut self, checkpoints: isize) -> Option<&Rollback> {
         if let Some(active) = self.active {
             let raw = active as isize - checkpoints;
-            let new = raw.clamp(0, self.rollbacks.len() as isize - 1) as usize;
+            let new = raw.clamp(0, self.checkpoints.len() as isize - 1) as usize;
 
             self.active = Some(new);
-            Some(&self.rollbacks[new])
+            Some(&self.checkpoints[new])
         } else {
             None
         }
@@ -46,7 +46,7 @@ impl Rollbacks {
 impl CloneReflect for Rollbacks {
     fn clone_value(&self) -> Self {
         Self {
-            rollbacks: self.rollbacks.iter().map(|r| r.clone_value()).collect(),
+            checkpoints: self.checkpoints.iter().map(|r| r.clone_value()).collect(),
             active: self.active,
         }
     }

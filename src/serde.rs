@@ -36,7 +36,6 @@ use serde::{
 };
 
 use crate::{
-    scene::SaveableScene,
     RawSnapshot,
     Rollback,
     Rollbacks,
@@ -44,16 +43,20 @@ use crate::{
     Snapshot,
 };
 
+// Helpers |-----------------------------------------------------------------------------------------------------------
+
 #[derive(Deserialize)]
 #[serde(transparent)]
 struct BorrowableCowStr<'a>(#[serde(borrow)] Cow<'a, str>);
 
-struct ReflectListSerializer<'a> {
+// Vec<dyn Reflect> |--------------------------------------------------------------------------------------------------
+
+struct ReflectsSerializer<'a> {
     types: &'a [Box<dyn Reflect>],
     registry: &'a TypeRegistryArc,
 }
 
-impl<'a> ReflectListSerializer<'a> {
+impl<'a> ReflectsSerializer<'a> {
     fn new(reflects: &'a [Box<dyn Reflect>], registry: &'a TypeRegistryArc) -> Self {
         Self {
             types: reflects,
@@ -62,7 +65,7 @@ impl<'a> ReflectListSerializer<'a> {
     }
 }
 
-impl<'a> Serialize for ReflectListSerializer<'a> {
+impl<'a> Serialize for ReflectsSerializer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -80,34 +83,34 @@ impl<'a> Serialize for ReflectListSerializer<'a> {
     }
 }
 
-struct ReflectListDeserializer<'a> {
+struct ReflectsDeserializer<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a> ReflectListDeserializer<'a> {
+impl<'a> ReflectsDeserializer<'a> {
     fn new(registry: &'a TypeRegistryInternal) -> Self {
         Self { registry }
     }
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for ReflectListDeserializer<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for ReflectsDeserializer<'a> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_map(ReflectListVisitor {
+        deserializer.deserialize_map(ReflectsVisitor {
             registry: self.registry,
         })
     }
 }
 
-struct ReflectListVisitor<'a> {
+struct ReflectsVisitor<'a> {
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> Visitor<'de> for ReflectListVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for ReflectsVisitor<'a> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -155,71 +158,24 @@ impl<'a, 'de> Visitor<'de> for ReflectListVisitor<'a> {
     }
 }
 
-// SaveableScene |-----------------------------------------------------------------------------------------------------
-
-const SCENE_STRUCT: &str = "Scene";
-const SCENE_ENTITIES: &str = "entities";
+// SaveableEntity |----------------------------------------------------------------------------------------------------
 
 const ENTITY_STRUCT: &str = "Entity";
 const ENTITY_FIELD_COMPONENTS: &str = "components";
 
-/// A serializer for [`SaveableScene`] that uses reflection.
-pub(crate) struct SceneSerializer<'a> {
-    scene: &'a SaveableScene,
-    registry: &'a TypeRegistryArc,
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "lowercase")]
+enum EntityField {
+    Components,
 }
 
-impl<'a> SceneSerializer<'a> {
-    /// Returns a new instance of [`SceneSerializer`].
-    pub fn new(scene: &'a SaveableScene, registry: &'a TypeRegistryArc) -> Self {
-        SceneSerializer { scene, registry }
-    }
-}
-
-impl<'a> Serialize for SceneSerializer<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct(SCENE_STRUCT, 1)?;
-        state.serialize_field(SCENE_ENTITIES, &EntitiesSerializer {
-            entities: &self.scene.entities,
-            registry: self.registry,
-        })?;
-        state.end()
-    }
-}
-
-struct EntitiesSerializer<'a> {
-    entities: &'a [SaveableEntity],
-    registry: &'a TypeRegistryArc,
-}
-
-impl<'a> Serialize for EntitiesSerializer<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_map(Some(self.entities.len()))?;
-        for entity in self.entities {
-            state.serialize_entry(&entity.entity, &EntitySerializer {
-                entity,
-                registry: self.registry,
-            })?;
-        }
-        state.end()
-    }
-}
-
-/// A serializer for [`SaveableEntity`] that uses reflection.
-pub struct EntitySerializer<'a> {
+struct EntitySerializer<'a> {
     entity: &'a SaveableEntity,
     registry: &'a TypeRegistryArc,
 }
 
 impl<'a> EntitySerializer<'a> {
-    /// Returns a new instance of [`EntitySerializer`].
-    pub fn new(entity: &'a SaveableEntity, registry: &'a TypeRegistryArc) -> Self {
+    fn new(entity: &'a SaveableEntity, registry: &'a TypeRegistryArc) -> Self {
         Self { entity, registry }
     }
 }
@@ -230,175 +186,45 @@ impl<'a> Serialize for EntitySerializer<'a> {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct(ENTITY_STRUCT, 1)?;
-        state.serialize_field(ENTITY_FIELD_COMPONENTS, &ReflectListSerializer {
-            types: &self.entity.components,
-            registry: self.registry,
-        })?;
+        state.serialize_field(
+            ENTITY_FIELD_COMPONENTS,
+            &ReflectsSerializer::new(&self.entity.components, self.registry),
+        )?;
         state.end()
     }
 }
 
-#[derive(Deserialize)]
-#[serde(field_identifier, rename_all = "lowercase")]
-enum SceneField {
-    Entities,
-}
-
-#[derive(Deserialize)]
-#[serde(field_identifier, rename_all = "lowercase")]
-enum EntityField {
-    Components,
-}
-
-/// A deserializer for [`SaveableScene`] that uses reflection.
-pub(crate) struct SceneDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
-}
-
-impl<'a> SceneDeserializer<'a> {
-    /// Returns a new instance of [`SceneDeserializer`].
-    pub fn new(registry: &'a TypeRegistryInternal) -> Self {
-        Self { registry }
-    }
-}
-
-impl<'a, 'de> DeserializeSeed<'de> for SceneDeserializer<'a> {
-    type Value = SaveableScene;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_struct(SCENE_STRUCT, &[SCENE_ENTITIES], SceneVisitor {
-            registry: self.registry,
-        })
-    }
-}
-
-struct SceneVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
-}
-
-impl<'a, 'de> Visitor<'de> for SceneVisitor<'a> {
-    type Value = SaveableScene;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("scene struct")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut entities = None;
-
-        while let Some(key) = map.next_key()? {
-            match key {
-                SceneField::Entities => {
-                    if entities.is_some() {
-                        return Err(Error::duplicate_field(SCENE_ENTITIES));
-                    }
-                    entities = Some(map.next_value_seed(SceneEntitiesDeserializer {
-                        registry: self.registry,
-                    })?);
-                }
-            }
-        }
-
-        let entities = entities.ok_or_else(|| Error::missing_field(SCENE_ENTITIES))?;
-
-        Ok(SaveableScene { entities })
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let entities = seq
-            .next_element_seed(SceneEntitiesDeserializer {
-                registry: self.registry,
-            })?
-            .ok_or_else(|| Error::missing_field(SCENE_ENTITIES))?;
-
-        Ok(SaveableScene { entities })
-    }
-}
-
-struct SceneEntitiesDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
-}
-
-impl<'a, 'de> DeserializeSeed<'de> for SceneEntitiesDeserializer<'a> {
-    type Value = Vec<SaveableEntity>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_map(SceneEntitiesVisitor {
-            registry: self.registry,
-        })
-    }
-}
-
-struct SceneEntitiesVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
-}
-
-impl<'a, 'de> Visitor<'de> for SceneEntitiesVisitor<'a> {
-    type Value = Vec<SaveableEntity>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("map of entities")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut entities = Vec::new();
-
-        while let Some(id) = map.next_key::<u32>()? {
-            let entity = map.next_value_seed(SceneEntityDeserializer {
-                id,
-                registry: self.registry,
-            })?;
-            entities.push(entity);
-        }
-
-        Ok(entities)
-    }
-}
-
-struct SceneEntityDeserializer<'a> {
+struct EntityDeserializer<'a> {
     id: u32,
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SceneEntityDeserializer<'a> {
+impl<'a> EntityDeserializer<'a> {
+    fn new(id: u32, registry: &'a TypeRegistryInternal) -> Self {
+        Self { id, registry }
+    }
+}
+
+impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
     type Value = SaveableEntity;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_struct(
-            ENTITY_STRUCT,
-            &[ENTITY_FIELD_COMPONENTS],
-            SceneEntityVisitor {
-                id: self.id,
-                registry: self.registry,
-            },
-        )
+        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_FIELD_COMPONENTS], EntityVisitor {
+            id: self.id,
+            registry: self.registry,
+        })
     }
 }
 
-struct SceneEntityVisitor<'a> {
+struct EntityVisitor<'a> {
     id: u32,
     registry: &'a TypeRegistryInternal,
 }
 
-impl<'a, 'de> Visitor<'de> for SceneEntityVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
     type Value = SaveableEntity;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -410,9 +236,7 @@ impl<'a, 'de> Visitor<'de> for SceneEntityVisitor<'a> {
         A: SeqAccess<'de>,
     {
         let components = seq
-            .next_element_seed(ReflectListDeserializer {
-                registry: self.registry,
-            })?
+            .next_element_seed(ReflectsDeserializer::new(self.registry))?
             .ok_or_else(|| Error::missing_field(ENTITY_FIELD_COMPONENTS))?;
 
         Ok(SaveableEntity {
@@ -426,6 +250,7 @@ impl<'a, 'de> Visitor<'de> for SceneEntityVisitor<'a> {
         A: MapAccess<'de>,
     {
         let mut components = None;
+
         while let Some(key) = map.next_key()? {
             match key {
                 EntityField::Components => {
@@ -433,9 +258,8 @@ impl<'a, 'de> Visitor<'de> for SceneEntityVisitor<'a> {
                         return Err(Error::duplicate_field(ENTITY_FIELD_COMPONENTS));
                     }
 
-                    components = Some(map.next_value_seed(ReflectListDeserializer {
-                        registry: self.registry,
-                    })?);
+                    components =
+                        Some(map.next_value_seed(ReflectsDeserializer::new(self.registry))?);
                 }
             }
         }
@@ -443,10 +267,91 @@ impl<'a, 'de> Visitor<'de> for SceneEntityVisitor<'a> {
         let components = components
             .take()
             .ok_or_else(|| Error::missing_field(ENTITY_FIELD_COMPONENTS))?;
+
         Ok(SaveableEntity {
             entity: self.id,
             components,
         })
+    }
+}
+
+// Vec<SaveableEntity> |-----------------------------------------------------------------------------------------------
+
+struct EntitiesSerializer<'a> {
+    entities: &'a [SaveableEntity],
+    registry: &'a TypeRegistryArc,
+}
+
+impl<'a> EntitiesSerializer<'a> {
+    fn new(entities: &'a [SaveableEntity], registry: &'a TypeRegistryArc) -> Self {
+        Self { entities, registry }
+    }
+}
+
+impl<'a> Serialize for EntitiesSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_map(Some(self.entities.len()))?;
+
+        for entity in self.entities {
+            state.serialize_entry(
+                &entity.entity,
+                &EntitySerializer::new(entity, self.registry),
+            )?;
+        }
+
+        state.end()
+    }
+}
+
+struct EntitiesDeserializer<'a> {
+    registry: &'a TypeRegistryInternal,
+}
+
+impl<'a> EntitiesDeserializer<'a> {
+    fn new(registry: &'a TypeRegistryInternal) -> Self {
+        Self { registry }
+    }
+}
+
+impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
+    type Value = Vec<SaveableEntity>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_map(EntitiesVisitor {
+            registry: self.registry,
+        })
+    }
+}
+
+struct EntitiesVisitor<'a> {
+    registry: &'a TypeRegistryInternal,
+}
+
+impl<'a, 'de> Visitor<'de> for EntitiesVisitor<'a> {
+    type Value = Vec<SaveableEntity>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("map of entities")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut entities = Vec::new();
+
+        while let Some(id) = map.next_key::<u32>()? {
+            let entity = map.next_value_seed(EntityDeserializer::new(id, self.registry))?;
+            entities.push(entity);
+        }
+
+        Ok(entities)
     }
 }
 
@@ -478,8 +383,8 @@ impl<'a> Serialize for RawSnapshotSerializer<'a> {
     where
         S: serde::Serializer,
     {
-        let resources = ReflectListSerializer::new(&self.snapshot.resources, self.registry);
-        let entities = SceneSerializer::new(&self.snapshot.entities, self.registry);
+        let resources = ReflectsSerializer::new(&self.snapshot.resources, self.registry);
+        let entities = EntitiesSerializer::new(&self.snapshot.entities, self.registry);
 
         let mut state =
             serializer.serialize_struct(RAW_SNAPSHOT_STRUCT, RAW_SNAPSHOT_FIELDS.len())?;
@@ -534,11 +439,11 @@ impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
         V: SeqAccess<'de>,
     {
         let resources = seq
-            .next_element_seed(ReflectListDeserializer::new(self.registry))?
+            .next_element_seed(ReflectsDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(RAW_SNAPSHOT_FIELDS[0]))?;
 
         let entities = seq
-            .next_element_seed(SceneDeserializer::new(self.registry))?
+            .next_element_seed(EntitiesDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(RAW_SNAPSHOT_FIELDS[1]))?;
 
         Ok(Self::Value {
@@ -561,7 +466,7 @@ impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
                         return Err(de::Error::duplicate_field(RAW_SNAPSHOT_FIELDS[0]));
                     }
                     resources =
-                        Some(map.next_value_seed(ReflectListDeserializer::new(self.registry))?);
+                        Some(map.next_value_seed(ReflectsDeserializer::new(self.registry))?);
                 }
 
                 RawSnapshotFields::Entities => {
@@ -569,7 +474,7 @@ impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
                         return Err(de::Error::duplicate_field(RAW_SNAPSHOT_FIELDS[1]));
                     }
 
-                    entities = Some(map.next_value_seed(SceneDeserializer::new(self.registry))?);
+                    entities = Some(map.next_value_seed(EntitiesDeserializer::new(self.registry))?);
                 }
             }
         }
@@ -730,9 +635,9 @@ impl<'a, 'de> Visitor<'de> for RollbackListVisitor<'a> {
     {
         let mut rollbacks = Vec::new();
 
-        while let Some(rollback) = seq.next_element_seed(RollbackDeserializer {
-            registry: self.registry,
-        })? {
+        while let Some(rollback) =
+            seq.next_element_seed(RollbackDeserializer::new(self.registry))?
+        {
             rollbacks.push(rollback);
         }
 
@@ -743,12 +648,12 @@ impl<'a, 'de> Visitor<'de> for RollbackListVisitor<'a> {
 // Rollbacks |---------------------------------------------------------------------------------------------------------
 
 const ROLLBACKS_STRUCT: &str = "Rollbacks";
-const ROLLBACKS_FIELDS: &[&str] = &["rollbacks", "active"];
+const ROLLBACKS_FIELDS: &[&str] = &["checkpoints", "active"];
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
 enum RollbacksFields {
-    Rollbacks,
+    Checkpoints,
     Active,
 }
 
@@ -773,11 +678,11 @@ impl<'a> Serialize for RollbacksSerializer<'a> {
     where
         S: serde::Serializer,
     {
-        let snapshots = RollbackListSerializer::new(&self.rollbacks.rollbacks, self.registry);
+        let checkpoints = RollbackListSerializer::new(&self.rollbacks.checkpoints, self.registry);
 
         let mut state = serializer.serialize_struct(ROLLBACKS_STRUCT, ROLLBACKS_FIELDS.len())?;
 
-        state.serialize_field(ROLLBACKS_FIELDS[0], &snapshots)?;
+        state.serialize_field(ROLLBACKS_FIELDS[0], &checkpoints)?;
         state.serialize_field(ROLLBACKS_FIELDS[1], &self.rollbacks.active)?;
 
         state.end()
@@ -824,7 +729,7 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
     where
         V: SeqAccess<'de>,
     {
-        let rollbacks = seq
+        let checkpoints = seq
             .next_element_seed(RollbackListDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(ROLLBACKS_FIELDS[0]))?;
 
@@ -832,24 +737,27 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
             .next_element()?
             .ok_or_else(|| de::Error::missing_field(ROLLBACKS_FIELDS[1]))?;
 
-        Ok(Self::Value { rollbacks, active })
+        Ok(Self::Value {
+            checkpoints,
+            active,
+        })
     }
 
     fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
     where
         V: MapAccess<'de>,
     {
-        let mut rollbacks = None;
+        let mut checkpoints = None;
         let mut active = None;
 
         while let Some(key) = map.next_key()? {
             match key {
-                RollbacksFields::Rollbacks => {
-                    if rollbacks.is_some() {
+                RollbacksFields::Checkpoints => {
+                    if checkpoints.is_some() {
                         return Err(de::Error::duplicate_field(ROLLBACKS_FIELDS[0]));
                     }
 
-                    rollbacks =
+                    checkpoints =
                         Some(map.next_value_seed(RollbackListDeserializer::new(self.registry))?);
                 }
 
@@ -863,10 +771,14 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
             }
         }
 
-        let rollbacks = rollbacks.ok_or_else(|| de::Error::missing_field(ROLLBACKS_FIELDS[0]))?;
+        let checkpoints =
+            checkpoints.ok_or_else(|| de::Error::missing_field(ROLLBACKS_FIELDS[0]))?;
         let active = active.ok_or_else(|| de::Error::missing_field(ROLLBACKS_FIELDS[1]))?;
 
-        Ok(Self::Value { rollbacks, active })
+        Ok(Self::Value {
+            checkpoints,
+            active,
+        })
     }
 }
 

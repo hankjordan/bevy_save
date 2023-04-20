@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::{
     ecs::{
         entity::EntityMap,
@@ -7,14 +9,11 @@ use bevy::{
     reflect::TypeRegistration,
 };
 
-use crate::{
-    prelude::*,
-    scene::SaveableScene,
-};
+use crate::prelude::*;
 
 pub(crate) struct RawSnapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
-    pub(crate) entities: SaveableScene,
+    pub(crate) entities: Vec<SaveableEntity>,
 }
 
 impl RawSnapshot {
@@ -27,6 +26,8 @@ impl RawSnapshot {
 
         let saveables = world.resource::<SaveableRegistry>();
 
+        // Resources
+
         let resources = saveables
             .types()
             .filter_map(|name| registry.get_with_name(name))
@@ -36,7 +37,36 @@ impl RawSnapshot {
             .map(|reflect| reflect.clone_value())
             .collect::<Vec<_>>();
 
-        let entities = SaveableScene::from_world_with_filter(world, filter);
+        // Entities
+
+        let mut entities = Vec::new();
+
+        for entity in world.iter_entities().map(|entity| entity.id()) {
+            let mut entry = SaveableEntity {
+                entity: entity.index(),
+                components: Vec::new(),
+            };
+
+            let entity = world.entity(entity);
+
+            for component_id in entity.archetype().components() {
+                let reflect = world
+                    .components()
+                    .get_info(component_id)
+                    .filter(|info| saveables.contains(info.name()))
+                    .and_then(|info| info.type_id())
+                    .and_then(|id| registry.get(id))
+                    .filter(&filter)
+                    .and_then(|reg| reg.data::<ReflectComponent>())
+                    .and_then(|reflect| reflect.reflect(entity));
+
+                if let Some(reflect) = reflect {
+                    entry.components.push(reflect.clone_value());
+                }
+            }
+
+            entities.push(entry);
+        }
 
         Self {
             resources,
@@ -47,6 +77,8 @@ impl RawSnapshot {
     fn apply_with_map(&self, world: &mut World, map: &mut EntityMap) -> Result<(), SaveableError> {
         let registry_arc = world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
+
+        // Resources
 
         for resource in &self.resources {
             let reg = registry
@@ -70,7 +102,57 @@ impl RawSnapshot {
             }
         }
 
-        self.entities.apply_with_map(world, map)
+        // Entities
+
+        // Apply the EntityMap to the saved entities
+        let valid = self
+            .entities
+            .iter()
+            .filter_map(|e| e.map(map))
+            .collect::<HashSet<_>>();
+
+        // Despawn any entities not contained in the mapped set
+        let invalid = world
+            .iter_entities()
+            .map(|e| e.id())
+            .filter(|e| !valid.contains(e))
+            .collect::<Vec<_>>();
+
+        for entity in invalid {
+            world.despawn(entity);
+        }
+
+        // Apply snapshot entities
+        for scene_entity in &self.entities {
+            let entity = scene_entity.map(map).unwrap_or(world.spawn_empty().id());
+            let entity_mut = &mut world.entity_mut(entity);
+
+            for component in &scene_entity.components {
+                let reg = registry
+                    .get_with_name(component.type_name())
+                    .ok_or_else(|| SaveableError::UnregisteredType {
+                        type_name: component.type_name().to_string(),
+                    })?;
+
+                let data = reg.data::<ReflectComponent>().ok_or_else(|| {
+                    SaveableError::UnregisteredComponent {
+                        type_name: component.type_name().to_string(),
+                    }
+                })?;
+
+                data.apply_or_insert(entity_mut, &**component);
+            }
+        }
+
+        for reg in registry.iter() {
+            if let Some(mapper) = reg.data::<ReflectMapEntities>() {
+                mapper
+                    .map_entities(world, map)
+                    .map_err(SaveableError::MapEntitiesError)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -78,16 +160,7 @@ impl CloneReflect for RawSnapshot {
     fn clone_value(&self) -> Self {
         Self {
             resources: self.resources.clone_value(),
-            entities: self.entities.clone_value(),
-        }
-    }
-}
-
-impl CloneReflect for Snapshot {
-    fn clone_value(&self) -> Self {
-        Self {
-            snapshot: self.snapshot.clone_value(),
-            rollbacks: self.rollbacks.clone_value(),
+            entities: self.entities.iter().map(|e| e.clone_value()).collect(),
         }
     }
 }
@@ -152,7 +225,7 @@ impl CloneReflect for Rollback {
 
 /// A complete snapshot of the game state.
 ///
-/// Can be serialized via [`crate::SnapshotSerializer`] and deserialized via [`crate::SnapshotDeserializer`].
+/// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
 pub struct Snapshot {
     pub(crate) snapshot: RawSnapshot,
     pub(crate) rollbacks: Rollbacks,
@@ -199,5 +272,14 @@ impl Snapshot {
         self.snapshot.apply_with_map(world, map)?;
         world.insert_resource(self.rollbacks.clone_value());
         Ok(())
+    }
+}
+
+impl CloneReflect for Snapshot {
+    fn clone_value(&self) -> Self {
+        Self {
+            snapshot: self.snapshot.clone_value(),
+            rollbacks: self.rollbacks.clone_value(),
+        }
     }
 }
