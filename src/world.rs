@@ -13,10 +13,7 @@ use bevy::{
     prelude::*,
     tasks::IoTaskPool,
 };
-use rmp_serde::{
-    Deserializer,
-    Serializer,
-};
+use rmp_serde::Deserializer;
 use serde::{
     de::{
         DeserializeSeed,
@@ -27,6 +24,8 @@ use serde::{
 
 use crate::{
     get_save_file,
+    AppLoader,
+    AppSaver,
     Applier,
     CloneReflect,
     Rollback,
@@ -162,7 +161,8 @@ impl WorldSaveableExt for World {
     fn save(&self, name: &str) {
         let mut buf = Vec::new();
 
-        self.serialize(&mut Serializer::new(&mut buf))
+        let saver = self.resource::<AppSaver>();
+        self.serialize(&mut saver.serializer(&mut buf))
             .expect("Error serializing save");
 
         let name = name.to_owned();

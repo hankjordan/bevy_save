@@ -621,9 +621,10 @@ where
 
 serialize_trait_object!(Serialize);
 
+#[macro_export]
 macro_rules! impl_serializer_for_trait_object {
-    ($ty:ty) => {
-        impl<'a> serde::Serializer for $ty {
+    ($($imp:tt)+) => {
+        impl $($imp)+ {
             type Ok = Ok;
             type Error = Error;
             type SerializeSeq = Seq<'a>;
@@ -670,7 +671,7 @@ macro_rules! impl_serializer_for_trait_object {
                 self.erased_serialize_u64(v)
             }
 
-            serde_if_integer128! {
+            serde::serde_if_integer128! {
                 fn serialize_i128(self, v: i128) -> Result<Ok, Error> {
                     self.erased_serialize_i128(v)
                 }
@@ -795,7 +796,7 @@ macro_rules! impl_serializer_for_trait_object {
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             fn collect_str<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
             where
-                T: ?Sized + Display,
+                T: ?Sized + std::fmt::Display,
             {
                 unreachable!()
             }
@@ -807,10 +808,10 @@ macro_rules! impl_serializer_for_trait_object {
     };
 }
 
-impl_serializer_for_trait_object!(&'a mut dyn Serializer);
-impl_serializer_for_trait_object!(&'a mut (dyn Serializer + Send));
-impl_serializer_for_trait_object!(&'a mut (dyn Serializer + Sync));
-impl_serializer_for_trait_object!(&'a mut (dyn Serializer + Send + Sync));
+impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut dyn Serializer);
+impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut (dyn Serializer + Send));
+impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut (dyn Serializer + Sync));
+impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut (dyn Serializer + Send + Sync));
 
 pub struct Seq<'a> {
     data: Any,
