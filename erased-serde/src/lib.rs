@@ -101,7 +101,6 @@
 #![cfg_attr(no_unsafe_op_in_unsafe_fn_lint, allow(unused_unsafe))]
 #![allow(
     clippy::derive_partial_eq_without_eq,
-    clippy::extra_unused_type_parameters,
     clippy::items_after_statements,
     clippy::manual_map, // https://github.com/rust-lang/rust-clippy/issues/7820
     clippy::missing_errors_doc,
@@ -134,9 +133,9 @@ mod features_check;
 mod map;
 mod ser;
 
-pub use crate::de::{deserialize, Deserializer};
+pub use crate::de::{deserialize, Deserializer, Out};
 pub use crate::error::{Error, Result};
-pub use crate::ser::{serialize, Serialize, Serializer};
+pub use crate::ser::{serialize, Map, Ok, Seq, Serialize, Serializer, Struct, StructVariant, Tuple, TupleStruct, TupleVariant};
 
 // Not public API.
 #[doc(hidden)]

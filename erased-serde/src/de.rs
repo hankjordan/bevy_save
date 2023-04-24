@@ -1300,6 +1300,7 @@ impl<'de> serde::de::VariantAccess<'de> for Variant<'de> {
 
 // IMPL ERASED SERDE FOR ERASED SERDE //////////////////////////////////////////
 
+#[macro_export]
 macro_rules! deref_erased_deserializer {
     ($($imp:tt)+) => {
         impl $($imp)+ {
@@ -1343,7 +1344,7 @@ macro_rules! deref_erased_deserializer {
                 (**self).erased_deserialize_i64(visitor)
             }
 
-            serde_if_integer128! {
+            serde::serde_if_integer128! {
                 fn erased_deserialize_i128(&mut self, visitor: &mut dyn Visitor<'de>) -> Result<Out, Error> {
                     (**self).erased_deserialize_i128(visitor)
                 }

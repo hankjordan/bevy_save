@@ -1238,6 +1238,7 @@ impl<'a> SerializeStructVariant for StructVariant<'a> {
 
 // IMPL ERASED SERDE FOR ERASED SERDE //////////////////////////////////////////
 
+#[macro_export]
 macro_rules! deref_erased_serializer {
     ($($imp:tt)+) => {
         impl $($imp)+ {
@@ -1277,7 +1278,7 @@ macro_rules! deref_erased_serializer {
                 (**self).erased_serialize_u64(v)
             }
 
-            serde_if_integer128! {
+            serde::serde_if_integer128! {
                 fn erased_serialize_i128(&mut self, v: i128) -> Result<Ok, Error> {
                     (**self).erased_serialize_i128(v)
                 }

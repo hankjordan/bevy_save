@@ -14,6 +14,7 @@ pub use crate::{
     error::*,
     plugins::*,
     registry::*,
+    saver::*,
     rollbacks::*,
     serde::*,
     snapshot::*,
@@ -37,3 +38,5 @@ mod world;
 pub mod prelude {
     pub use crate::*;
 }
+
+pub use bevy_save_erased_serde as erased_serde;
