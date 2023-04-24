@@ -36,10 +36,10 @@ use serde::{
 };
 
 use crate::{
+    entity::SaveableEntity,
     RawSnapshot,
     Rollback,
     Rollbacks,
-    SaveableEntity,
     Snapshot,
 };
 

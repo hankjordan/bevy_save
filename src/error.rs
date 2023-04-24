@@ -28,4 +28,15 @@ pub enum SaveableError {
     /// An error occurred while mapping entities.
     #[error("error mapping entities: {0}")]
     MapEntitiesError(MapEntitiesError),
+
+    /// Deserialization failure or other error.
+    #[error("other error: {0}")]
+    Other(Box<dyn std::error::Error>),
+}
+
+impl SaveableError {
+    /// Deserialization failure or other error.
+    pub fn other(error: impl std::error::Error + 'static) -> Self {
+        Self::Other(Box::new(error))
+    }
 }

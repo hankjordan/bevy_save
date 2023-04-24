@@ -6,7 +6,7 @@ use bevy::{
 use crate::prelude::*;
 
 /// A reflection-powered serializable representation of an entity and its components.
-pub struct SaveableEntity {
+pub(crate) struct SaveableEntity {
     /// The transiently unique identifier of a corresponding `Entity`.
     pub entity: u32,
 
@@ -19,6 +19,11 @@ impl SaveableEntity {
     /// Attempts to map the stored index with the given [`EntityMap`].
     pub fn map(&self, map: &EntityMap) -> Option<Entity> {
         map.get(Entity::from_raw(self.entity)).ok()
+    }
+
+    /// Map the stored index with the given [`EntityMap`] or return an Entity with a one-to-one mapping.
+    pub fn try_map(&self, map: &EntityMap) -> Entity {
+        self.map(map).unwrap_or(Entity::from_raw(self.entity))
     }
 }
 

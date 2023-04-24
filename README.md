@@ -57,21 +57,38 @@ While types that are not registered with `SaveableRegistry` are automatically fi
 
 ### Entity mapping
 
-As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids:
+As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
 
-- `World::deserialize_with_map()` allows you to apply an `EntityMap` while manually deserializing a snapshot.
-- `World::load_with_map()` allows you to apply an `EntityMap` while loading from a named save.
-- `World::rollback_with_map()` allows you to apply an `EntityMap` while rolling back / forward.
+First, you'll need to get a `SnapshotApplier`:
 
-This is also available directly on the snapshot types:
+- `World::deserialize_applier()` while manually deserializing a snapshot.
+- `World::load_applier()` while loading from a named save.
+- `World::rollback_applier()` while rolling back / forward.
 
-- `Snapshot::apply_with_map()`
-- `Rollback::apply_with_map()`
+Or directly on the snapshot types:
 
-If you use the methods that do not accept an `EntityMap` (`deserialize`, `load`, `rollback`, `apply`),
-the entities are assumed to have a one-to-one mapping with the currently spawned entities (1->1, 2->2, 3->3).
+- `Snapshot::applier()`
+- `Rollback::applier()`
 
-Any entities that do not have a mapping are automatically assigned a new id.
+The `SnapshotApplier` will then allow you to configure the `EntityMap` (and other settings) before applying:
+
+```rust
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+    .map(EntityMap::default())
+    .despawn(DespawnMode::default())
+    .mapping(MappingMode::default())
+    .apply();
+```
+
+Note that by default `bevy_save` snapshots do not behave like Bevy's `DynamicScene` when applying:
+
+If you use the methods that do not return an `Applier` (`deserialize`, `load`, `rollback`, `apply`),
+any entities not present in the snapshot are despawned and existing entities may be overridden with snapshot data.
+
+Because of this, in many cases you will not even need an `EntityMap`.
 
 #### MapEntities
 

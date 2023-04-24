@@ -1,4 +1,5 @@
 //! A simplified implementation of the classic game "Breakout".
+//! Modified to demonstrate integration of `bevy_save`.
 
 use bevy::{
     ecs::system::{
@@ -118,8 +119,10 @@ fn main() {
 
         // Setup
         .add_startup_system(setup_help)
+        .add_startup_system(setup_entity_count)
 
         // Systems
+        .add_system(update_entity_count)
         .add_system(handle_save_input)
         .add_system(update_toasts)
 
@@ -511,6 +514,37 @@ fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 }
 
+#[derive(Component)]
+struct EntityCount;
+
+fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        TextBundle::from_section("", TextStyle {
+            font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+            font_size: HELP_FONT_SIZE,
+            color: TEXT_COLOR,
+        })
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: HELP_TEXT_PADDING,
+                right: HELP_TEXT_PADDING,
+                ..default()
+            },
+            ..default()
+        }),
+        EntityCount
+    ));
+}
+
+fn update_entity_count(
+    entities: Query<Entity>,
+    mut counters: Query<&mut Text, With<EntityCount>>,
+) {
+    let mut text = counters.single_mut();
+    text.sections[0].value = format!("Entities: {:?}", entities.iter().len());
+}
+
 #[derive(Component, Reflect)]
 pub struct Toast {
     time: Instant,
@@ -577,7 +611,7 @@ fn handle_save_input(world: &mut World) {
         world.save("breakout");
         text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
-        world.load("breakout");
+        world.load("breakout").expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
         world.rollback(1).expect("Failed to rollback");

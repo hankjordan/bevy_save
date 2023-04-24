@@ -82,7 +82,7 @@ fn interact(
         world.save("example");
     } else if keys.just_released(KeyCode::Back) {
         info!("Load");
-        world.load("example");
+        world.load("example").expect("Failed to load");
     } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
         world.rollback(1).expect("Failed to rollback");
