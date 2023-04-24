@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "erased-serde"]
+
 [package]
 name = "bevy_save"
 version = "0.5.1"
@@ -22,6 +25,7 @@ bevy_sprite = ["bevy/bevy_sprite"]
 bevy = { version = "0.10", default-features = false }
 rmp-serde = "1.1"
 serde = { version = "1.0" }
+bevy_save-erased-serde = { path = "erased-serde", version = "0.3.25" }
 platform-dirs = "0.3"
 lazy_static = "1.4"
 thiserror = "1.0"

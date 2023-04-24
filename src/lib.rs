@@ -28,6 +28,7 @@ mod error;
 mod plugins;
 mod registry;
 mod rollbacks;
+mod saver;
 mod serde;
 mod snapshot;
 mod world;
