@@ -133,7 +133,7 @@ mod features_check;
 mod map;
 mod ser;
 
-pub use crate::de::{deserialize, Deserializer, Out};
+pub use crate::de::{deserialize, Deserializer, Out, Visitor};
 pub use crate::error::{Error, Result};
 pub use crate::ser::{serialize, Map, Ok, Seq, Serialize, Serializer, Struct, StructVariant, Tuple, TupleStruct, TupleVariant};
 
