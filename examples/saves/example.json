@@ -1,7 +1,7 @@
 {
   "snapshot": {
     "resources": {
-      "json::FancyMap": {
+      "manual::FancyMap": {
         "map": {
           "MyKey": 123,
           "Another": 456,
@@ -19,8 +19,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 1.96562,
-              "y": 4.931239,
+              "x": 2.8027906,
+              "y": 6.6055818,
               "z": 2.0
             },
             "rotation": [
@@ -55,8 +55,8 @@
                 }
               },
               "translation": {
-                "x": 1.9589069,
-                "y": 4.917813,
+                "x": 2.795814,
+                "y": 6.5916286,
                 "z": 2.0
               }
             }
@@ -67,7 +67,7 @@
               "bits": 2
             }
           },
-          "json::Velocity": [
+          "manual::Velocity": [
             {
               "x": 1.0,
               "y": 2.0
@@ -79,8 +79,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 27.449928,
-              "y": 4.931239,
+              "x": 40.84464,
+              "y": 6.6055818,
               "z": 2.0
             },
             "rotation": [
@@ -115,8 +115,8 @@
                 }
               },
               "translation": {
-                "x": 27.342518,
-                "y": 4.917813,
+                "x": 40.733013,
+                "y": 6.5916286,
                 "z": 2.0
               }
             }
@@ -127,7 +127,7 @@
               "bits": 2
             }
           },
-          "json::Velocity": [
+          "manual::Velocity": [
             {
               "x": 16.0,
               "y": 2.0
@@ -139,8 +139,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 1.96562,
-              "y": 0.06876009,
+              "x": 2.8027906,
+              "y": -1.6055802,
               "z": 2.0
             },
             "rotation": [
@@ -175,8 +175,8 @@
                 }
               },
               "translation": {
-                "x": 1.9589069,
-                "y": 0.082186304,
+                "x": 2.795814,
+                "y": -1.591627,
                 "z": 2.0
               }
             }
@@ -187,7 +187,7 @@
               "bits": 2
             }
           },
-          "json::Velocity": [
+          "manual::Velocity": [
             {
               "x": 1.0,
               "y": -2.0
@@ -200,7 +200,7 @@
           "bevy_transform::components::transform::Transform": {
             "translation": {
               "x": 0.0,
-              "y": -2.931241,
+              "y": -4.605579,
               "z": 8.0
             },
             "rotation": [
@@ -236,7 +236,7 @@
               },
               "translation": {
                 "x": 0.0,
-                "y": -2.9178147,
+                "y": -4.5916257,
                 "z": 8.0
               }
             }
@@ -247,7 +247,7 @@
               "bits": 2
             }
           },
-          "json::Velocity": [
+          "manual::Velocity": [
             {
               "x": 0.0,
               "y": -2.0
