@@ -108,7 +108,7 @@ NOTE: We do not track Bevy main.
 
 |Bevy Version|Crate Version          |
 |------------|-----------------------|
-|`0.10`      |`0.4`, `0.5`           |
+|`0.10`      |`0.4`, `0.5`, `0.6`    |
 |`0.9`       |`0.1`, `0.2`, `0.3`    |
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.10-blue
@@ -118,7 +118,7 @@ NOTE: We do not track Bevy main.
 [img_downloads]:https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
 
-[bevy]: https://crates.io/crates/bevy/0.10.0
+[bevy]: https://crates.io/crates/bevy/0.10.1
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save/
 [license]: https://github.com/hankjordan/bevy_save#license
