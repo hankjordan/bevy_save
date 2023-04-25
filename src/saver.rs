@@ -4,121 +4,14 @@ use std::io::{
 };
 
 use bevy::prelude::*;
-use erased_serde::{
-    deref_erased_deserializer,
-    deref_erased_serializer,
-    impl_serializer_for_trait_object,
-    Error,
-    Map,
-    Ok,
-    Out,
-    Seq,
-    Struct,
-    StructVariant,
-    Tuple,
-    TupleStruct,
-    TupleVariant,
-    Visitor,
-};
 
 use crate::erased_serde::{
-    self,
-    Deserializer,
-    Serialize,
-    Serializer,
+    Error,
+    IntoDeserializer,
+    IntoSerializer,
 };
 
-// Erased |------------------------------------------------------------------------------------------------------------
-
-/// Helper trait for an erased concrete type.
-/// This is used in form of a trait object for keeping
-/// something around to (virtually) call the destructor.
-trait Erased {}
-impl<T> Erased for T {}
-
-// ErasedSerializer |--------------------------------------------------------------------------------------------------
-
-/// A type-erased serializer.
-pub struct ErasedSerializer<'w> {
-    _guard: Box<dyn Erased + 'w>,
-    serializer: Box<dyn Serializer + 'w>,
-}
-
-impl<'w> std::ops::Deref for ErasedSerializer<'w> {
-    type Target = dyn Serializer + 'w;
-
-    fn deref(&self) -> &Self::Target {
-        &self.serializer
-    }
-}
-
-impl<'w> std::ops::DerefMut for ErasedSerializer<'w> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.serializer
-    }
-}
-
-deref_erased_serializer!(<'w> Serializer for ErasedSerializer<'w>);
-impl_serializer_for_trait_object!(<'a, 'w> serde::Serializer for &'a mut ErasedSerializer<'w>);
-
-/// Convert a type `S` that implements [`serde::Serializer`] for `&mut S` into a trait object.
-pub fn into_erased_serializer<'w, S: 'w>(ser: S) -> ErasedSerializer<'w>
-where
-    for<'a> &'a mut S: serde::Serializer,
-    for<'a> <&'a mut S as serde::Serializer>::Ok: 'static,
-{
-    let mut ser = Box::new(ser);
-    let serializer = Box::new(<dyn Serializer>::erase(unsafe {
-        &mut *std::ptr::addr_of_mut!(*ser)
-    }));
-
-    ErasedSerializer {
-        _guard: ser,
-        serializer,
-    }
-}
-
-// ErasedDeserializer |------------------------------------------------------------------------------------------------
-
-/// A type-erased deserializer.
-pub struct ErasedDeserializer<'r, 'de: 'r> {
-    _guard: Box<dyn Erased + 'r>,
-    deserializer: Box<dyn Deserializer<'de> + 'r>,
-}
-
-impl<'r, 'de> std::ops::Deref for ErasedDeserializer<'r, 'de> {
-    type Target = dyn Deserializer<'de> + 'r;
-
-    fn deref(&self) -> &Self::Target {
-        &self.deserializer
-    }
-}
-
-impl<'r, 'de> std::ops::DerefMut for ErasedDeserializer<'r, 'de> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.deserializer
-    }
-}
-
-deref_erased_deserializer!(<'r, 'de> Deserializer<'de> for ErasedDeserializer<'r, 'de>);
-
-/// Convert a type `D` that implements [`serde::Deserializer`] for `&mut D` into a trait object.
-pub fn into_erased_deserializer<'r, 'de: 'r, D: 'r>(de: D) -> ErasedDeserializer<'r, 'de>
-where
-    for<'a> &'a mut D: serde::Deserializer<'de>,
-{
-    let mut de = Box::new(de);
-    let deserializer = Box::new(<dyn Deserializer>::erase(unsafe {
-        &mut *std::ptr::addr_of_mut!(*de)
-    }));
-
-    ErasedDeserializer {
-        _guard: de,
-        deserializer,
-    }
-}
-
-// Saver / Loader |----------------------------------------------------------------------------------------------------
+// Writer |------------------------------------------------------------------------------------------------------------
 
 /// A borrowed or owned writer.
 pub enum Writer<'w> {
@@ -129,13 +22,25 @@ pub enum Writer<'w> {
     Owned(Box<dyn Write + 'w>),
 }
 
+impl<'w, W: Write> From<&'w mut W> for Writer<'w> {
+    fn from(value: &'w mut W) -> Self {
+        Self::Borrowed(value)
+    }
+}
+
+impl<'w, W: Write + 'w> From<Box<W>> for Writer<'w> {
+    fn from(value: Box<W>) -> Self {
+        Self::Owned(value)
+    }
+}
+
 impl<'w> std::ops::Deref for Writer<'w> {
     type Target = dyn Write + 'w;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Writer::Borrowed(wr) => wr,
-            Writer::Owned(wr) => wr,
+            Self::Borrowed(wr) => wr,
+            Self::Owned(wr) => wr,
         }
     }
 }
@@ -143,8 +48,8 @@ impl<'w> std::ops::Deref for Writer<'w> {
 impl<'w> std::ops::DerefMut for Writer<'w> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            Writer::Borrowed(wr) => wr,
-            Writer::Owned(wr) => wr,
+            Self::Borrowed(wr) => wr,
+            Self::Owned(wr) => wr,
         }
     }
 }
@@ -169,24 +74,79 @@ impl<'w> std::io::Write for Writer<'w> {
     }
 }
 
-impl<'w, W: Write> From<&'w mut W> for Writer<'w> {
-    fn from(value: &'w mut W) -> Self {
+// Reader |------------------------------------------------------------------------------------------------------------
+
+/// A borrowed or owned reader.
+pub enum Reader<'r> {
+    /// Borrowed variant.
+    Borrowed(&'r mut dyn Read),
+
+    /// Owned variant.
+    Owned(Box<dyn Read + 'r>),
+}
+
+impl<'r, R: Read> From<&'r mut R> for Reader<'r> {
+    fn from(value: &'r mut R) -> Self {
         Self::Borrowed(value)
     }
 }
 
-impl<'w, W: Write + 'w> From<Box<W>> for Writer<'w> {
-    fn from(value: Box<W>) -> Self {
+impl<'r, R: Read + 'r> From<Box<R>> for Reader<'r> {
+    fn from(value: Box<R>) -> Self {
         Self::Owned(value)
     }
 }
+
+impl<'r> std::ops::Deref for Reader<'r> {
+    type Target = dyn Read + 'r;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Borrowed(re) => re,
+            Self::Owned(re) => re,
+        }
+    }
+}
+
+impl<'r> std::ops::DerefMut for Reader<'r> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Borrowed(re) => re,
+            Self::Owned(re) => re,
+        }
+    }
+}
+
+impl<'r> std::io::Read for Reader<'r> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [std::io::IoSliceMut<'_>]) -> std::io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
+        (**self).read_to_end(buf)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> std::io::Result<usize> {
+        (**self).read_to_string(buf)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> std::io::Result<()> {
+        (**self).read_exact(buf)
+    }
+}
+
+// Saver / Loader |----------------------------------------------------------------------------------------------------
 
 /// Handles serialization of save data.
 ///
 /// Use [`AppSaver`] to override the [`Saver`] that `bevy_save` uses for saving snapshots.
 pub trait Saver: Send + Sync + 'static {
     /// Build a boxed serializer from the given writer.
-    fn serializer<'w>(&self, writer: Writer<'w>) -> ErasedSerializer<'w>;
+    fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w>;
 }
 
 /// Handles deserialization of save data.
@@ -194,7 +154,7 @@ pub trait Saver: Send + Sync + 'static {
 /// Use [`AppLoader`] to override the [`Loader`] that `bevy_save` uses for loading snapshots.
 pub trait Loader: Send + Sync + 'static {
     /// Build a boxed deserializer from the given reader.
-    fn deserializer<'r, 'de: 'r>(&self, reader: &'r mut dyn Read) -> ErasedDeserializer<'r, 'de>;
+    fn deserializer<'r, 'de: 'r>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de>;
 }
 
 // Saver / Loader Implementations |------------------------------------------------------------------------------------
@@ -203,8 +163,8 @@ pub trait Loader: Send + Sync + 'static {
 pub struct RMPSaver;
 
 impl Saver for RMPSaver {
-    fn serializer<'w>(&self, writer: Writer<'w>) -> ErasedSerializer<'w> {
-        into_erased_serializer(rmp_serde::Serializer::new(writer))
+    fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w> {
+        IntoSerializer::erase(rmp_serde::Serializer::new(writer))
     }
 }
 
@@ -212,8 +172,8 @@ impl Saver for RMPSaver {
 pub struct RMPLoader;
 
 impl Loader for RMPLoader {
-    fn deserializer<'r, 'de: 'r>(&self, reader: &'r mut dyn Read) -> ErasedDeserializer<'r, 'de> {
-        into_erased_deserializer(rmp_serde::Deserializer::new(reader))
+    fn deserializer<'r, 'de: 'r>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
+        IntoDeserializer::erase(rmp_serde::Deserializer::new(reader))
     }
 }
 
@@ -236,7 +196,8 @@ impl AppSaver {
         self.0 = Box::new(saver);
     }
 
-    pub fn serializer<'w, W>(&self, writer: W) -> ErasedSerializer<'w>
+    /// Returns the current [`Saver`] serializer.
+    pub fn serializer<'w, W>(&self, writer: W) -> IntoSerializer<'w>
     where
         W: Into<Writer<'w>>,
     {
@@ -252,9 +213,7 @@ impl AppSaver {
         T: ?Sized + serde::Serialize,
         W: Into<Writer<'w>>,
     {
-        value
-            .erased_serialize(&mut self.serializer(writer))
-            .map(|_| ())
+        value.serialize(&mut self.serializer(writer)).map(|_| ())
     }
 }
 
@@ -275,29 +234,23 @@ impl AppLoader {
         self.0 = Box::new(loader);
     }
 
+    /// Returns the current [`Loader`] deserializer.
+    pub fn deserializer<'r, 'de: 'r, R>(&self, reader: R) -> IntoDeserializer<'r, 'de>
+    where
+        R: Into<Reader<'r>>,
+    {
+        self.0.deserializer(reader.into())
+    }
+
     /// Deserialize the type `T` from the given reader using the current [`Loader`].
     ///
     /// # Errors
     /// - See [`erased_serde::Error`]
-    pub fn deserialize<'de, T, R>(&self, mut reader: R) -> Result<T, Error>
+    pub fn deserialize<'r, 'de: 'r, T, R>(&self, reader: R) -> Result<T, Error>
     where
         T: serde::Deserialize<'de>,
-        R: Read,
+        R: Into<Reader<'r>>,
     {
-        erased_serde::deserialize(&mut self.0.deserializer(&mut reader))
-    }
-}
-
-// Tests |-------------------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_erase_serializer() {
-        let writer = vec![];
-
-        let _ser = into_erased_serializer(rmp_serde::Serializer::new(writer));
+        T::deserialize(&mut self.deserializer(reader))
     }
 }

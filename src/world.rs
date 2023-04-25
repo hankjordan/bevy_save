@@ -13,7 +13,6 @@ use bevy::{
     prelude::*,
     tasks::IoTaskPool,
 };
-use rmp_serde::Deserializer;
 use serde::{
     de::{
         DeserializeSeed,
@@ -188,7 +187,14 @@ impl WorldSaveableExt for World {
 
         let mut reader = BufReader::new(file);
 
-        self.deserialize_applier(&mut Deserializer::new(&mut reader))
-            .map_err(SaveableError::other)
+        let loader = self.resource::<AppLoader>();
+
+        let applier = self.deserialize_applier(&mut loader.deserializer(&mut reader))
+            .map_err(SaveableError::other)?;
+
+        // TODO: investigate
+        std::mem::drop(reader);
+
+        Ok(applier)
     }
 }

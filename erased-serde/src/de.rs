@@ -1,9 +1,19 @@
-use crate::alloc::*;
-use crate::any::Any;
-use crate::error::Error;
-use crate::map::{OptionExt, ResultExt};
-use core::fmt::{self, Display};
+use core::fmt::{
+    self,
+    Display,
+};
+
 use serde::serde_if_integer128;
+
+use crate::{
+    alloc::*,
+    any::Any,
+    error::Error,
+    map::{
+        OptionExt,
+        ResultExt,
+    },
+};
 
 /// Deserialize a value of type `T` from the given trait object.
 ///
@@ -780,6 +790,51 @@ where
     }
 }
 
+/// Helper trait for an erased concrete type.
+/// This is used in form of a trait object for keeping
+/// something around to (virtually) call the destructor.
+trait Erased {}
+impl<T> Erased for T {}
+
+/// A type-erased object that can be turned into a deserializer.
+pub struct IntoDeserializer<'r, 'de: 'r> {
+    _guard: Box<dyn Erased + 'r>,
+    deserializer: Box<dyn super::Deserializer<'de> + 'r>,
+}
+
+impl<'r, 'de> IntoDeserializer<'r, 'de> {
+    /// Convert a type `D` that implements [`serde::Deserializer`] for `&mut D` into a trait object.
+    pub fn erase<D: 'r>(de: D) -> Self
+    where
+        for<'a> &'a mut D: serde::Deserializer<'de>,
+    {
+        let mut de = Box::new(de);
+        let deserializer = Box::new(<dyn Deserializer>::erase(unsafe {
+            &mut *std::ptr::addr_of_mut!(*de)
+        }));
+
+        Self {
+            _guard: de,
+            deserializer,
+        }
+    }
+}
+
+impl<'r, 'de> std::ops::Deref for IntoDeserializer<'r, 'de> {
+    type Target = dyn super::Deserializer<'de> + 'r;
+
+    fn deref(&self) -> &Self::Target {
+        &self.deserializer
+    }
+}
+
+impl<'r, 'de> std::ops::DerefMut for IntoDeserializer<'r, 'de> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.deserializer
+    }
+}
+
+
 // IMPL SERDE FOR ERASED SERDE /////////////////////////////////////////////////
 
 impl<'de, 'a> serde::de::DeserializeSeed<'de> for &'a mut dyn DeserializeSeed<'de> {
@@ -964,6 +1019,7 @@ macro_rules! impl_deserializer_for_trait_object {
     };
 }
 
+impl_deserializer_for_trait_object!({'de, 'a, 'r} {} &'a mut IntoDeserializer<'r, 'de>);
 impl_deserializer_for_trait_object!({'de, 'a} {} &'a mut dyn Deserializer<'de>);
 impl_deserializer_for_trait_object!({'de, 'a} {} &'a mut (dyn Deserializer<'de> + Send));
 impl_deserializer_for_trait_object!({'de, 'a} {} &'a mut (dyn Deserializer<'de> + Sync));
@@ -1437,6 +1493,7 @@ macro_rules! deref_erased_deserializer {
     };
 }
 
+deref_erased_deserializer!(<'r, 'de> Deserializer<'de> for IntoDeserializer<'r, 'de>);
 deref_erased_deserializer!(<'de, 'a> Deserializer<'de> for Box<dyn Deserializer<'de> + 'a>);
 deref_erased_deserializer!(<'de, 'a> Deserializer<'de> for Box<dyn Deserializer<'de> + Send + 'a>);
 deref_erased_deserializer!(<'de, 'a> Deserializer<'de> for Box<dyn Deserializer<'de> + Sync + 'a>);
@@ -1463,10 +1520,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use core::fmt::Debug;
+
+    use serde_derive::Deserialize;
+
     use super::*;
     use crate::alloc::ToOwned;
-    use core::fmt::Debug;
-    use serde_derive::Deserialize;
 
     fn test_json<'de, T>(json: &'de [u8])
     where

@@ -1,14 +1,27 @@
-use crate::alloc::Box;
-use crate::any::Any;
-use crate::error::Error;
-use crate::map::ResultExt;
-use core::fmt::Display;
-use core::marker::PhantomData;
-use serde::ser::{
-    SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant, SerializeTuple,
-    SerializeTupleStruct, SerializeTupleVariant,
+use core::{
+    fmt::Display,
+    marker::PhantomData,
 };
-use serde::serde_if_integer128;
+
+use serde::{
+    ser::{
+        SerializeMap,
+        SerializeSeq,
+        SerializeStruct,
+        SerializeStructVariant,
+        SerializeTuple,
+        SerializeTupleStruct,
+        SerializeTupleVariant,
+    },
+    serde_if_integer128,
+};
+
+use crate::{
+    alloc::Box,
+    any::Any,
+    error::Error,
+    map::ResultExt,
+};
 
 // TRAITS //////////////////////////////////////////////////////////////////////
 
@@ -572,6 +585,50 @@ where
     }
 }
 
+/// Helper trait for an erased concrete type.
+/// This is used in form of a trait object for keeping
+/// something around to (virtually) call the destructor.
+trait Erased {}
+impl<T> Erased for T {}
+
+/// A type-erased object that can be turned into a serializer.
+pub struct IntoSerializer<'w> {
+    _guard: Box<dyn Erased + 'w>,
+    serializer: Box<dyn Serializer + 'w>,
+}
+
+impl<'w> IntoSerializer<'w> {
+    pub fn erase<S: 'w>(ser: S) -> Self
+    where
+        for<'a> &'a mut S: serde::Serializer,
+        for<'a> <&'a mut S as serde::Serializer>::Ok: 'static,
+    {
+        let mut ser = Box::new(ser);
+        let serializer = Box::new(<dyn Serializer>::erase(unsafe {
+            &mut *std::ptr::addr_of_mut!(*ser)
+        }));
+
+        Self {
+            _guard: ser,
+            serializer,
+        }
+    }
+}
+
+impl<'w> std::ops::Deref for IntoSerializer<'w> {
+    type Target = dyn Serializer + 'w;
+
+    fn deref(&self) -> &Self::Target {
+        &self.serializer
+    }
+}
+
+impl<'w> std::ops::DerefMut for IntoSerializer<'w> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.serializer
+    }
+}
+
 // IMPL SERDE FOR ERASED SERDE /////////////////////////////////////////////////
 
 /// Serialize the given type-erased serializable value.
@@ -621,7 +678,6 @@ where
 
 serialize_trait_object!(Serialize);
 
-#[macro_export]
 macro_rules! impl_serializer_for_trait_object {
     ($($imp:tt)+) => {
         impl $($imp)+ {
@@ -808,6 +864,7 @@ macro_rules! impl_serializer_for_trait_object {
     };
 }
 
+impl_serializer_for_trait_object!(<'a, 'w> serde::Serializer for &'a mut IntoSerializer<'w>);
 impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut dyn Serializer);
 impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut (dyn Serializer + Send));
 impl_serializer_for_trait_object!(<'a> serde::Serializer for &'a mut (dyn Serializer + Sync));
@@ -1239,7 +1296,6 @@ impl<'a> SerializeStructVariant for StructVariant<'a> {
 
 // IMPL ERASED SERDE FOR ERASED SERDE //////////////////////////////////////////
 
-#[macro_export]
 macro_rules! deref_erased_serializer {
     ($($imp:tt)+) => {
         impl $($imp)+ {
@@ -1372,6 +1428,7 @@ macro_rules! deref_erased_serializer {
     };
 }
 
+deref_erased_serializer!(<'w> Serializer for IntoSerializer<'w>);
 deref_erased_serializer!(<'a> Serializer for Box<dyn Serializer + 'a>);
 deref_erased_serializer!(<'a> Serializer for Box<dyn Serializer + Send + 'a>);
 deref_erased_serializer!(<'a> Serializer for Box<dyn Serializer + Sync + 'a>);
@@ -1398,9 +1455,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::alloc::{vec, Vec};
     use serde_derive::Serialize;
+
+    use super::*;
+    use crate::alloc::{
+        vec,
+        Vec,
+    };
 
     fn test_json<T>(t: T)
     where
