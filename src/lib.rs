@@ -7,6 +7,8 @@
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
 
+pub use bevy_save_erased_serde as erased_serde;
+
 pub use crate::{
     app::*,
     clone::*,
@@ -14,8 +16,8 @@ pub use crate::{
     error::*,
     plugins::*,
     registry::*,
-    saver::*,
     rollbacks::*,
+    saver::*,
     serde::*,
     snapshot::*,
     world::*,
@@ -36,7 +38,21 @@ mod world;
 
 /// Prelude: convenient import for all the user-facing APIs provided by the crate
 pub mod prelude {
-    pub use crate::*;
+    pub use crate::{
+        app::*,
+        clone::*,
+        dir::*,
+        erased_serde::{
+            IntoDeserializer,
+            IntoSerializer,
+        },
+        error::*,
+        plugins::*,
+        registry::*,
+        rollbacks::*,
+        saver::*,
+        serde::*,
+        snapshot::*,
+        world::*,
+    };
 }
-
-pub use bevy_save_erased_serde as erased_serde;

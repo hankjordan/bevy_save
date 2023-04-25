@@ -9,7 +9,7 @@ A framework for saving and loading game state in Bevy.
 
 While Bevy's `DynamicScene` only allows you to save entities and components, `bevy_save` enables you to save everything, including resources.
 
-- `World::serialize<S>()` and `World::deserialize<D>()` allow you to serialize and deserialize game state with your own serializer / deserializer.
+- `World::serialize<S>()` and `World::deserialize<D>()` allow you to manually serialize and deserialize game state with your own serializer / deserializer.
 
 ### Save file management
 
@@ -18,7 +18,9 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
 Supports Windows, Linux, and MacOS. WASM support is in progress.
 
 - `World::save()` and `World::load()` uses your app's save directory to save and load your game state to disk, handling all serialization and deserialization for you.
-- This uses a predefined binary format, if you want to use your own serializer see `"examples/json.rs"`.
+- These methods use the `AppSaver` and `AppLoader` resources to determine what save format to use.
+- By default, this is set up to use `rmp_serde` for serialization and deserialization.
+- However, is extremely easy to switch to a custom save file format, see `"examples/json.rs"` for how you can do this.
 
 ### Snapshots and Rollback
 

@@ -12,11 +12,12 @@ impl PluginGroup for SavePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(SavePlugin)
+            .add(SaverPlugin)
             .add(SaveablesPlugin)
     }
 }
 
-/// `bevy_save` core functionality plugin.
+/// `bevy_save` core functionality.
 pub struct SavePlugin;
 
 #[rustfmt::skip]
@@ -25,6 +26,18 @@ impl Plugin for SavePlugin {
         app
             .init_resource::<SaveableRegistry>()
             .init_resource::<Rollbacks>();
+    }
+}
+
+/// Serialization and deserialization.
+pub struct SaverPlugin;
+
+#[rustfmt::skip]
+impl Plugin for SaverPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .init_resource::<AppSaver>()
+            .init_resource::<AppLoader>();
     }
 }
 

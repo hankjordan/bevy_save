@@ -5,10 +5,9 @@ use std::io::{
 
 use bevy::prelude::*;
 
-use crate::erased_serde::{
-    Error,
-    IntoDeserializer,
-    IntoSerializer,
+use crate::{
+    erased_serde::Error,
+    prelude::*,
 };
 
 // Writer |------------------------------------------------------------------------------------------------------------
@@ -145,7 +144,19 @@ impl<'r> std::io::Read for Reader<'r> {
 ///
 /// Use [`AppSaver`] to override the [`Saver`] that `bevy_save` uses for saving snapshots.
 pub trait Saver: Send + Sync + 'static {
-    /// Build a boxed serializer from the given writer.
+    /// Build a serializer trait object from the given writer.
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy_save::prelude::*;
+    /// pub struct RMPSaver;
+    ///
+    /// impl Saver for RMPSaver {
+    ///     fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w> {
+    ///         IntoSerializer::erase(rmp_serde::Serializer::new(writer))
+    ///     }
+    /// }
+    /// ```
     fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w>;
 }
 
@@ -153,8 +164,20 @@ pub trait Saver: Send + Sync + 'static {
 ///
 /// Use [`AppLoader`] to override the [`Loader`] that `bevy_save` uses for loading snapshots.
 pub trait Loader: Send + Sync + 'static {
-    /// Build a boxed deserializer from the given reader.
-    fn deserializer<'r, 'de: 'r>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de>;
+    /// Build a deserializer trait object from the given reader.
+    /// 
+    /// # Example
+    /// ```
+    /// # use bevy_save::prelude::*;
+    /// pub struct RMPLoader;
+    /// 
+    /// impl Loader for RMPLoader {
+    ///     fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
+    ///         IntoDeserializer::erase(rmp_serde::Deserializer::new(reader))
+    ///     }
+    /// }
+    /// ```
+    fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de>;
 }
 
 // Saver / Loader Implementations |------------------------------------------------------------------------------------
@@ -172,7 +195,7 @@ impl Saver for RMPSaver {
 pub struct RMPLoader;
 
 impl Loader for RMPLoader {
-    fn deserializer<'r, 'de: 'r>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
+    fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
         IntoDeserializer::erase(rmp_serde::Deserializer::new(reader))
     }
 }
@@ -207,13 +230,19 @@ impl AppSaver {
     /// Serialize the value to the given writer using the current [`Saver`].
     ///
     /// # Errors
-    /// - See [`erased_serde::Error`]
+    /// - See [`Error`]
     pub fn serialize<'w, T, W>(&self, value: &T, writer: W) -> Result<(), Error>
     where
         T: ?Sized + serde::Serialize,
         W: Into<Writer<'w>>,
     {
         value.serialize(&mut self.serializer(writer)).map(|_| ())
+    }
+}
+
+impl Default for AppSaver {
+    fn default() -> Self {
+        Self::new(RMPSaver)
     }
 }
 
@@ -245,12 +274,18 @@ impl AppLoader {
     /// Deserialize the type `T` from the given reader using the current [`Loader`].
     ///
     /// # Errors
-    /// - See [`erased_serde::Error`]
+    /// - See [`Error`]
     pub fn deserialize<'r, 'de: 'r, T, R>(&self, reader: R) -> Result<T, Error>
     where
         T: serde::Deserialize<'de>,
         R: Into<Reader<'r>>,
     {
         T::deserialize(&mut self.deserializer(reader))
+    }
+}
+
+impl Default for AppLoader {
+    fn default() -> Self {
+        Self::new(RMPLoader)
     }
 }
