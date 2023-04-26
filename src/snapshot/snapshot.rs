@@ -88,6 +88,7 @@ macro_rules! impl_snapshot_applier {
                     map: self.map,
                     despawn: self.despawn,
                     mapping: self.mapping,
+                    hook: self.hook,
                 };
 
                 applier.apply()?;

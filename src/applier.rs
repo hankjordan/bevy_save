@@ -129,15 +129,15 @@ impl DespawnMode {
 /// # app.add_plugins(SavePlugins);
 /// # let world = &mut app.world;
 /// # let snapshot = Snapshot::from_world(world);
-/// # let root = world.spawn_empty().id();
+/// # let parent = world.spawn_empty().id();
 /// snapshot.applier(world)
-///     .mapping(MappingMode::simple_hooked(move |e| {
+///     .hook(move |e| {
 ///         if e.contains::<Parent>() {
 ///             e
 ///         } else {
-///             e.set_parent(root)
+///             e.set_parent(parent)
 ///         }
-///     }))
+///     })
 ///     .apply();
 /// ```
 pub trait Hook: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
@@ -156,34 +156,10 @@ pub enum MappingMode {
     #[default]
     Simple,
 
-    /// Same as [`MappingMode::Simple`], but also apply a custom [`Hook`].
-    SimpleHooked(BoxedHook),
-
     /// If unmapped, spawn a new entity.
     ///
     /// `bevy_scene` default
     Strict,
-
-    /// Same as [`MappingMode::Strict`], but also apply a custom [`Hook`].
-    StrictHooked(BoxedHook),
-}
-
-impl MappingMode {
-    /// Create a new instance of [`MappingMode::SimpleHooked`] with the given [`Hook`].
-    pub fn simple_hooked<F>(f: F) -> Self
-    where
-        F: Hook + 'static,
-    {
-        Self::SimpleHooked(Box::new(f))
-    }
-
-    /// Create a new instance of [`MappingMode::StrictHooked`] with the given [`Hook`].
-    pub fn strict_hooked<F>(f: F) -> Self
-    where
-        F: Hook + 'static,
-    {
-        Self::StrictHooked(Box::new(f))
-    }
 }
 
 /// The App's default [`DespawnMode`].
@@ -229,6 +205,7 @@ pub struct Applier<'a, S> {
     pub(crate) map: EntityMap,
     pub(crate) despawn: Option<DespawnMode>,
     pub(crate) mapping: Option<MappingMode>,
+    pub(crate) hook: Option<BoxedHook>,
 }
 
 impl<'a, S> Applier<'a, S> {
@@ -240,6 +217,7 @@ impl<'a, S> Applier<'a, S> {
             map: EntityMap::default(),
             despawn: None,
             mapping: None,
+            hook: None,
         }
     }
 
@@ -258,6 +236,15 @@ impl<'a, S> Applier<'a, S> {
     /// Change how the snapshot maps entities when applying.
     pub fn mapping(mut self, mode: MappingMode) -> Self {
         self.mapping = Some(mode);
+        self
+    }
+
+    /// Add a [`Hook`] that will run for each [`EntityMut`] when applying.
+    pub fn hook<F>(mut self, hook: F) -> Self
+    where
+        F: Hook + 'static,
+    {
+        self.hook = Some(Box::new(hook));
         self
     }
 }

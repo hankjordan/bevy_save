@@ -91,6 +91,7 @@ macro_rules! impl_rollback_applier {
                     map: self.map,
                     despawn: self.despawn,
                     mapping: self.mapping,
+                    hook: self.hook,
                 };
 
                 applier.apply()

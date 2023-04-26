@@ -235,7 +235,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                 data.apply_or_insert(entity_mut, &**component);
             }
 
-            if let MappingMode::SimpleHooked(hook) | MappingMode::StrictHooked(hook) = &mapping {
+            if let Some(hook) = &self.hook {
                 hook(entity_mut);
             }
         }

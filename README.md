@@ -110,6 +110,27 @@ It is also possible to match `DynamicScene` behavior by using `DespawnMode::None
 
 See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.10.1/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
+### Entity hooks
+
+You are also able to add hooks when applying snapshots, similar to `bevy-scene-hook`.
+
+This can be used for many things, like spawning the snapshot as a child of an entity:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+    .hook(move |e| {
+        if e.contains::<Parent>() {
+            e
+        } else {
+            e.set_parent(parent)
+        }
+    })
+    .apply();
+```
+
 ## License
 
 `bevy_save` is dual-licensed under MIT and Apache-2.0.
