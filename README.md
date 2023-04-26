@@ -144,7 +144,6 @@ snapshot
     
     .hook(|entity, cmds| {
         if entity.contains::<A>() {
-            // You can also use hooks to despawn Entities or run Commands
             cmds.despawn();
         }
     })
@@ -158,10 +157,10 @@ snapshot
 
 NOTE: We do not track Bevy main.
 
-|Bevy Version|Crate Version          |
-|------------|-----------------------|
-|`0.10`      |`0.4`, `0.5`, `0.6`    |
-|`0.9`       |`0.1`, `0.2`, `0.3`    |
+|Bevy Version|Crate Version              |
+|------------|---------------------------|
+|`0.10`      |`0.4`, `0.5`, `0.6`, `0.7` |
+|`0.9`       |`0.1`, `0.2`, `0.3`        |
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.10-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
