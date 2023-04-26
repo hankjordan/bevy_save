@@ -4,6 +4,7 @@ use bevy::{
     ecs::{
         entity::EntityMap,
         reflect::ReflectMapEntities,
+        system::CommandQueue,
     },
     prelude::*,
     reflect::TypeRegistration,
@@ -208,6 +209,8 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             EntityMap::default()
         };
 
+        let mut spawned = Vec::new();
+
         // Apply snapshot entities
         for saved in &self.snapshot.entities {
             let index = saved.entity;
@@ -216,6 +219,8 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                 .map(&self.map)
                 .or_else(|| fallback.get(Entity::from_raw(index)).ok())
                 .unwrap_or_else(|| self.world.spawn_empty().id());
+
+            spawned.push(entity);
 
             let entity_mut = &mut self.world.entity_mut(entity);
 
@@ -234,18 +239,30 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
                 data.apply_or_insert(entity_mut, &**component);
             }
-
-            if let Some(hook) = &self.hook {
-                hook(entity_mut);
-            }
         }
 
+        // ReflectMapEntities
         for reg in registry.iter() {
             if let Some(mapper) = reg.data::<ReflectMapEntities>() {
                 mapper
                     .map_entities(self.world, &self.map)
                     .map_err(SaveableError::MapEntitiesError)?;
             }
+        }
+
+        // Entity hook
+        if let Some(hook) = &self.hook {
+            let mut queue = CommandQueue::default();
+            let mut commands = Commands::new(&mut queue, self.world);
+
+            for entity in spawned {
+                let entity_ref = self.world.entity(entity);
+                let mut entity_mut = commands.entity(entity);
+
+                hook(&entity_ref, &mut entity_mut);
+            }
+
+            queue.apply(self.world);
         }
 
         Ok(())

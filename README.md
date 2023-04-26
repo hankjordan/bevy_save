@@ -121,14 +121,33 @@ let snapshot = Snapshot::from_world(world);
 
 snapshot
     .applier(world)
-    .hook(move |e| {
-        if e.contains::<Parent>() {
-            e
-        } else {
-            e.set_parent(parent)
+
+    // This will be run for every Entity in the snapshot
+    // It runs after the Entity's Components are loaded
+    .hook(move |entity, cmds| {
+        // You can use the hook to add, get, or remove Components
+        if !entity.contains::<Parent>() {
+            cmds.set_parent(parent);
         }
     })
+
     .apply();
+```
+
+Hooks may also despawn entities:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+    
+    .hook(|entity, cmds| {
+        if entity.contains::<A>() {
+            // You can also use hooks to despawn Entities or run Commands
+            cmds.despawn();
+        }
+    })
 ```
 
 ## License

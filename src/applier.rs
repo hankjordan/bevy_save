@@ -8,7 +8,8 @@ use bevy::{
     ecs::{
         entity::EntityMap,
         query::ReadOnlyWorldQuery,
-        world::EntityMut,
+        system::EntityCommands,
+        world::EntityRef,
     },
     prelude::*,
 };
@@ -117,7 +118,7 @@ impl DespawnMode {
     }
 }
 
-/// A [`Hook`] runs on each [`EntityMut`] when applying a snapshot.
+/// A [`Hook`] runs on each entity when applying a snapshot.
 ///
 /// # Example
 /// This could be used to apply entities as children of another entity.
@@ -130,19 +131,18 @@ impl DespawnMode {
 /// # let world = &mut app.world;
 /// # let snapshot = Snapshot::from_world(world);
 /// # let parent = world.spawn_empty().id();
-/// snapshot.applier(world)
-///     .hook(move |e| {
-///         if e.contains::<Parent>() {
-///             e
-///         } else {
-///             e.set_parent(parent)
+/// snapshot
+///     .applier(world)
+///     .hook(move |entity, cmds| {
+///         if !entity.contains::<Parent>() {
+///             cmds.set_parent(parent);
 ///         }
 ///     })
 ///     .apply();
 /// ```
-pub trait Hook: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
+pub trait Hook: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + Send + Sync {}
 
-impl<T> Hook for T where T: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
+impl<T> Hook for T where T: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + Send + Sync {}
 
 /// A boxed [`Hook`].
 pub type BoxedHook = Box<dyn Hook>;
@@ -239,7 +239,7 @@ impl<'a, S> Applier<'a, S> {
         self
     }
 
-    /// Add a [`Hook`] that will run for each [`EntityMut`] when applying.
+    /// Add a [`Hook`] that will run for each entity when applying.
     pub fn hook<F>(mut self, hook: F) -> Self
     where
         F: Hook + 'static,
