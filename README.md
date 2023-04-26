@@ -81,18 +81,28 @@ let snapshot = Snapshot::from_world(world);
 
 snapshot
     .applier(world)
+
+    // Your entity map - in many cases this can be omitted
     .map(EntityMap::default())
-    .despawn(DespawnMode::default())
-    .mapping(MappingMode::default())
+
+    // Despawn all entities matching (With<A>, Without<B>)
+    .despawn(DespawnMode::all_with::<(With<A>, Without<B>)>())
+
+    // Do not overwrite existing entities
+    .mapping(MappingMode::Strict)
+
     .apply();
 ```
 
-Note that by default `bevy_save` snapshots do not behave like Bevy's `DynamicScene` when applying:
+**By default, `bevy_save` snapshots do not behave like Bevy's `DynamicScene` when applying.**
 
-If you use the methods that do not return an `Applier` (`deserialize`, `load`, `rollback`, `apply`),
-any entities not present in the snapshot are despawned and existing entities may be overridden with snapshot data.
+If you use the methods that do not return an `Applier` (`deserialize`, `load`, `rollback`, `apply`), the default settings are used:
+- `DespawnMode::Missing` - Any entities not present in the snapshot are despawned.
+- `MappingMode::Simple` - Existing entities may be overridden with snapshot data.
 
-Because of this, in many cases you will not even need an `EntityMap`.
+You can change the default behavior using the `AppDespawnMode` and `AppMappingMode` resources.
+
+It is also possible to match `DynamicScene` behavior by using `DespawnMode::None` and `MappingMode::Strict`.
 
 #### MapEntities
 

@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     marker::PhantomData,
+    sync::Arc,
 };
 
 use bevy::{
@@ -20,7 +21,7 @@ use crate::{
 };
 
 /// A [`ReadOnlyWorldQuery`] filter.
-pub trait Filter {
+pub trait Filter: Send + Sync {
     /// Collect all entities from the given [`World`] matching the filter.
     fn collect(&self, world: &mut World) -> HashSet<Entity>;
 }
@@ -29,7 +30,7 @@ struct FilterMarker<F>(PhantomData<F>);
 
 impl<F> Filter for FilterMarker<F>
 where
-    F: ReadOnlyWorldQuery,
+    F: ReadOnlyWorldQuery + Send + Sync,
 {
     fn collect(&self, world: &mut World) -> HashSet<Entity> {
         world
@@ -44,22 +45,22 @@ pub type BoxedFilter = Box<dyn Filter>;
 
 impl dyn Filter {
     /// Create an opaque type that implements [`Filter`] from a [`ReadOnlyWorldQuery`].
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
     /// #[derive(Component)]
     /// struct A;
-    /// 
+    ///
     /// #[derive(Component)]
     /// struct B;
-    /// 
+    ///
     /// let filter = <dyn Filter>::new::<(With<A>, Without<B>)>();
     /// ```
     pub fn new<F>() -> impl Filter
     where
-        F: ReadOnlyWorldQuery,
+        F: ReadOnlyWorldQuery + Send + Sync,
     {
         FilterMarker::<F>(PhantomData)
     }
@@ -67,7 +68,7 @@ impl dyn Filter {
     /// Create a [`BoxedFilter`] from a [`ReadOnlyWorldQuery`].
     pub fn boxed<F>() -> BoxedFilter
     where
-        F: ReadOnlyWorldQuery + 'static,
+        F: ReadOnlyWorldQuery + Send + Sync + 'static,
     {
         Box::new(Self::new::<F>())
     }
@@ -109,7 +110,7 @@ impl DespawnMode {
     /// Create a new instance of [`DespawnMode::UnmappedWith`] with the given filter.
     pub fn unmapped_with<F>() -> Self
     where
-        F: ReadOnlyWorldQuery + 'static,
+        F: ReadOnlyWorldQuery + Send + Sync + 'static,
     {
         DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
     }
@@ -117,7 +118,7 @@ impl DespawnMode {
     /// Create a new instance of [`DespawnMode::AllWith`] with the given filter.
     pub fn all_with<F>() -> Self
     where
-        F: ReadOnlyWorldQuery + 'static,
+        F: ReadOnlyWorldQuery + Send + Sync + 'static,
     {
         DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
     }
@@ -146,9 +147,12 @@ impl DespawnMode {
 ///     }))
 ///     .apply();
 /// ```
-pub trait Mapper: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> {}
+pub trait Mapper: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
 
-impl<T> Mapper for T where T: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> {}
+impl<T> Mapper for T where
+    T: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync
+{
+}
 
 /// A boxed [`Mapper`].
 pub type BoxedMapper = Box<dyn Mapper>;
@@ -192,13 +196,49 @@ impl MappingMode {
     }
 }
 
+/// The App's default [`DespawnMode`].
+///
+/// `bevy_save` will use this when applying snapshots without a specified [`DespawnMode`].
+#[derive(Resource, Default, Deref, DerefMut, Clone)]
+pub struct AppDespawnMode(Arc<DespawnMode>);
+
+impl AppDespawnMode {
+    /// Create a new [`AppDespawnMode`] from the given [`DespawnMode`].
+    pub fn new(mode: DespawnMode) -> Self {
+        Self(Arc::new(mode))
+    }
+
+    /// Override the current [`DespawnMode`].
+    pub fn set(&mut self, mode: DespawnMode) {
+        self.0 = Arc::new(mode);
+    }
+}
+
+/// The App's default [`MappingMode`].
+///
+/// `bevy_save` will use this when applying snapshots without a specified [`MappingMode`].
+#[derive(Resource, Default, Deref, DerefMut, Clone)]
+pub struct AppMappingMode(Arc<MappingMode>);
+
+impl AppMappingMode {
+    /// Create a new [`AppMappingMode`] from the given [`MappingMode`].
+    pub fn new(mode: MappingMode) -> Self {
+        Self(Arc::new(mode))
+    }
+
+    /// Override the current [`MappingMode`].
+    pub fn set(&mut self, mode: MappingMode) {
+        self.0 = Arc::new(mode);
+    }
+}
+
 /// [`Applier`] lets you configure how a snapshot will be applied to the [`World`].
 pub struct Applier<'a, S> {
     world: &'a mut World,
     snapshot: S,
     map: EntityMap,
-    despawn: DespawnMode,
-    mapping: MappingMode,
+    despawn: Option<DespawnMode>,
+    mapping: Option<MappingMode>,
 }
 
 impl<'a, S> Applier<'a, S> {
@@ -208,8 +248,8 @@ impl<'a, S> Applier<'a, S> {
             world,
             snapshot,
             map: EntityMap::default(),
-            despawn: DespawnMode::default(),
-            mapping: MappingMode::default(),
+            despawn: None,
+            mapping: None,
         }
     }
 
@@ -219,26 +259,16 @@ impl<'a, S> Applier<'a, S> {
         self
     }
 
-    /// Change how the snapshot maps entities when applying.
-    pub fn mapping(self, mode: MappingMode) -> Self {
-        Applier {
-            world: self.world,
-            snapshot: self.snapshot,
-            map: self.map,
-            despawn: self.despawn,
-            mapping: mode,
-        }
+    /// Change how the snapshot affects entities when applying.
+    pub fn despawn(mut self, mode: DespawnMode) -> Self {
+        self.despawn = Some(mode);
+        self
     }
 
-    /// Change how the snapshot affects entities when applying.
-    pub fn despawn(self, mode: DespawnMode) -> Applier<'a, S> {
-        Applier {
-            world: self.world,
-            snapshot: self.snapshot,
-            map: self.map,
-            despawn: mode,
-            mapping: self.mapping,
-        }
+    /// Change how the snapshot maps entities when applying.
+    pub fn mapping(mut self, mode: MappingMode) -> Self {
+        self.mapping = Some(mode);
+        self
     }
 }
 
@@ -337,7 +367,15 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
         // Entities
 
-        match &self.despawn {
+        let despawn_default = self
+            .world
+            .get_resource::<AppDespawnMode>()
+            .cloned()
+            .unwrap_or_default();
+
+        let despawn = self.despawn.as_ref().unwrap_or(&despawn_default);
+
+        match despawn {
             DespawnMode::Missing | DespawnMode::MissingWith(_) => {
                 let valid = self
                     .snapshot
@@ -353,7 +391,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     .filter(|e| !valid.contains(e))
                     .collect::<Vec<_>>();
 
-                if let DespawnMode::MissingWith(filter) = &self.despawn {
+                if let DespawnMode::MissingWith(filter) = despawn {
                     let matches = filter.collect(self.world);
                     invalid.retain(|e| matches.contains(e));
                 }
@@ -378,7 +416,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     .filter(|e| !valid.contains(e))
                     .collect::<Vec<_>>();
 
-                if let DespawnMode::UnmappedWith(filter) = &self.despawn {
+                if let DespawnMode::UnmappedWith(filter) = despawn {
                     let matches = filter.collect(self.world);
                     invalid.retain(|e| matches.contains(e));
                 }
@@ -393,7 +431,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     .iter_entities()
                     .map(|e| e.id())
                     .collect::<Vec<_>>();
-                
+
                 for entity in invalid {
                     self.world.despawn(entity);
                 }
@@ -408,7 +446,15 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             DespawnMode::None => {}
         }
 
-        let fallback = if let MappingMode::Simple = &self.mapping {
+        let mapping_default = self
+            .world
+            .get_resource::<AppMappingMode>()
+            .cloned()
+            .unwrap_or_default();
+
+        let mapping = self.mapping.as_ref().unwrap_or(&mapping_default);
+
+        let fallback = if let MappingMode::Simple = &mapping {
             let mut fallback = EntityMap::default();
 
             for entity in self.world.iter_entities() {
@@ -447,7 +493,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                 data.apply_or_insert(entity_mut, &**component);
             }
 
-            if let MappingMode::SimpleMap(mapper) | MappingMode::StrictMap(mapper) = &self.mapping {
+            if let MappingMode::SimpleMap(mapper) | MappingMode::StrictMap(mapper) = &mapping {
                 mapper(entity_mut);
             }
         }
