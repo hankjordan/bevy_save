@@ -8,6 +8,7 @@ use bevy::{
         entity::EntityMap,
         query::ReadOnlyWorldQuery,
         reflect::ReflectMapEntities,
+        world::EntityMut,
     },
     prelude::*,
     reflect::TypeRegistration,
@@ -75,6 +76,36 @@ impl DespawnMode {
     }
 }
 
+/// A [`Mapper`] runs on each [`EntityMut`] when applying a snapshot.
+/// 
+/// # Example
+/// This could be used to apply entities as children of another entity.
+/// ```
+/// # use bevy::prelude::*;
+/// # use bevy_save::prelude::*;
+/// # let mut app = App::new();
+/// # app.add_plugins(MinimalPlugins);
+/// # app.add_plugins(SavePlugins);
+/// # let world = &mut app.world;
+/// # let snapshot = Snapshot::from_world(world);
+/// # let root = world.spawn_empty().id();
+/// snapshot.applier(world)
+///     .mapping(MappingMode::simple_map(move |e| {
+///         if e.contains::<Parent>() {
+///             e
+///         } else {
+///             e.set_parent(root)
+///         }
+///     }))
+///     .apply();
+/// ```
+pub trait Mapper: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> {}
+
+impl<T> Mapper for T where T: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> {}
+
+/// A boxed [`Mapper`].
+pub type BoxedMapper = Box<dyn Mapper>;
+
 /// Determines how the snapshot will map entities when applied.
 #[derive(Default)]
 pub enum MappingMode {
@@ -84,10 +115,34 @@ pub enum MappingMode {
     #[default]
     Simple,
 
+    /// Same as [`MappingMode::Simple`], but also apply a custom mapping function.
+    SimpleMap(BoxedMapper),
+
     /// If unmapped, spawn a new entity.
     ///
     /// `bevy_scene` default
     Strict,
+
+    /// Same as [`MappingMode::Strict`], but also apply a custom mapping function.
+    StrictMap(BoxedMapper),
+}
+
+impl MappingMode {
+    /// Create a new instance of [`MappingMode::SimpleMap`] with the given [`Mapper`].
+    pub fn simple_map<F>(f: F) -> Self
+    where
+        F: Mapper + 'static,
+    {
+        Self::SimpleMap(Box::new(f))
+    }
+
+    /// Create a new instance of [`MappingMode::StrictMap`] with the given [`Mapper`].
+    pub fn strict_map<F>(f: F) -> Self
+    where
+        F: Mapper + 'static,
+    {
+        Self::StrictMap(Box::new(f))
+    }
 }
 
 /// [`Applier`] lets you configure how a snapshot will be applied to the [`World`].
@@ -349,6 +404,10 @@ where
                 })?;
 
                 data.apply_or_insert(entity_mut, &**component);
+            }
+
+            if let MappingMode::SimpleMap(mapper) | MappingMode::StrictMap(mapper) = &self.mapping {
+                mapper(entity_mut);
             }
         }
 
