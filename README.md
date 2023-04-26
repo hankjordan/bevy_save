@@ -76,7 +76,7 @@ Or directly on the snapshot types:
 
 The `SnapshotApplier` will then allow you to configure the `EntityMap` (and other settings) before applying:
 
-```rust
+```rust,ignore
 let snapshot = Snapshot::from_world(world);
 
 snapshot

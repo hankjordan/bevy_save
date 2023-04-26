@@ -20,37 +20,84 @@ use crate::{
 };
 
 /// A [`ReadOnlyWorldQuery`] filter.
-pub struct Filter<F = ()> {
-    _marker: PhantomData<F>,
+pub trait Filter {
+    /// Collect all entities from the given [`World`] matching the filter.
+    fn collect(&self, world: &mut World) -> HashSet<Entity>;
 }
 
-impl Filter {
-    /// Create a new filter with the given [`ReadOnlyWorldQuery`].
-    pub const fn new<F>() -> Filter<F> {
-        Filter {
-            _marker: PhantomData,
-        }
+struct FilterMarker<F>(PhantomData<F>);
+
+impl<F> Filter for FilterMarker<F>
+where
+    F: ReadOnlyWorldQuery,
+{
+    fn collect(&self, world: &mut World) -> HashSet<Entity> {
+        world
+            .query_filtered::<Entity, F>()
+            .iter(world)
+            .collect::<HashSet<_>>()
+    }
+}
+
+/// A boxed [`Filter`].
+pub type BoxedFilter = Box<dyn Filter>;
+
+impl dyn Filter {
+    /// Create an opaque type that implements [`Filter`] from a [`ReadOnlyWorldQuery`].
+    /// 
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// #[derive(Component)]
+    /// struct A;
+    /// 
+    /// #[derive(Component)]
+    /// struct B;
+    /// 
+    /// let filter = <dyn Filter>::new::<(With<A>, Without<B>)>();
+    /// ```
+    pub fn new<F>() -> impl Filter
+    where
+        F: ReadOnlyWorldQuery,
+    {
+        FilterMarker::<F>(PhantomData)
+    }
+
+    /// Create a [`BoxedFilter`] from a [`ReadOnlyWorldQuery`].
+    pub fn boxed<F>() -> BoxedFilter
+    where
+        F: ReadOnlyWorldQuery + 'static,
+    {
+        Box::new(Self::new::<F>())
     }
 }
 
 /// Determines what the snapshot will do to existing entities when applied.
-pub enum DespawnMode<F = ()> {
+#[derive(Default)]
+pub enum DespawnMode {
     /// Despawn entities missing from the save
     ///
     /// `bevy_save` default
+    #[default]
     Missing,
 
     /// Despawn entities missing from the save matching filter
-    MissingWith(Filter<F>),
+    MissingWith(BoxedFilter),
 
     /// Despawn unmapped entities
     Unmapped,
 
     /// Despawn unmapped entities matching filter
-    UnmappedWith(Filter<F>),
+    UnmappedWith(BoxedFilter),
+
+    /// Despawn all entities
+    ///
+    /// This is probably not what you want - in most cases this will close your app's [`Window`]
+    All,
 
     /// Despawn all entities matching filter
-    AllWith(Filter<F>),
+    AllWith(BoxedFilter),
 
     /// Keep all entities
     ///
@@ -58,26 +105,26 @@ pub enum DespawnMode<F = ()> {
     None,
 }
 
-impl Default for DespawnMode {
-    fn default() -> Self {
-        Self::Missing
-    }
-}
-
 impl DespawnMode {
     /// Create a new instance of [`DespawnMode::UnmappedWith`] with the given filter.
-    pub const fn unmapped_with<F>() -> DespawnMode<F> {
-        DespawnMode::UnmappedWith(Filter::new::<F>())
+    pub fn unmapped_with<F>() -> Self
+    where
+        F: ReadOnlyWorldQuery + 'static,
+    {
+        DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
     }
 
     /// Create a new instance of [`DespawnMode::AllWith`] with the given filter.
-    pub const fn all_with<F>() -> DespawnMode<F> {
-        DespawnMode::UnmappedWith(Filter::new::<F>())
+    pub fn all_with<F>() -> Self
+    where
+        F: ReadOnlyWorldQuery + 'static,
+    {
+        DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
     }
 }
 
 /// A [`Mapper`] runs on each [`EntityMut`] when applying a snapshot.
-/// 
+///
 /// # Example
 /// This could be used to apply entities as children of another entity.
 /// ```
@@ -146,11 +193,11 @@ impl MappingMode {
 }
 
 /// [`Applier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct Applier<'a, S, F = ()> {
+pub struct Applier<'a, S> {
     world: &'a mut World,
     snapshot: S,
     map: EntityMap,
-    despawn: DespawnMode<F>,
+    despawn: DespawnMode,
     mapping: MappingMode,
 }
 
@@ -184,7 +231,7 @@ impl<'a, S> Applier<'a, S> {
     }
 
     /// Change how the snapshot affects entities when applying.
-    pub fn despawn<F>(self, mode: DespawnMode<F>) -> Applier<'a, S, F> {
+    pub fn despawn(self, mode: DespawnMode) -> Applier<'a, S> {
         Applier {
             world: self.world,
             snapshot: self.snapshot,
@@ -259,10 +306,7 @@ impl RawSnapshot {
     }
 }
 
-impl<'a, F> Applier<'a, &'a RawSnapshot, F>
-where
-    F: ReadOnlyWorldQuery,
-{
+impl<'a> Applier<'a, &'a RawSnapshot> {
     fn apply(self) -> Result<(), SaveableError> {
         let registry_arc = self.world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
@@ -309,13 +353,8 @@ where
                     .filter(|e| !valid.contains(e))
                     .collect::<Vec<_>>();
 
-                if let DespawnMode::MissingWith(_) = &self.despawn {
-                    let matches = self
-                        .world
-                        .query_filtered::<Entity, F>()
-                        .iter(self.world)
-                        .collect::<HashSet<_>>();
-
+                if let DespawnMode::MissingWith(filter) = &self.despawn {
+                    let matches = filter.collect(self.world);
                     invalid.retain(|e| matches.contains(e));
                 }
 
@@ -339,13 +378,8 @@ where
                     .filter(|e| !valid.contains(e))
                     .collect::<Vec<_>>();
 
-                if let DespawnMode::UnmappedWith(_) = &self.despawn {
-                    let matches = self
-                        .world
-                        .query_filtered::<Entity, F>()
-                        .iter(self.world)
-                        .collect::<HashSet<_>>();
-
+                if let DespawnMode::UnmappedWith(filter) = &self.despawn {
+                    let matches = filter.collect(self.world);
                     invalid.retain(|e| matches.contains(e));
                 }
 
@@ -353,12 +387,19 @@ where
                     self.world.despawn(entity);
                 }
             }
-            DespawnMode::AllWith(_) => {
+            DespawnMode::All => {
                 let invalid = self
                     .world
-                    .query_filtered::<Entity, F>()
-                    .iter(self.world)
+                    .iter_entities()
+                    .map(|e| e.id())
                     .collect::<Vec<_>>();
+                
+                for entity in invalid {
+                    self.world.despawn(entity);
+                }
+            }
+            DespawnMode::AllWith(filter) => {
+                let invalid = filter.collect(self.world);
 
                 for entity in invalid {
                     self.world.despawn(entity);
@@ -471,7 +512,7 @@ impl Rollback {
         self.applier(world).apply()
     }
 
-    /// Create a [`Applier`] from the [`Rollback`] and the [`World`].
+    /// Create an [`Applier`] from the [`Rollback`] and the [`World`].
     ///
     /// # Example
     /// ```
@@ -503,10 +544,7 @@ impl Rollback {
 
 macro_rules! impl_rollback_applier {
     ($t:ty) => {
-        impl<'a, F> Applier<'a, $t, F>
-        where
-            F: ReadOnlyWorldQuery,
-        {
+        impl<'a> Applier<'a, $t> {
             /// Apply the [`Rollback`].
             ///
             /// # Errors
@@ -574,7 +612,7 @@ impl Snapshot {
         self.applier(world).apply()
     }
 
-    /// Create a [`Applier`] from the [`Snapshot`] and the [`World`].
+    /// Create an [`Applier`] from the [`Snapshot`] and the [`World`].
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
@@ -605,10 +643,7 @@ impl Snapshot {
 
 macro_rules! impl_snapshot_applier {
     ($t:ty) => {
-        impl<'a, F> Applier<'a, $t, F>
-        where
-            F: ReadOnlyWorldQuery,
-        {
+        impl<'a> Applier<'a, $t> {
             /// Apply the [`Snapshot`].
             ///
             /// # Errors
