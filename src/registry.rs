@@ -6,6 +6,7 @@ use bevy::{
 };
 
 /// The global registry of types that should be tracked by `bevy_save`.
+/// 
 /// Only types that are registered in here and [`AppTypeRegistry`] are included in save/load and rollback.
 #[derive(Resource, Default)]
 pub struct SaveableRegistry {

@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_inception)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::return_self_not_must_use)]

@@ -37,7 +37,7 @@ use serde::{
 
 use crate::{
     entity::SaveableEntity,
-    RawSnapshot,
+    snapshot::RawSnapshot,
     Rollback,
     Rollbacks,
     Snapshot,
