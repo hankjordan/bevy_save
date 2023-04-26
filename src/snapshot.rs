@@ -124,7 +124,7 @@ impl DespawnMode {
     }
 }
 
-/// A [`Mapper`] runs on each [`EntityMut`] when applying a snapshot.
+/// A [`Hook`] runs on each [`EntityMut`] when applying a snapshot.
 ///
 /// # Example
 /// This could be used to apply entities as children of another entity.
@@ -138,7 +138,7 @@ impl DespawnMode {
 /// # let snapshot = Snapshot::from_world(world);
 /// # let root = world.spawn_empty().id();
 /// snapshot.applier(world)
-///     .mapping(MappingMode::simple_map(move |e| {
+///     .mapping(MappingMode::simple_hooked(move |e| {
 ///         if e.contains::<Parent>() {
 ///             e
 ///         } else {
@@ -147,15 +147,15 @@ impl DespawnMode {
 ///     }))
 ///     .apply();
 /// ```
-pub trait Mapper: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
+pub trait Hook: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync {}
 
-impl<T> Mapper for T where
+impl<T> Hook for T where
     T: for<'a> Fn(&'a mut EntityMut<'a>) -> &'a mut EntityMut<'a> + Send + Sync
 {
 }
 
-/// A boxed [`Mapper`].
-pub type BoxedMapper = Box<dyn Mapper>;
+/// A boxed [`Hook`].
+pub type BoxedHook = Box<dyn Hook>;
 
 /// Determines how the snapshot will map entities when applied.
 #[derive(Default)]
@@ -166,33 +166,33 @@ pub enum MappingMode {
     #[default]
     Simple,
 
-    /// Same as [`MappingMode::Simple`], but also apply a custom mapping function.
-    SimpleMap(BoxedMapper),
+    /// Same as [`MappingMode::Simple`], but also apply a custom [`Hook`].
+    SimpleHooked(BoxedHook),
 
     /// If unmapped, spawn a new entity.
     ///
     /// `bevy_scene` default
     Strict,
 
-    /// Same as [`MappingMode::Strict`], but also apply a custom mapping function.
-    StrictMap(BoxedMapper),
+    /// Same as [`MappingMode::Strict`], but also apply a custom [`Hook`].
+    StrictHooked(BoxedHook),
 }
 
 impl MappingMode {
-    /// Create a new instance of [`MappingMode::SimpleMap`] with the given [`Mapper`].
-    pub fn simple_map<F>(f: F) -> Self
+    /// Create a new instance of [`MappingMode::SimpleHooked`] with the given [`Hook`].
+    pub fn simple_hooked<F>(f: F) -> Self
     where
-        F: Mapper + 'static,
+        F: Hook + 'static,
     {
-        Self::SimpleMap(Box::new(f))
+        Self::SimpleHooked(Box::new(f))
     }
 
-    /// Create a new instance of [`MappingMode::StrictMap`] with the given [`Mapper`].
-    pub fn strict_map<F>(f: F) -> Self
+    /// Create a new instance of [`MappingMode::StrictHooked`] with the given [`Hook`].
+    pub fn strict_hooked<F>(f: F) -> Self
     where
-        F: Mapper + 'static,
+        F: Hook + 'static,
     {
-        Self::StrictMap(Box::new(f))
+        Self::StrictHooked(Box::new(f))
     }
 }
 
@@ -493,8 +493,8 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                 data.apply_or_insert(entity_mut, &**component);
             }
 
-            if let MappingMode::SimpleMap(mapper) | MappingMode::StrictMap(mapper) = &mapping {
-                mapper(entity_mut);
+            if let MappingMode::SimpleHooked(hook) | MappingMode::StrictHooked(hook) = &mapping {
+                hook(entity_mut);
             }
         }
 
