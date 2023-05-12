@@ -16,6 +16,10 @@ pub(crate) struct SaveableEntity {
 }
 
 impl SaveableEntity {
+    pub fn is_empty(&self) -> bool {
+        self.components.is_empty()
+    }
+
     /// Attempts to map the stored index with the given [`EntityMap`].
     pub fn map(&self, map: &EntityMap) -> Option<Entity> {
         map.get(Entity::from_raw(self.entity)).ok()

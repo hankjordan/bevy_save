@@ -11,32 +11,13 @@ use crate::{
 /// A complete snapshot of the game state.
 ///
 /// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
+#[derive(Default)]
 pub struct Snapshot {
     pub(crate) snapshot: RawSnapshot,
     pub(crate) rollbacks: Rollbacks,
 }
 
 impl Snapshot {
-    /// Returns a [`Snapshot`] of the current [`World`] state.
-    /// Includes [`Rollbacks`].
-    pub fn from_world(world: &World) -> Self {
-        Self::from_world_with_filter(world, |_| true)
-    }
-
-    /// Returns a [`Snapshot`] of the current [`World`] state filtered by `filter`.
-    pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        let snapshot = RawSnapshot::from_world_with_filter(world, filter);
-        let rollbacks = world.resource::<Rollbacks>().clone_value();
-
-        Self {
-            snapshot,
-            rollbacks,
-        }
-    }
-
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
     ///
     /// # Errors
@@ -71,6 +52,51 @@ impl Snapshot {
     /// Create an owning [`Applier`] from the [`Snapshot`] and the [`World`].
     pub fn into_applier(self, world: &mut World) -> Applier<Self> {
         Applier::new(world, self)
+    }
+}
+
+impl Capture for Snapshot {
+    fn extract_entities_with_filter<F>(
+        &mut self,
+        world: &World,
+        entities: impl Iterator<Item = Entity>,
+        filter: F,
+    ) -> &mut Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        self.snapshot
+            .extract_entities_with_filter(world, entities, filter);
+        self
+    }
+
+    fn extract_resources_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        self.snapshot.extract_resources_with_filter(world, filter);
+        self.rollbacks = world.resource::<Rollbacks>().clone_value();
+        self
+    }
+
+    fn clear(&mut self) -> &mut Self {
+        self.clear_entities().clear_resources()
+    }
+
+    fn clear_entities(&mut self) -> &mut Self {
+        self.snapshot.clear_entities();
+        self
+    }
+
+    fn clear_resources(&mut self) -> &mut Self {
+        self.snapshot.clear_resources();
+        self.rollbacks = Rollbacks::default();
+        self
+    }
+
+    fn remove_empty(&mut self) -> &mut Self {
+        self.snapshot.remove_empty();
+        self
     }
 }
 

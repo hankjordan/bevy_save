@@ -15,13 +15,19 @@ use crate::{
     prelude::*,
 };
 
+#[derive(Default)]
 pub(crate) struct RawSnapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
     pub(crate) entities: Vec<SaveableEntity>,
 }
 
-impl RawSnapshot {
-    pub(crate) fn from_world_with_filter<F>(world: &World, filter: F) -> Self
+impl Capture for RawSnapshot {
+    fn extract_entities_with_filter<F>(
+        &mut self,
+        world: &World,
+        entities: impl Iterator<Item = Entity>,
+        filter: F,
+    ) -> &mut Self
     where
         F: Fn(&&TypeRegistration) -> bool,
     {
@@ -30,22 +36,9 @@ impl RawSnapshot {
 
         let saveables = world.resource::<SaveableRegistry>();
 
-        // Resources
+        let mut saved = Vec::new();
 
-        let resources = saveables
-            .types()
-            .filter_map(|name| registry.get_with_name(name))
-            .filter(&filter)
-            .filter_map(|reg| reg.data::<ReflectResource>())
-            .filter_map(|res| res.reflect(world))
-            .map(|reflect| reflect.clone_value())
-            .collect::<Vec<_>>();
-
-        // Entities
-
-        let mut entities = Vec::new();
-
-        for entity in world.iter_entities().map(|entity| entity.id()) {
+        for entity in entities {
             let mut entry = SaveableEntity {
                 entity: entity.index(),
                 components: Vec::new(),
@@ -69,13 +62,52 @@ impl RawSnapshot {
                 }
             }
 
-            entities.push(entry);
+            saved.push(entry);
         }
 
-        Self {
-            resources,
-            entities,
-        }
+        self.entities = saved;
+        self
+    }
+
+    fn extract_resources_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        let registry_arc = world.resource::<AppTypeRegistry>();
+        let registry = registry_arc.read();
+
+        let saveables = world.resource::<SaveableRegistry>();
+
+        let resources = saveables
+            .types()
+            .filter_map(|name| registry.get_with_name(name))
+            .filter(&filter)
+            .filter_map(|reg| reg.data::<ReflectResource>())
+            .filter_map(|res| res.reflect(world))
+            .map(|reflect| reflect.clone_value())
+            .collect::<Vec<_>>();
+
+        self.resources = resources;
+        self
+    }
+
+    fn clear(&mut self) -> &mut Self {
+        self.clear_entities().clear_resources()
+    }
+
+    fn clear_entities(&mut self) -> &mut Self {
+        self.entities.clear();
+        self
+    }
+
+    fn clear_resources(&mut self) -> &mut Self {
+        self.resources.clear();
+        self
+    }
+
+    fn remove_empty(&mut self) -> &mut Self {
+        self.entities.retain(|e| !e.is_empty());
+        self
     }
 }
 

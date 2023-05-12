@@ -11,34 +11,12 @@ use crate::{
 /// A rollback snapshot of the game state.
 ///
 /// [`Rollback`] excludes types that opt out of rollback.
+#[derive(Default)]
 pub struct Rollback {
     pub(crate) snapshot: RawSnapshot,
 }
 
 impl Rollback {
-    /// Returns a [`Rollback`] of the current [`World`] state.
-    ///
-    /// This excludes [`Rollbacks`] and any saveable that ignores rollbacking.
-    pub fn from_world(world: &World) -> Self {
-        Self::from_world_with_filter(world, |_| true)
-    }
-
-    /// Returns a [`Rollback`] of the current [`World`] state, filtered by `filter`.
-    ///
-    /// This excludes [`Rollbacks`] and any saveable that ignores rollbacking.
-    pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        let registry = world.resource::<SaveableRegistry>();
-
-        let snapshot = RawSnapshot::from_world_with_filter(world, |reg| {
-            registry.can_rollback(reg.type_name()) && filter(reg)
-        });
-
-        Self { snapshot }
-    }
-
     /// Apply the [`Rollback`] to the [`World`].
     ///
     /// # Errors
@@ -74,6 +52,60 @@ impl Rollback {
     /// Create an owning [`Applier`] from the [`Rollback`] and the [`World`].
     pub fn into_applier(self, world: &mut World) -> Applier<Self> {
         Applier::new(world, self)
+    }
+}
+
+impl Capture for Rollback {
+    fn extract_entities_with_filter<F>(
+        &mut self,
+        world: &World,
+        entities: impl Iterator<Item = Entity>,
+        filter: F,
+    ) -> &mut Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        let registry = world.resource::<SaveableRegistry>();
+
+        self.snapshot
+            .extract_entities_with_filter(world, entities, |reg| {
+                registry.can_rollback(reg.type_name()) && filter(reg)
+            });
+
+        self
+    }
+
+    fn extract_resources_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        let registry = world.resource::<SaveableRegistry>();
+
+        self.snapshot.extract_resources_with_filter(world, |reg| {
+            registry.can_rollback(reg.type_name()) && filter(reg)
+        });
+
+        self
+    }
+
+    fn clear(&mut self) -> &mut Self {
+        self.snapshot.clear();
+        self
+    }
+
+    fn clear_entities(&mut self) -> &mut Self {
+        self.snapshot.clear_entities();
+        self
+    }
+
+    fn clear_resources(&mut self) -> &mut Self {
+        self.snapshot.clear_resources();
+        self
+    }
+
+    fn remove_empty(&mut self) -> &mut Self {
+        self.snapshot.remove_empty();
+        self
     }
 }
 

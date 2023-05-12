@@ -13,6 +13,7 @@ pub use bevy_save_erased_serde as erased_serde;
 pub use crate::{
     app::*,
     applier::*,
+    builder::*,
     clone::*,
     dir::*,
     error::*,
@@ -27,6 +28,7 @@ pub use crate::{
 
 mod app;
 mod applier;
+mod builder;
 mod clone;
 mod dir;
 mod entity;
@@ -44,6 +46,7 @@ pub mod prelude {
     pub use crate::{
         app::*,
         applier::*,
+        builder::*,
         clone::*,
         dir::*,
         erased_serde::{
