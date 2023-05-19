@@ -29,10 +29,11 @@ impl Rollback {
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
     /// Rollback::builder(world)
+    ///     .extract_all()
     ///     .build();
     /// ```
     pub fn from_world(world: &World) -> Self {
-        Self::builder(world).build()
+        Self::builder(world).extract_all().build()
     }
 
     /// Returns a [`Rollback`] of the current [`World`] state filtered by `filter`.
@@ -48,13 +49,14 @@ impl Rollback {
     /// # let filter = |_: &&bevy::reflect::TypeRegistration| true;
     /// Rollback::builder(world)
     ///     .filter(filter)
+    ///     .extract_all()
     ///     .build();
     /// ```
     pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
     where
         F: Fn(&&TypeRegistration) -> bool,
     {
-        Self::builder(world).filter(filter).build()
+        Self::builder(world).filter(filter).extract_all().build()
     }
 
     /// Create a [`Builder`] from the [`World`], allowing you to create partial or filtered snapshots.

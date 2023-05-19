@@ -193,9 +193,6 @@ impl WorldSaveableExt for World {
             .deserialize_applier(&mut loader.deserializer(&mut reader))
             .map_err(SaveableError::other)?;
 
-        // TODO: investigate
-        std::mem::drop(reader);
-
         Ok(applier)
     }
 }
