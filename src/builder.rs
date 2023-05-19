@@ -1,8 +1,6 @@
-use std::{
-    collections::{
-        BTreeMap,
-        HashSet,
-    },
+use std::collections::{
+    BTreeMap,
+    HashSet,
 };
 
 use bevy::{
@@ -21,12 +19,43 @@ use crate::{
 };
 
 /// A snapshot builder that may extract entities and resources from a [`World`].
-pub struct Builder<'w, S, F> {
+pub struct Builder<'w, S = (), F = fn(&&TypeRegistration) -> bool> {
     world: &'w World,
     filter: F,
     entities: BTreeMap<Entity, SaveableEntity>,
     resources: BTreeMap<String, Box<dyn Reflect>>,
     snapshot: Option<S>,
+}
+
+impl<'w> Builder<'w> {
+    /// Create a new [`Builder`] from the [`World`] and snapshot.
+    pub fn new<S>(world: &'w World) -> Builder<'w, S> {
+        Builder {
+            world,
+            filter: |_| true,
+            entities: BTreeMap::default(),
+            resources: BTreeMap::default(),
+            snapshot: None,
+        }
+    }
+}
+
+impl<'w, S> Builder<'w, S> {
+    /// Change the type filter of the builder.
+    ///
+    /// Only matching types are included in the snapshot.
+    pub fn filter<F>(self, filter: F) -> Builder<'w, S, F>
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        Builder {
+            world: self.world,
+            filter,
+            entities: self.entities,
+            resources: self.resources,
+            snapshot: self.snapshot,
+        }
+    }
 }
 
 /// A snapshot builder that may extract entities and resources from a [`World`].
@@ -72,6 +101,7 @@ pub trait Build {
     fn build(self) -> Self::Output;
 }
 
+#[doc(hidden)]
 impl<'w, F> Build for Builder<'w, RawSnapshot, F>
 where
     F: Fn(&&TypeRegistration) -> bool,
@@ -125,13 +155,10 @@ where
     ) -> &mut Self {
         let names = resources.map(|s| s.into()).collect::<HashSet<String>>();
 
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: |reg: &&TypeRegistration| names.contains(reg.type_name()) && (self.filter)(reg),
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+                names.contains(reg.type_name()) && (self.filter)(reg)
+            });
 
         builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
@@ -174,13 +201,7 @@ where
     type Output = Snapshot;
 
     fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: &self.filter,
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
 
         builder.extract_entities(entities);
         self.entities.append(&mut builder.entities);
@@ -196,44 +217,44 @@ where
         &mut self,
         resources: impl Iterator<Item = S>,
     ) -> &mut Self {
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: &self.filter,
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+        let resources = resources.map(|i| i.into()).collect::<HashSet<_>>();
 
-        builder.extract_resources(resources);
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+
+        builder.extract_resources(resources.iter());
         self.resources.append(&mut builder.resources);
 
-        if self.snapshot.is_none() {
-            self.snapshot = Some(Snapshot::default());
+        if resources.contains(std::any::type_name::<Rollbacks>()) {
+            self.snapshot
+                .get_or_insert_with(Snapshot::default)
+                .rollbacks = self.world.resource::<Rollbacks>().clone_value();
         }
-
-        self.snapshot.as_mut().unwrap().rollbacks =
-            self.world.resource::<Rollbacks>().clone_value();
 
         self
     }
 
     fn extract_all_resources(&mut self) -> &mut Self {
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: &self.filter,
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
 
         builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
+
+        self.snapshot
+            .get_or_insert_with(Snapshot::default)
+            .rollbacks = self.world.resource::<Rollbacks>().clone_value();
 
         self
     }
 
     fn build(self) -> Self::Output {
-        todo!()
+        let mut snapshot = self.snapshot.unwrap_or_else(Snapshot::default);
+
+        snapshot.snapshot = RawSnapshot {
+            entities: self.entities.into_values().collect(),
+            resources: self.resources.into_values().collect(),
+        };
+
+        snapshot
     }
 }
 
@@ -246,15 +267,10 @@ where
     fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: |reg: &&TypeRegistration| {
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            },
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+            });
 
         builder.extract_entities(entities);
         self.entities.append(&mut builder.entities);
@@ -272,15 +288,10 @@ where
     ) -> &mut Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: |reg: &&TypeRegistration| {
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            },
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+            });
 
         builder.extract_resources(resources);
         self.resources.append(&mut builder.resources);
@@ -291,15 +302,10 @@ where
     fn extract_all_resources(&mut self) -> &mut Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder: Builder<RawSnapshot, _> = Builder {
-            world: self.world,
-            filter: |reg: &&TypeRegistration| {
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            },
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
-        };
+            });
 
         builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
@@ -315,123 +321,4 @@ where
             },
         }
     }
-}
-
-/// Snapshot trait
-pub trait Capture: Sized + Default {
-    /// Create a snapshot with all entities and resources from the [`World`].
-    fn extract(world: &World) -> Self {
-        Self::extract_with_filter(world, |_| true)
-    }
-
-    /// Create a snapshot with all entities and resources from the [`World`].
-    ///
-    /// Filters extracted components and resources with the given filter.
-    fn extract_with_filter<F>(world: &World, filter: F) -> Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        let mut snapshot = Self::default();
-
-        snapshot.extract_all_entities_with_filter(world, &filter);
-        snapshot.extract_resources_with_filter(world, filter);
-
-        snapshot
-    }
-
-    /// Extract a single entity from the [`World`].
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_entity(&mut self, world: &World, entity: Entity) -> &mut Self {
-        self.extract_entities(world, [entity].into_iter())
-    }
-
-    /// Extract a single entity from the [`World`].
-    ///
-    /// Filters extracted components with the given filter.
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_entity_with_filter<F>(
-        &mut self,
-        world: &World,
-        entity: Entity,
-        filter: F,
-    ) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        self.extract_entities_with_filter(world, [entity].into_iter(), filter)
-    }
-
-    /// Extract all entities from the [`World`].
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_all_entities(&mut self, world: &World) -> &mut Self {
-        self.extract_all_entities_with_filter(world, |_| true)
-    }
-
-    /// Extract all entities from the [`World`].
-    ///
-    /// Filters extracted components with the given filter.
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_all_entities_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        self.extract_entities_with_filter(world, world.iter_entities().map(|e| e.id()), &filter)
-    }
-
-    /// Extract entities from the [`World`].
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_entities(
-        &mut self,
-        world: &World,
-        entities: impl Iterator<Item = Entity>,
-    ) -> &mut Self {
-        self.extract_entities_with_filter(world, entities, |_| true)
-    }
-
-    /// Extract entities from the [`World`].
-    ///
-    /// Filters extracted components with the given filter.
-    ///
-    /// Re-extracting an entity that was already extracted will create a duplicate.
-    fn extract_entities_with_filter<F>(
-        &mut self,
-        world: &World,
-        entities: impl Iterator<Item = Entity>,
-        filter: F,
-    ) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool;
-
-    /// Extract resources from the [`World`].
-    ///
-    /// Re-extracting a resource that was already extracted will create a duplicate.
-    fn extract_resources(&mut self, world: &World) -> &mut Self {
-        self.extract_resources_with_filter(world, |_| true)
-    }
-
-    /// Extract resources from the [`World`].
-    ///
-    /// Filters extracted resources with the given filter.
-    ///
-    /// Re-extracting a resource that was already extracted will create a duplicate.
-    fn extract_resources_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool;
-
-    /// Clears all extracted entities and resources.
-    fn clear(&mut self) -> &mut Self;
-
-    /// Clears all extracted entities.
-    fn clear_entities(&mut self) -> &mut Self;
-
-    /// Clears all extracted resources.
-    fn clear_resources(&mut self) -> &mut Self;
-
-    /// Clears all entities that do not have any components.
-    fn remove_empty(&mut self) -> &mut Self;
 }

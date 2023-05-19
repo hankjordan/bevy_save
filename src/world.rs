@@ -26,7 +26,6 @@ use crate::{
     AppLoader,
     AppSaver,
     Applier,
-    Capture,
     CloneReflect,
     Rollback,
     Rollbacks,
@@ -103,11 +102,11 @@ pub trait WorldSaveableExt: Sized {
 
 impl WorldSaveableExt for World {
     fn snapshot(&self) -> Snapshot {
-        Snapshot::extract(self)
+        Snapshot::from_world(self)
     }
 
     fn checkpoint(&mut self) {
-        let rollback = Rollback::extract(self);
+        let rollback = Rollback::from_world(self);
         let mut state = self.resource_mut::<Rollbacks>();
         state.checkpoint(rollback);
     }

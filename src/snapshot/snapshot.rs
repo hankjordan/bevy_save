@@ -11,13 +11,60 @@ use crate::{
 /// A complete snapshot of the game state.
 ///
 /// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
-#[derive(Default)]
 pub struct Snapshot {
     pub(crate) snapshot: RawSnapshot,
     pub(crate) rollbacks: Rollbacks,
 }
 
 impl Snapshot {
+    pub(crate) fn default() -> Self {
+        Self {
+            snapshot: RawSnapshot::default(),
+            rollbacks: Rollbacks::default(),
+        }
+    }
+}
+
+impl Snapshot {
+    /// Returns a complete [`Snapshot`] of the current [`World`] state.
+    ///
+    /// Contains all saveable entities and resources, including [`Rollbacks`].
+    ///
+    /// # Shortcut for
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// # let world = &World::default();
+    /// Snapshot::builder(world)
+    ///     .build();
+    pub fn from_world(world: &World) -> Self {
+        Self::builder(world).build()
+    }
+
+    /// Returns a [`Snapshot`] of the current [`World`] state filtered by `filter`.
+    /// 
+    /// # Shortcut for
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// # let world = &World::default();
+    /// # let filter = |_: &&bevy::reflect::TypeRegistration| true;
+    /// Snapshot::builder(world)
+    ///     .filter(filter)
+    ///     .build();
+    /// ```
+    pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
+    where
+        F: Fn(&&TypeRegistration) -> bool,
+    {
+        Self::builder(world).filter(filter).build()
+    }
+
+    /// Create a [`Builder`] from the [`World`], allowing you to create partial or filtered snapshots.
+    pub fn builder(world: &World) -> Builder<Self> {
+        Builder::new(world)
+    }
+
     /// Apply the [`Snapshot`] to the [`World`], restoring it to the saved state.
     ///
     /// # Errors
@@ -52,51 +99,6 @@ impl Snapshot {
     /// Create an owning [`Applier`] from the [`Snapshot`] and the [`World`].
     pub fn into_applier(self, world: &mut World) -> Applier<Self> {
         Applier::new(world, self)
-    }
-}
-
-impl Capture for Snapshot {
-    fn extract_entities_with_filter<F>(
-        &mut self,
-        world: &World,
-        entities: impl Iterator<Item = Entity>,
-        filter: F,
-    ) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        self.snapshot
-            .extract_entities_with_filter(world, entities, filter);
-        self
-    }
-
-    fn extract_resources_with_filter<F>(&mut self, world: &World, filter: F) -> &mut Self
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        self.snapshot.extract_resources_with_filter(world, filter);
-        self.rollbacks = world.resource::<Rollbacks>().clone_value();
-        self
-    }
-
-    fn clear(&mut self) -> &mut Self {
-        self.clear_entities().clear_resources()
-    }
-
-    fn clear_entities(&mut self) -> &mut Self {
-        self.snapshot.clear_entities();
-        self
-    }
-
-    fn clear_resources(&mut self) -> &mut Self {
-        self.snapshot.clear_resources();
-        self.rollbacks = Rollbacks::default();
-        self
-    }
-
-    fn remove_empty(&mut self) -> &mut Self {
-        self.snapshot.remove_empty();
-        self
     }
 }
 
