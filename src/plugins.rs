@@ -36,6 +36,7 @@ pub struct SaverPlugin;
 impl Plugin for SaverPlugin {
     fn build(&self, app: &mut App) {
         app
+            .init_resource::<AppBackend>()
             .init_resource::<AppSaver>()
             .init_resource::<AppLoader>();
     }

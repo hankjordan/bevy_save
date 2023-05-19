@@ -73,6 +73,9 @@ impl<'w> std::io::Write for Writer<'w> {
     }
 }
 
+/// An owned [`Writer`].
+pub type OwnedWriter = Writer<'static>;
+
 // Reader |------------------------------------------------------------------------------------------------------------
 
 /// A borrowed or owned reader.
@@ -137,6 +140,9 @@ impl<'r> std::io::Read for Reader<'r> {
         (**self).read_exact(buf)
     }
 }
+
+/// An owned [`Reader`].
+pub type OwnedReader = Reader<'static>;
 
 // Saver / Loader |----------------------------------------------------------------------------------------------------
 

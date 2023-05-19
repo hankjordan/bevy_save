@@ -54,7 +54,7 @@ fn handle_save_input(world: &mut World) {
     // `bevy_save` will transparently save and load with our custom format.
 
     if keys.just_released(KeyCode::Return) {
-        world.save("json");
+        world.save("json").expect("Failed to save");
     } else if keys.just_released(KeyCode::Back) {
         world.load("json").expect("Failed to load");
     }

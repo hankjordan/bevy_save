@@ -15,14 +15,18 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
 
 ### Save file management
 
-`bevy_save` automatically uses your app's workspace name to create a unique, permanent save directory in the correct place for whatever platform it is running on.
+`bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for whatever platform it is running on.
 
 Supports Windows, Linux, and MacOS. WASM support is in progress.
 
-- `World::save()` and `World::load()` uses your app's save directory to save and load your game state to disk, handling all serialization and deserialization for you.
-- These methods use the `AppSaver` and `AppLoader` resources to determine what save format to use.
-- By default, this is set up to use `rmp_serde` for serialization and deserialization.
-- However, is extremely easy to switch to a custom save file format, see `"examples/json.rs"` for how you can do this.
+- `World::save()` and `World::load()` uses your app's save location to save and load your game state, handling all serialization and deserialization for you.
+- The `AppSaver` and `AppLoader` resources determine what save format is used.
+  - By default, this is set up to use `rmp_serde` for serialization and deserialization.
+  - However, is extremely easy to switch to a custom save file format, see `"examples/json.rs"` for how you can do this.
+- The `AppBackend` resource determines how and where to store save files.
+  - The default `FileIO` backend saves each named snapshot to an individual file on the disk.
+  - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
+  - You can override the backend by modifying the `AppBackend` resource with your own `Backend` implementation.
 
 ### Snapshots and Rollback
 

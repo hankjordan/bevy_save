@@ -608,7 +608,7 @@ fn handle_save_input(world: &mut World) {
         world.checkpoint();
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
-        world.save("breakout");
+        world.save("breakout").expect("Failed to save");
         text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
         world.load("breakout").expect("Failed to load");

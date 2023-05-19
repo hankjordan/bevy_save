@@ -1,18 +1,4 @@
-use std::{
-    fs::{
-        self,
-        File,
-    },
-    io::{
-        BufReader,
-        Write,
-    },
-};
-
-use bevy::{
-    prelude::*,
-    tasks::IoTaskPool,
-};
+use bevy::prelude::*;
 use serde::{
     de::{
         DeserializeSeed,
@@ -22,7 +8,7 @@ use serde::{
 };
 
 use crate::{
-    get_save_file,
+    AppBackend,
     AppLoader,
     AppSaver,
     Applier,
@@ -33,7 +19,6 @@ use crate::{
     Snapshot,
     SnapshotDeserializer,
     SnapshotSerializer,
-    SAVE_DIR,
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
@@ -51,6 +36,8 @@ pub trait WorldSaveableExt: Sized {
     fn rollback(&mut self, checkpoints: isize) -> Result<(), SaveableError>;
 
     /// Rolls back / forward the [`World`] state.
+    /// 
+    /// The applier allows you to customize how the [`Rollback`] will be applied to the [`World`].
     ///
     /// # Errors
     /// - See [`SaveableError`]
@@ -73,6 +60,8 @@ pub trait WorldSaveableExt: Sized {
     ) -> Result<(), D::Error>;
 
     /// Analogue of [`serde::Deserialize`], but applies result to current [`World`] instead of creating a new one.
+    /// 
+    /// The applier allows you to customize how the [`Snapshot`] will be applied to the [`World`].
     ///
     /// # Errors
     /// - See [`SaveableError`]
@@ -83,7 +72,11 @@ pub trait WorldSaveableExt: Sized {
     ) -> Result<Applier<Snapshot>, D::Error>;
 
     /// Saves the game state to a named save.
-    fn save(&self, name: &str);
+    ///
+    /// # Errors
+    /// - See [`SaveableError`]
+    /// - See [`serde::Serialize`]
+    fn save(&self, name: &str) -> Result<(), SaveableError>;
 
     /// Loads the game state from a named save.
     ///
@@ -93,6 +86,8 @@ pub trait WorldSaveableExt: Sized {
     fn load(&mut self, name: &str) -> Result<(), SaveableError>;
 
     /// Loads the game state from a named save.
+    /// 
+    /// The applier allows you to customize how the [`Snapshot`] will be applied to the [`World`].
     ///
     /// # Errors
     /// - See [`SaveableError`]
@@ -157,24 +152,18 @@ impl WorldSaveableExt for World {
         Ok(snap.into_applier(self))
     }
 
-    fn save(&self, name: &str) {
-        let mut buf = Vec::new();
+    fn save(&self, name: &str) -> Result<(), SaveableError> {
+        let mut writer = self
+            .resource::<AppBackend>()
+            .writer(name)
+            .map_err(SaveableError::other)?;
 
         let saver = self.resource::<AppSaver>();
-        self.serialize(&mut saver.serializer(&mut buf))
-            .expect("Error serializing save");
 
-        let name = name.to_owned();
+        self.serialize(&mut saver.serializer(&mut writer))
+            .map_err(SaveableError::other)?;
 
-        IoTaskPool::get()
-            .spawn(async move {
-                fs::create_dir_all(&*SAVE_DIR).expect("Could not create save directory");
-
-                File::create(get_save_file(&name))
-                    .and_then(|mut file| file.write(buf.as_slice()))
-                    .expect("Error writing save to file");
-            })
-            .detach();
+        Ok(())
     }
 
     fn load(&mut self, name: &str) -> Result<(), SaveableError> {
@@ -182,10 +171,7 @@ impl WorldSaveableExt for World {
     }
 
     fn load_applier(&mut self, name: &str) -> Result<Applier<Snapshot>, SaveableError> {
-        let path = get_save_file(name);
-        let file = File::open(path).map_err(SaveableError::other)?;
-
-        let mut reader = BufReader::new(file);
+        let mut reader = self.resource::<AppBackend>().reader(name)?;
 
         let loader = self.resource::<AppLoader>();
 

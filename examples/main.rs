@@ -79,7 +79,7 @@ fn interact(
         world.checkpoint();
     } else if keys.just_released(KeyCode::Return) {
         info!("Save");
-        world.save("example");
+        world.save("example").expect("Failed to save");
     } else if keys.just_released(KeyCode::Back) {
         info!("Load");
         world.load("example").expect("Failed to load");
