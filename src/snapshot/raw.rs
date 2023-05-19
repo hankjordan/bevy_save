@@ -7,6 +7,7 @@ use bevy::{
         system::CommandQueue,
     },
     prelude::*,
+    reflect::TypeRegistration,
 };
 
 use crate::{
@@ -24,6 +25,99 @@ impl RawSnapshot {
         Self {
             resources: Vec::default(),
             entities: Vec::default(),
+        }
+    }
+}
+
+#[doc(hidden)]
+impl<'w, F> Build for Builder<'w, RawSnapshot, F>
+where
+    F: Fn(&&TypeRegistration) -> bool,
+{
+    type Output = RawSnapshot;
+
+    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
+        let registry_arc = self.world.resource::<AppTypeRegistry>();
+        let registry = registry_arc.read();
+
+        let saveables = self.world.resource::<SaveableRegistry>();
+
+        for entity in entities {
+            let mut entry = SaveableEntity {
+                entity: entity.index(),
+                components: Vec::new(),
+            };
+
+            let entity = self.world.entity(entity);
+
+            for component_id in entity.archetype().components() {
+                let reflect = self
+                    .world
+                    .components()
+                    .get_info(component_id)
+                    .filter(|info| saveables.contains(info.name()))
+                    .and_then(|info| info.type_id())
+                    .and_then(|id| registry.get(id))
+                    .filter(&self.filter)
+                    .and_then(|reg| reg.data::<ReflectComponent>())
+                    .and_then(|reflect| reflect.reflect(entity));
+
+                if let Some(reflect) = reflect {
+                    entry.components.push(reflect.clone_value());
+                }
+            }
+
+            self.entities.insert(entity.id(), entry);
+        }
+
+        self
+    }
+
+    fn extract_all_entities(&mut self) -> &mut Self {
+        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    }
+
+    fn extract_resources<S: Into<String>>(
+        &mut self,
+        resources: impl Iterator<Item = S>,
+    ) -> &mut Self {
+        let names = resources.map(|s| s.into()).collect::<HashSet<String>>();
+
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+                names.contains(reg.type_name()) && (self.filter)(reg)
+            });
+
+        builder.extract_all_resources();
+        self.resources.append(&mut builder.resources);
+
+        self
+    }
+
+    fn extract_all_resources(&mut self) -> &mut Self {
+        let registry_arc = self.world.resource::<AppTypeRegistry>();
+        let registry = registry_arc.read();
+
+        let saveables = self.world.resource::<SaveableRegistry>();
+
+        saveables
+            .types()
+            .filter_map(|name| Some((name, registry.get_with_name(name)?)))
+            .filter(|(_, reg)| (self.filter)(reg))
+            .filter_map(|(name, reg)| Some((name, reg.data::<ReflectResource>()?)))
+            .filter_map(|(name, res)| Some((name, res.reflect(self.world)?)))
+            .map(|(name, reflect)| (name, reflect.clone_value()))
+            .for_each(|(name, reflect)| {
+                self.resources.insert(name.clone(), reflect);
+            });
+
+        self
+    }
+
+    fn build(self) -> Self::Output {
+        RawSnapshot {
+            resources: self.resources.into_values().collect(),
+            entities: self.entities.into_values().collect(),
         }
     }
 }

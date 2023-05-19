@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bevy::{
     prelude::*,
     reflect::TypeRegistration,
@@ -42,7 +44,7 @@ impl Snapshot {
     }
 
     /// Returns a [`Snapshot`] of the current [`World`] state filtered by `filter`.
-    /// 
+    ///
     /// # Shortcut for
     /// ```
     /// # use bevy::prelude::*;
@@ -99,6 +101,70 @@ impl Snapshot {
     /// Create an owning [`Applier`] from the [`Snapshot`] and the [`World`].
     pub fn into_applier(self, world: &mut World) -> Applier<Self> {
         Applier::new(world, self)
+    }
+}
+
+impl<'w, F> Build for Builder<'w, Snapshot, F>
+where
+    F: Fn(&&TypeRegistration) -> bool,
+{
+    type Output = Snapshot;
+
+    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+
+        builder.extract_entities(entities);
+        self.entities.append(&mut builder.entities);
+
+        self
+    }
+
+    fn extract_all_entities(&mut self) -> &mut Self {
+        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    }
+
+    fn extract_resources<S: Into<String>>(
+        &mut self,
+        resources: impl Iterator<Item = S>,
+    ) -> &mut Self {
+        let resources = resources.map(|i| i.into()).collect::<HashSet<_>>();
+
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+
+        builder.extract_resources(resources.iter());
+        self.resources.append(&mut builder.resources);
+
+        if resources.contains(std::any::type_name::<Rollbacks>()) {
+            self.snapshot
+                .get_or_insert_with(Snapshot::default)
+                .rollbacks = self.world.resource::<Rollbacks>().clone_value();
+        }
+
+        self
+    }
+
+    fn extract_all_resources(&mut self) -> &mut Self {
+        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+
+        builder.extract_all_resources();
+        self.resources.append(&mut builder.resources);
+
+        self.snapshot
+            .get_or_insert_with(Snapshot::default)
+            .rollbacks = self.world.resource::<Rollbacks>().clone_value();
+
+        self
+    }
+
+    fn build(self) -> Self::Output {
+        let mut snapshot = self.snapshot.unwrap_or_else(Snapshot::default);
+
+        snapshot.snapshot = RawSnapshot {
+            entities: self.entities.into_values().collect(),
+            resources: self.resources.into_values().collect(),
+        };
+
+        snapshot
     }
 }
 

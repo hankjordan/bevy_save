@@ -19,7 +19,7 @@ impl Rollback {
     /// Returns a [`Rollback`] of the current [`World`] state.
     ///
     /// This excludes [`Rollbacks`] and any saveable that ignores rollbacking.
-    /// 
+    ///
     /// # Shortcut for
     /// ```
     /// # use bevy::prelude::*;
@@ -91,6 +91,71 @@ impl Rollback {
     /// Create an owning [`Applier`] from the [`Rollback`] and the [`World`].
     pub fn into_applier(self, world: &mut World) -> Applier<Self> {
         Applier::new(world, self)
+    }
+}
+
+impl<'w, F> Build for Builder<'w, Rollback, F>
+where
+    F: Fn(&&TypeRegistration) -> bool,
+{
+    type Output = Rollback;
+
+    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
+        let registry = self.world.resource::<SaveableRegistry>();
+
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+            });
+
+        builder.extract_entities(entities);
+        self.entities.append(&mut builder.entities);
+
+        self
+    }
+
+    fn extract_all_entities(&mut self) -> &mut Self {
+        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    }
+
+    fn extract_resources<S: Into<String>>(
+        &mut self,
+        resources: impl Iterator<Item = S>,
+    ) -> &mut Self {
+        let registry = self.world.resource::<SaveableRegistry>();
+
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+            });
+
+        builder.extract_resources(resources);
+        self.resources.append(&mut builder.resources);
+
+        self
+    }
+
+    fn extract_all_resources(&mut self) -> &mut Self {
+        let registry = self.world.resource::<SaveableRegistry>();
+
+        let mut builder =
+            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+            });
+
+        builder.extract_all_resources();
+        self.resources.append(&mut builder.resources);
+
+        self
+    }
+
+    fn build(self) -> Self::Output {
+        Rollback {
+            snapshot: RawSnapshot {
+                entities: self.entities.into_values().collect(),
+                resources: self.resources.into_values().collect(),
+            },
+        }
     }
 }
 
