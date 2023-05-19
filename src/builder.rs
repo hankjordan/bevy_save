@@ -18,7 +18,7 @@ pub struct Builder<'w, S = (), F = fn(&&TypeRegistration) -> bool> {
 
 impl<'w> Builder<'w> {
     /// Create a new [`Builder`] from the [`World`] and snapshot.
-    /// 
+    ///
     /// You must call at least one of the `extract` methods or else the output snapshot will be empty.
     pub fn new<S>(world: &'w World) -> Builder<'w, S> {
         Builder {
@@ -51,26 +51,26 @@ impl<'w, S> Builder<'w, S> {
 
 impl<'w, S, F> Builder<'w, S, F> {
     /// Clear all extracted entities and resources.
-    pub fn clear(&mut self) -> &mut Self {
+    pub fn clear(self) -> Self {
         self.clear_entities().clear_resources()
     }
 
     /// Clear all extracted entities.
-    pub fn clear_entities(&mut self) -> &mut Self {
+    pub fn clear_entities(mut self) -> Self {
         self.entities.clear();
         self.snapshot = None;
         self
     }
 
     /// Clear all extracted resources.
-    pub fn clear_resources(&mut self) -> &mut Self {
+    pub fn clear_resources(mut self) -> Self {
         self.resources.clear();
         self.snapshot = None;
         self
     }
 
     /// Clear all entities without any components.
-    pub fn clear_empty(&mut self) -> &mut Self {
+    pub fn clear_empty(mut self) -> Self {
         self.entities.retain(|_, e| !e.is_empty());
         self
     }
@@ -81,39 +81,36 @@ impl<'w, S, F> Builder<'w, S, F> {
 /// Filters extracted components and resources with the given filter.
 ///
 /// Re-extracting an entity or resource that was already extracted will cause the previously extracted data to be overwritten.
-pub trait Build {
+pub trait Build: Sized {
     /// The snapshot being built.
     type Output;
 
     /// Extract all entities and resources from the builder's [`World`].
-    fn extract_all(&mut self) -> &mut Self {
+    fn extract_all(self) -> Self {
         self.extract_all_entities().extract_all_resources()
     }
 
     /// Extract a single entity from the builder's [`World`].
-    fn extract_entity(&mut self, entity: Entity) -> &mut Self {
+    fn extract_entity(self, entity: Entity) -> Self {
         self.extract_entities([entity].into_iter())
     }
 
     /// Extract entities from the builder's [`World`].
-    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self;
+    fn extract_entities(self, entities: impl Iterator<Item = Entity>) -> Self;
 
     /// Extract all entities from the builder's [`World`].
-    fn extract_all_entities(&mut self) -> &mut Self;
+    fn extract_all_entities(self) -> Self;
 
     /// Extract a single resource with the given type name from the builder's [`World`].
-    fn extract_resource<S: Into<String>>(&mut self, resource: S) -> &mut Self {
+    fn extract_resource<S: Into<String>>(self, resource: S) -> Self {
         self.extract_resources([resource].into_iter())
     }
 
     /// Extract resources with the given type names from the builder's [`World`].
-    fn extract_resources<S: Into<String>>(
-        &mut self,
-        resources: impl Iterator<Item = S>,
-    ) -> &mut Self;
+    fn extract_resources<S: Into<String>>(self, resources: impl Iterator<Item = S>) -> Self;
 
     /// Extract all resources from the builder's [`World`].
-    fn extract_all_resources(&mut self) -> &mut Self;
+    fn extract_all_resources(self) -> Self;
 
     /// Build the extracted resources into a snapshot.
     fn build(self) -> Self::Output;

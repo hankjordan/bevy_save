@@ -18,3 +18,12 @@ impl CloneReflect for Vec<Box<dyn Reflect>> {
         result
     }
 }
+
+impl<T> CloneReflect for Option<T>
+where
+    T: CloneReflect,
+{
+    fn clone_value(&self) -> Self {
+        self.as_ref().map(|value| value.clone_value())
+    }
+}

@@ -10,6 +10,11 @@ pub struct Rollbacks {
 }
 
 impl Rollbacks {
+    /// Returns true if no checkpoints have been created.
+    pub fn is_empty(&self) -> bool {
+        self.checkpoints.is_empty()
+    }
+
     /// Given a new [`Rollback`], insert it and set it as the currently active rollback.
     ///
     /// If you rollback and then insert a checkpoint, it will erase all rollforward snapshots.

@@ -3,9 +3,9 @@
     "resources": {
       "manual::FancyMap": {
         "map": {
-          "MyKey": 123,
           "Another": 456,
-          "More!": -555
+          "More!": -555,
+          "MyKey": 123
         },
         "float": 42.005,
         "bool": true
@@ -19,8 +19,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 2.8027906,
-              "y": 6.6055818,
+              "x": 0.6977593,
+              "y": 2.3955195,
               "z": 2.0
             },
             "rotation": [
@@ -55,8 +55,8 @@
                 }
               },
               "translation": {
-                "x": 2.795814,
-                "y": 6.5916286,
+                "x": 0.69075924,
+                "y": 2.3815196,
                 "z": 2.0
               }
             }
@@ -79,8 +79,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 40.84464,
-              "y": 6.6055818,
+              "x": 7.164149,
+              "y": 2.3955195,
               "z": 2.0
             },
             "rotation": [
@@ -115,8 +115,8 @@
                 }
               },
               "translation": {
-                "x": 40.733013,
-                "y": 6.5916286,
+                "x": 7.052149,
+                "y": 2.3815196,
                 "z": 2.0
               }
             }
@@ -139,8 +139,8 @@
         "components": {
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 2.8027906,
-              "y": -1.6055802,
+              "x": 0.6977593,
+              "y": 2.6044815,
               "z": 2.0
             },
             "rotation": [
@@ -175,8 +175,8 @@
                 }
               },
               "translation": {
-                "x": 2.795814,
-                "y": -1.591627,
+                "x": 0.69075924,
+                "y": 2.6184814,
                 "z": 2.0
               }
             }
@@ -200,7 +200,7 @@
           "bevy_transform::components::transform::Transform": {
             "translation": {
               "x": 0.0,
-              "y": -4.605579,
+              "y": -0.39551866,
               "z": 8.0
             },
             "rotation": [
@@ -236,7 +236,7 @@
               },
               "translation": {
                 "x": 0.0,
-                "y": -4.5916257,
+                "y": -0.38151863,
                 "z": 8.0
               }
             }
@@ -256,9 +256,5 @@
         }
       }
     }
-  },
-  "rollbacks": {
-    "checkpoints": [],
-    "active": null
   }
 }

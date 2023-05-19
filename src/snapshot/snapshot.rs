@@ -15,14 +15,14 @@ use crate::{
 /// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
 pub struct Snapshot {
     pub(crate) snapshot: RawSnapshot,
-    pub(crate) rollbacks: Rollbacks,
+    pub(crate) rollbacks: Option<Rollbacks>,
 }
 
 impl Snapshot {
     pub(crate) fn default() -> Self {
         Self {
             snapshot: RawSnapshot::default(),
-            rollbacks: Rollbacks::default(),
+            rollbacks: None,
         }
     }
 }
@@ -36,12 +36,15 @@ impl Snapshot {
     /// ```
     /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
-    /// # let world = &World::default();
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
     /// Snapshot::builder(world)
     ///     .extract_all()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
-        Self::builder(world).build()
+        Self::builder(world).extract_all().build()
     }
 
     /// Returns a [`Snapshot`] of the current [`World`] state filtered by `filter`.
@@ -50,7 +53,10 @@ impl Snapshot {
     /// ```
     /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
-    /// # let world = &World::default();
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
     /// # let filter = |_: &&bevy::reflect::TypeRegistration| true;
     /// Snapshot::builder(world)
     ///     .filter(filter)
@@ -61,7 +67,7 @@ impl Snapshot {
     where
         F: Fn(&&TypeRegistration) -> bool,
     {
-        Self::builder(world).filter(filter).build()
+        Self::builder(world).filter(filter).extract_all().build()
     }
 
     /// Create a [`Builder`] from the [`World`], allowing you to create partial or filtered snapshots.
@@ -112,48 +118,57 @@ where
 {
     type Output = Snapshot;
 
-    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
-        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+    fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(&self.filter)
+            .extract_entities(entities);
 
-        builder.extract_entities(entities);
         self.entities.append(&mut builder.entities);
 
         self
     }
 
-    fn extract_all_entities(&mut self) -> &mut Self {
-        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    fn extract_all_entities(self) -> Self {
+        let world = self.world;
+        self.extract_entities(world.iter_entities().map(|e| e.id()))
     }
 
-    fn extract_resources<S: Into<String>>(
-        &mut self,
-        resources: impl Iterator<Item = S>,
-    ) -> &mut Self {
+    fn extract_resources<S: Into<String>>(mut self, resources: impl Iterator<Item = S>) -> Self {
         let resources = resources.map(|i| i.into()).collect::<HashSet<_>>();
 
-        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(&self.filter)
+            .extract_resources(resources.iter());
 
-        builder.extract_resources(resources.iter());
         self.resources.append(&mut builder.resources);
 
         if resources.contains(std::any::type_name::<Rollbacks>()) {
-            self.snapshot
-                .get_or_insert_with(Snapshot::default)
-                .rollbacks = self.world.resource::<Rollbacks>().clone_value();
+            if let Some(rollbacks) = self.world.get_resource::<Rollbacks>() {
+                if !rollbacks.is_empty() {
+                    self.snapshot
+                        .get_or_insert_with(Snapshot::default)
+                        .rollbacks = Some(rollbacks.clone_value());
+                }
+            }
         }
 
         self
     }
 
-    fn extract_all_resources(&mut self) -> &mut Self {
-        let mut builder = Builder::new::<RawSnapshot>(self.world).filter(&self.filter);
+    fn extract_all_resources(mut self) -> Self {
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(&self.filter)
+            .extract_all_resources();
 
-        builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
 
-        self.snapshot
-            .get_or_insert_with(Snapshot::default)
-            .rollbacks = self.world.resource::<Rollbacks>().clone_value();
+        if let Some(rollbacks) = self.world.get_resource::<Rollbacks>() {
+            if !rollbacks.is_empty() {
+                self.snapshot
+                    .get_or_insert_with(Snapshot::default)
+                    .rollbacks = Some(rollbacks.clone_value());
+            }
+        }
 
         self
     }
@@ -189,8 +204,9 @@ macro_rules! impl_snapshot_applier {
 
                 applier.apply()?;
 
-                self.world
-                    .insert_resource(self.snapshot.rollbacks.clone_value());
+                if let Some(rollbacks) = &self.snapshot.rollbacks {
+                    self.world.insert_resource(rollbacks.clone_value());
+                }
 
                 Ok(())
             }

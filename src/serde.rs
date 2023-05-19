@@ -813,12 +813,21 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
         S: serde::Serializer,
     {
         let snapshot = RawSnapshotSerializer::new(&self.snapshot.snapshot, self.registry);
-        let rollbacks = RollbacksSerializer::new(&self.snapshot.rollbacks, self.registry);
 
-        let mut state = serializer.serialize_struct(SNAPSHOT_STRUCT, SNAPSHOT_FIELDS.len())?;
+        let length = if self.snapshot.rollbacks.is_some() {
+            2
+        } else {
+            1
+        };
+
+        let mut state = serializer.serialize_struct(SNAPSHOT_STRUCT, length)?;
 
         state.serialize_field(SNAPSHOT_FIELDS[0], &snapshot)?;
-        state.serialize_field(SNAPSHOT_FIELDS[1], &rollbacks)?;
+
+        if let Some(rollbacks) = &self.snapshot.rollbacks {
+            let rollbacks = RollbacksSerializer::new(rollbacks, self.registry);
+            state.serialize_field(SNAPSHOT_FIELDS[1], &rollbacks)?;
+        }
 
         state.end()
     }
@@ -868,9 +877,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
             .next_element_seed(RawSnapshotDeserializer::new(self.registry))?
             .ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
 
-        let rollbacks = seq
-            .next_element_seed(RollbacksDeserializer::new(self.registry))?
-            .ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
+        let rollbacks = seq.next_element_seed(RollbacksDeserializer::new(self.registry))?;
 
         Ok(Self::Value {
             snapshot,
@@ -907,7 +914,6 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
         }
 
         let snapshot = snapshot.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[0]))?;
-        let rollbacks = rollbacks.ok_or_else(|| de::Error::missing_field(SNAPSHOT_FIELDS[1]))?;
 
         Ok(Self::Value {
             snapshot,

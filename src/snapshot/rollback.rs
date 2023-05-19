@@ -24,7 +24,10 @@ impl Rollback {
     /// ```
     /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
-    /// # let world = &World::default();
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
     /// Rollback::builder(world)
     ///     .build();
     /// ```
@@ -38,7 +41,10 @@ impl Rollback {
     /// ```
     /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
-    /// # let world = &World::default();
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
     /// # let filter = |_: &&bevy::reflect::TypeRegistration| true;
     /// Rollback::builder(world)
     ///     .filter(filter)
@@ -100,50 +106,48 @@ where
 {
     type Output = Rollback;
 
-    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
+    fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder =
-            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            });
+            })
+            .extract_entities(entities);
 
-        builder.extract_entities(entities);
         self.entities.append(&mut builder.entities);
 
         self
     }
 
-    fn extract_all_entities(&mut self) -> &mut Self {
-        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    fn extract_all_entities(self) -> Self {
+        let world = self.world;
+        self.extract_entities(world.iter_entities().map(|e| e.id()))
     }
 
-    fn extract_resources<S: Into<String>>(
-        &mut self,
-        resources: impl Iterator<Item = S>,
-    ) -> &mut Self {
+    fn extract_resources<S: Into<String>>(mut self, resources: impl Iterator<Item = S>) -> Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder =
-            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            });
+            })
+            .extract_resources(resources);
 
-        builder.extract_resources(resources);
         self.resources.append(&mut builder.resources);
 
         self
     }
 
-    fn extract_all_resources(&mut self) -> &mut Self {
+    fn extract_all_resources(mut self) -> Self {
         let registry = self.world.resource::<SaveableRegistry>();
 
-        let mut builder =
-            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(|reg: &&TypeRegistration| {
                 registry.can_rollback(reg.type_name()) && (self.filter)(reg)
-            });
+            })
+            .extract_all_resources();
 
-        builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
 
         self

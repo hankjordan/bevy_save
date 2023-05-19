@@ -36,7 +36,7 @@ where
 {
     type Output = RawSnapshot;
 
-    fn extract_entities(&mut self, entities: impl Iterator<Item = Entity>) -> &mut Self {
+    fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
         let registry_arc = self.world.resource::<AppTypeRegistry>();
         let registry = registry_arc.read();
 
@@ -73,28 +73,24 @@ where
         self
     }
 
-    fn extract_all_entities(&mut self) -> &mut Self {
-        self.extract_entities(self.world.iter_entities().map(|e| e.id()))
+    fn extract_all_entities(self) -> Self {
+        let world = self.world;
+        self.extract_entities(world.iter_entities().map(|e| e.id()))
     }
 
-    fn extract_resources<S: Into<String>>(
-        &mut self,
-        resources: impl Iterator<Item = S>,
-    ) -> &mut Self {
+    fn extract_resources<S: Into<String>>(mut self, resources: impl Iterator<Item = S>) -> Self {
         let names = resources.map(|s| s.into()).collect::<HashSet<String>>();
 
-        let mut builder =
-            Builder::new::<RawSnapshot>(self.world).filter(|reg: &&TypeRegistration| {
-                names.contains(reg.type_name()) && (self.filter)(reg)
-            });
+        let mut builder = Builder::new::<RawSnapshot>(self.world)
+            .filter(|reg: &&TypeRegistration| names.contains(reg.type_name()) && (self.filter)(reg))
+            .extract_all_resources();
 
-        builder.extract_all_resources();
         self.resources.append(&mut builder.resources);
 
         self
     }
 
-    fn extract_all_resources(&mut self) -> &mut Self {
+    fn extract_all_resources(mut self) -> Self {
         let registry_arc = self.world.resource::<AppTypeRegistry>();
         let registry = registry_arc.read();
 
