@@ -149,6 +149,59 @@ snapshot
     })
 ```
 
+### Partial Snapshots
+
+While `bevy_save` aims to make it as easy as possible to save your entire world, some games also need to be able to save only parts of the world.
+
+`Builder` allows you to manually create snapshots like `DynamicSceneBuilder`:
+
+```rust,ignore
+fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
+    Snapshot::builder(world)
+        // Extract all saveable resources
+        .extract_all_resources()
+
+        // Extract all descendants of `target`
+        // This will include all saveable components
+        .extract_entities(children.iter_descendants(target))
+
+        // Entities without any saveable components will also be extracted
+        // You can use `clear_empty` to remove them
+        // NOTE: If applied with the default `ApplyMode` this may cause your `Window` entity to be despawned
+        // .clear_empty()
+
+        // Build the `Snapshot`
+        .build()
+}
+```
+
+You are also able to extract resources by type name:
+
+```rust,ignore
+Snapshot::builder(world)
+    // Extract the resource by the type name
+    // In this case, we extract the resource from the `manual` example
+    .extract_resource("manual::FancyMap")
+
+    // Build the `Snapshot`
+    // It will only contain the one resource we extracted
+    .build()
+```
+
+Additionally, explicit type filtering like `Applier` is available when building snapshots:
+
+```rust,ignore
+Snapshot::builder(world)
+    // Exclude `Transform` from this `Snapshot`
+    .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    
+    // Clear all extracted entities without any components
+    .clear_empty()
+    
+    // Build the `Snapshot`
+    .build()
+```
+
 ## License
 
 `bevy_save` is dual-licensed under MIT and Apache-2.0.

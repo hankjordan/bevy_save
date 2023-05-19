@@ -18,6 +18,8 @@ pub struct Builder<'w, S = (), F = fn(&&TypeRegistration) -> bool> {
 
 impl<'w> Builder<'w> {
     /// Create a new [`Builder`] from the [`World`] and snapshot.
+    /// 
+    /// You must call at least one of the `extract` methods or else the output snapshot will be empty.
     pub fn new<S>(world: &'w World) -> Builder<'w, S> {
         Builder {
             world,
@@ -44,6 +46,33 @@ impl<'w, S> Builder<'w, S> {
             resources: self.resources,
             snapshot: self.snapshot,
         }
+    }
+}
+
+impl<'w, S, F> Builder<'w, S, F> {
+    /// Clear all extracted entities and resources.
+    pub fn clear(&mut self) -> &mut Self {
+        self.clear_entities().clear_resources()
+    }
+
+    /// Clear all extracted entities.
+    pub fn clear_entities(&mut self) -> &mut Self {
+        self.entities.clear();
+        self.snapshot = None;
+        self
+    }
+
+    /// Clear all extracted resources.
+    pub fn clear_resources(&mut self) -> &mut Self {
+        self.resources.clear();
+        self.snapshot = None;
+        self
+    }
+
+    /// Clear all entities without any components.
+    pub fn clear_empty(&mut self) -> &mut Self {
+        self.entities.retain(|_, e| !e.is_empty());
+        self
     }
 }
 

@@ -38,6 +38,7 @@ impl Snapshot {
     /// # use bevy_save::prelude::*;
     /// # let world = &World::default();
     /// Snapshot::builder(world)
+    ///     .extract_all()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
         Self::builder(world).build()
@@ -53,6 +54,7 @@ impl Snapshot {
     /// # let filter = |_: &&bevy::reflect::TypeRegistration| true;
     /// Snapshot::builder(world)
     ///     .filter(filter)
+    ///     .extract_all()
     ///     .build();
     /// ```
     pub fn from_world_with_filter<F>(world: &World, filter: F) -> Self
