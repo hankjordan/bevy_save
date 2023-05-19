@@ -19,7 +19,29 @@ pub struct Builder<'w, S = (), F = fn(&&TypeRegistration) -> bool> {
 impl<'w> Builder<'w> {
     /// Create a new [`Builder`] from the [`World`] and snapshot.
     ///
-    /// You must call at least one of the `extract` methods or else the output snapshot will be empty.
+    /// You must call at least one of the `extract` methods or the built snapshot will be empty.
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
+    /// Builder::new::<Snapshot>(world)
+    ///     // Exclude `Transform` from this `Snapshot`
+    ///     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    /// 
+    ///     // Extract all matching entities and resources
+    ///     .extract_all()
+    ///     
+    ///     // Clear all extracted entities without any components
+    ///     .clear_empty()
+    ///     
+    ///     // Build the `Snapshot`
+    ///     .build();
+    /// ```
     pub fn new<S>(world: &'w World) -> Builder<'w, S> {
         Builder {
             world,
@@ -46,33 +68,6 @@ impl<'w, S> Builder<'w, S> {
             resources: self.resources,
             snapshot: self.snapshot,
         }
-    }
-}
-
-impl<'w, S, F> Builder<'w, S, F> {
-    /// Clear all extracted entities and resources.
-    pub fn clear(self) -> Self {
-        self.clear_entities().clear_resources()
-    }
-
-    /// Clear all extracted entities.
-    pub fn clear_entities(mut self) -> Self {
-        self.entities.clear();
-        self.snapshot = None;
-        self
-    }
-
-    /// Clear all extracted resources.
-    pub fn clear_resources(mut self) -> Self {
-        self.resources.clear();
-        self.snapshot = None;
-        self
-    }
-
-    /// Clear all entities without any components.
-    pub fn clear_empty(mut self) -> Self {
-        self.entities.retain(|_, e| !e.is_empty());
-        self
     }
 }
 
@@ -111,6 +106,20 @@ pub trait Build: Sized {
 
     /// Extract all resources from the builder's [`World`].
     fn extract_all_resources(self) -> Self;
+
+    /// Clear all extracted entities and resources.
+    fn clear(self) -> Self {
+        self.clear_entities().clear_resources()
+    }
+
+    /// Clear all extracted entities.
+    fn clear_entities(self) -> Self;
+
+    /// Clear all extracted resources.
+    fn clear_resources(self) -> Self;
+
+    /// Clear all entities without any components.
+    fn clear_empty(self) -> Self;
 
     /// Build the extracted resources into a snapshot.
     fn build(self) -> Self::Output;

@@ -71,6 +71,28 @@ impl Snapshot {
     }
 
     /// Create a [`Builder`] from the [`World`], allowing you to create partial or filtered snapshots.
+    /// 
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
+    /// Snapshot::builder(world)
+    ///     // Exclude `Transform` from this `Snapshot`
+    ///     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    ///
+    ///     // Extract all matching entities and resources
+    ///     .extract_all()
+    ///
+    ///     // Clear all extracted entities without any components
+    ///     .clear_empty()
+    ///
+    ///     // Build the `Snapshot`
+    ///     .build();
+    /// ```
     pub fn builder(world: &World) -> Builder<Self> {
         Builder::new(world)
     }
@@ -170,6 +192,26 @@ where
             }
         }
 
+        self
+    }
+
+    fn clear_entities(mut self) -> Self {
+        self.entities.clear();
+        self
+    }
+
+    fn clear_resources(mut self) -> Self {
+        self.resources.clear();
+
+        if let Some(snapshot) = &mut self.snapshot {
+            snapshot.rollbacks = None;
+        }
+
+        self
+    }
+
+    fn clear_empty(mut self) -> Self {
+        self.entities.retain(|_, e| !e.is_empty());
         self
     }
 

@@ -194,6 +194,9 @@ Additionally, explicit type filtering like `Applier` is available when building 
 Snapshot::builder(world)
     // Exclude `Transform` from this `Snapshot`
     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+
+    // Extract all matching entities and resources
+    .extract_all()
     
     // Clear all extracted entities without any components
     .clear_empty()

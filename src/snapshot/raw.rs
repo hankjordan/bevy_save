@@ -110,6 +110,21 @@ where
         self
     }
 
+    fn clear_entities(mut self) -> Self {
+        self.entities.clear();
+        self
+    }
+
+    fn clear_resources(mut self) -> Self {
+        self.resources.clear();
+        self
+    }
+
+    fn clear_empty(mut self) -> Self {
+        self.entities.retain(|_, e| !e.is_empty());
+        self
+    }
+
     fn build(self) -> Self::Output {
         RawSnapshot {
             resources: self.resources.into_values().collect(),
