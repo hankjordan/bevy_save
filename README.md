@@ -215,16 +215,6 @@ Snapshot::builder(world)
 
 ## Compatibility
 
-:heavy_check_mark: = First Class Support
-—
-:ok: = Best Effort Support
-—
-:zap: = Untested, but should work
-—
-:question: = Untested, probably won't work
-—
-:hammer_and_wrench: = In progress
-
 ### Bevy
 
 NOTE: We do not track Bevy main.
@@ -244,6 +234,16 @@ NOTE: We do not track Bevy main.
 | WASM     | :hammer_and_wrench:† |
 | Android  | :question:           |
 | iOS      | :question:           |
+
+:heavy_check_mark: = First Class Support
+—
+:ok: = Best Effort Support
+—
+:zap: = Untested, but should work
+—
+:question: = Untested, probably won't work
+—
+:hammer_and_wrench: = In progress
 
 † Everything but `World::save` and `World::load` should work, full support is possible now via a custom backend
 
@@ -266,6 +266,16 @@ Registering a type again after it has already been registered will have no effec
 | `bevy_rapier`            | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
 | `bevy_tweening`          | :question:          | :hammer_and_wrench: | :hammer_and_wrench: |                          |
 | `leafwing-input-manager` | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
+
+:heavy_check_mark: = First Class Support
+—
+:ok: = Best Effort Support
+—
+:zap: = Untested, but should work
+—
+:question: = Untested, probably won't work
+—
+:hammer_and_wrench: = In progress
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.10-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
