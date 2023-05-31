@@ -69,5 +69,37 @@ impl Plugin for SaveablesPlugin {
             .register_type_data::<Sprite, ReflectComponent>()
             .register_type::<Option<Vec2>>()
             .register_type::<Option<Rect>>();
+
+        #[cfg(feature = "bevy_ecs_tilemap")]
+        {
+            use bevy_ecs_tilemap::{
+                FrustumCulling,
+                prelude::*
+            };
+
+            app
+                // Tilemap
+                .register_saveable::<FrustumCulling>()
+                .register_saveable::<TileStorage>()
+                .register_saveable::<TilemapGridSize>()
+                .register_saveable::<TilemapSize>()
+                .register_saveable::<TilemapSpacing>()
+                .register_saveable::<TilemapTexture>()
+                .register_saveable::<TilemapTileSize>()
+                .register_saveable::<TilemapType>()
+        
+                // Tiles
+                .register_saveable::<TileColor>()
+                .register_saveable::<TileFlip>()
+                .register_saveable::<TilePos>()
+                .register_saveable::<TilePosOld>()
+                .register_saveable::<TileTextureIndex>()
+                .register_saveable::<TileVisible>()
+                .register_saveable::<TilemapId>()
+
+                .register_type::<Option<Entity>>()
+                .register_type::<Vec<Option<Entity>>>();
+        }
+        
     }
 }

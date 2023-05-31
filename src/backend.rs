@@ -66,35 +66,121 @@ where
     }
 }
 
-/// Simple filesystem backend.
-///
-/// Each name corresponds to an individual file on the disk.
-///
-/// Files are stored in [`crate::SAVE_DIR`].
-pub struct FileIO;
+#[cfg(not(target_arch = "wasm32"))]
+mod desktop {
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
 
-impl Backend for FileIO {
-    type Reader = BufReader<File>;
-    type Writer = BufWriter<File>;
+    /// Simple filesystem backend.
+    ///
+    /// Each name corresponds to an individual file on the disk.
+    ///
+    /// Files are stored in `SAVE_DIR`.
+    pub struct FileIO;
 
-    fn reader(name: &str) -> Result<Self::Reader, SaveableError> {
-        let path = get_save_file(name);
-        let file = File::open(path).map_err(SaveableError::other)?;
+    impl Backend for FileIO {
+        type Reader = BufReader<File>;
+        type Writer = BufWriter<File>;
 
-        Ok(BufReader::new(file))
-    }
+        fn reader(name: &str) -> Result<Self::Reader, SaveableError> {
+            let path = get_save_file(name);
+            let file = File::open(path).map_err(SaveableError::other)?;
 
-    fn writer(name: &str) -> Result<Self::Writer, SaveableError> {
-        let path = get_save_file(name);
-        let dir = path.parent().expect("Invalid save directory");
+            Ok(BufReader::new(file))
+        }
 
-        std::fs::create_dir_all(dir).map_err(SaveableError::other)?;
+        fn writer(name: &str) -> Result<Self::Writer, SaveableError> {
+            let path = get_save_file(name);
+            let dir = path.parent().expect("Invalid save directory");
 
-        let file = File::create(path).map_err(SaveableError::other)?;
+            std::fs::create_dir_all(dir).map_err(SaveableError::other)?;
 
-        Ok(BufWriter::new(file))
+            let file = File::create(path).map_err(SaveableError::other)?;
+
+            Ok(BufWriter::new(file))
+        }
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use desktop::FileIO;
+
+// TODO
+/*
+mod wasm {
+    use web_sys::Storage;
+
+    #[allow(clippy::wildcard_imports)]
+    use super::*;
+
+    /// Simple `WebStorage` backend.
+    pub struct WebStorage;
+
+    pub struct WebReader {
+        value: String,
+    }
+
+    impl Read for WebReader {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            todo!()
+        }
+    }
+
+    pub struct WebWriter {
+        storage: Storage,
+        key: String,
+        value: String,
+    }
+
+    impl Write for WebWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            todo!()
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            todo!()
+        }
+    }
+
+    impl Backend for WebStorage {
+        type Reader = WebReader;
+        type Writer = WebWriter;
+
+        fn reader(name: &str) -> Result<Self::Reader, SaveableError> {
+            let storage = web_sys::window()
+                .expect("No window")
+                .local_storage()
+                .expect("Failed to get local storage")
+                .expect("No local storage");
+
+            let value = storage.get_item(name)
+                .expect("Failed to get value")
+                .expect("No value");
+
+            Ok(WebReader {
+                value
+            })
+        }
+
+        fn writer(name: &str) -> Result<Self::Writer, SaveableError> {
+            let storage = web_sys::window()
+                .expect("No window")
+                .local_storage()
+                .expect("Failed to get local storage")
+                .expect("No local storage");
+
+            Ok(WebWriter {
+                storage,
+                key: name.to_owned(),
+                value: String::new(),
+            })
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub use wasm::WebStorage;
+*/
 
 /// The App's [`Backend`].
 ///
@@ -103,8 +189,8 @@ impl Backend for FileIO {
 pub struct AppBackend(Box<dyn ErasedBackend>);
 
 impl AppBackend {
-     /// Create a new [`AppBackend`] from the given [`Backend`].
-     pub fn new<B: Backend>(backend: B) -> Self {
+    /// Create a new [`AppBackend`] from the given [`Backend`].
+    pub fn new<B: Backend>(backend: B) -> Self {
         Self(Box::new(backend))
     }
 
@@ -130,6 +216,7 @@ impl AppBackend {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for AppBackend {
     fn default() -> Self {
         Self(Box::new(FileIO))

@@ -215,12 +215,57 @@ Snapshot::builder(world)
 
 ## Compatibility
 
+:heavy_check_mark: = First Class Support
+—
+:ok: = Best Effort Support
+—
+:zap: = Untested, but should work
+—
+:question: = Untested, probably won't work
+—
+:hammer_and_wrench: = In progress
+
+### Bevy
+
 NOTE: We do not track Bevy main.
 
-|Bevy Version|Crate Version              |
-|------------|---------------------------|
-|`0.10`      |`0.4`, `0.5`, `0.6`, `0.7` |
-|`0.9`       |`0.1`, `0.2`, `0.3`        |
+| Bevy Version | Crate Version              |
+|--------------|----------------------------|
+| `0.10`       | `0.4`, `0.5`, `0.6`, `0.7` |
+| `0.9`        | `0.1`, `0.2`, `0.3`        |
+
+### Platforms
+
+| Platform | Support              |
+|----------|----------------------|
+| Windows  | :heavy_check_mark:   |
+| MacOS    | :heavy_check_mark:   |
+| Linux    | :heavy_check_mark:   |
+| WASM     | :hammer_and_wrench:† |
+| Android  | :question:           |
+| iOS      | :question:           |
+
+† Everything but `World::save` and `World::load` should work, full support is possible now via a custom backend
+
+### Third-party Crates
+
+`bevy_save` should work with most third-party crates, but you must register their types as saveable to be included in saves.
+
+Registering as saveable requires the type implements `Reflect`. Components will also need to implement `ReflectComponent` and Resources will need to implement `ReflectResource`.
+
+If a type stores `Entity` values, it must also have a `MapEntities` implementation and `ReflectMapEntities` registration to handle entity remapping properly.
+
+Automatic registration for certain crates may be available via a feature flag. Only some types from those crates will be registered.
+
+Registering a type again after it has already been registered will have no effect.
+
+| Name                     | Support             | Feature Flag        | Example             | Notes                    | 
+|--------------------------|---------------------|---------------------|---------------------|--------------------------|
+| `bevy`                   | :heavy_check_mark:  | :white_check_mark:  | :white_check_mark:  |                          |
+| `bevy_ecs_tilemap`       | :ok:                | :white_check_mark:  | :white_check_mark:  | No `MapEntities` support |
+| `bevy_rapier`            | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
+| `bevy_tweening`          | :question:          | :hammer_and_wrench: | :hammer_and_wrench: |                          |
+| `leafwing-input-manager` | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.10-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
