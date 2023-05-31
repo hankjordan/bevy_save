@@ -15,9 +15,7 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
 
 ### Save file management
 
-`bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for whatever platform it is running on.
-
-Supports Windows, Linux, and MacOS. WASM support is in progress.
+`bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [whatever platform](#platforms) it is running on.
 
 - `World::save()` and `World::load()` uses your app's save location to save and load your game state, handling all serialization and deserialization for you.
 - The `AppSaver` and `AppLoader` resources determine what save format is used.
