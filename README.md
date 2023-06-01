@@ -169,7 +169,7 @@ fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> 
 
         // Entities without any saveable components will also be extracted
         // You can use `clear_empty` to remove them
-        // NOTE: If applied with the default `ApplyMode` this may cause your `Window` entity to be despawned
+        // NOTE: If applied with the default `MappingMode` this may cause your `Window` entity to be despawned
         // .clear_empty()
 
         // Build the `Snapshot`
