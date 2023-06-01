@@ -118,8 +118,8 @@ fn main() {
         .register_type::<Toast>()
 
         // Setup
-        .add_startup_system(setup_help)
-        .add_startup_system(setup_entity_count)
+        .add_startup_system(setup_help.after(setup))
+        .add_startup_system(setup_entity_count.after(setup))
 
         // Systems
         .add_system(update_entity_count)
