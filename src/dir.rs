@@ -7,6 +7,12 @@ include!(concat!(env!("OUT_DIR"), "/workspace.rs"));
 
 lazy_static! {
     /// The platform-specific save directory for the app.
+    ///
+    /// `WORKSPACE` is the name of your project's workspace (parent folder) name.
+    ///
+    /// | Windows                                             | Linux/*BSD                       | MacOS                                           |
+    /// |-----------------------------------------------------|----------------------------------|-------------------------------------------------|
+    /// | `C:\Users\%USERNAME%\AppData\Local\WORKSPACE\saves` | `~/.local/share/WORKSPACE/saves` | `~/Library/Application Support/WORKSPACE/saves` |
     pub static ref SAVE_DIR: PathBuf = {
         AppDirs::new(Some(WORKSPACE), true)
             .unwrap()

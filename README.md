@@ -26,6 +26,14 @@ While Bevy's `DynamicScene` only allows you to save entities and components, `be
   - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
   - You can override the backend by modifying the `AppBackend` resource with your own `Backend` implementation.
 
+#### Save directory location
+
+`WORKSPACE` is the name of your project's workspace (parent folder) name.
+
+| Windows                                             | Linux/*BSD                       | MacOS                                           |
+|-----------------------------------------------------|----------------------------------|-------------------------------------------------|
+| `C:\Users\%USERNAME%\AppData\Local\WORKSPACE\saves` | `~/.local/share/WORKSPACE/saves` | `~/Library/Application Support/WORKSPACE/saves` |
+
 ### Snapshots and Rollback
 
 `bevy_save` is not just about save files, it is about total control over game state.
