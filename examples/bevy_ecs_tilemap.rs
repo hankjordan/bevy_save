@@ -17,14 +17,14 @@ fn setup(world: &mut World) {
 
         system.initialize(world);
         system.run((), world);
-        system.apply_buffers(world);
+        system.apply_deferred(world);
     }
 
     let mut system = IntoSystem::into_system(finish_setup);
 
     system.initialize(world);
     system.run((), world);
-    system.apply_buffers(world);
+    system.apply_deferred(world);
 }
 
 fn finish_setup(
@@ -176,10 +176,9 @@ fn save(world: &World) {
     }
 }
 
-#[rustfmt::skip]
 fn main() {
     App::new()
-        .add_plugins(
+        .add_plugins((
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
@@ -193,24 +192,19 @@ fn main() {
                     asset_folder: "examples/assets".to_owned(),
                     ..default()
                 }),
-        )
+            
+            // Inspector
+            WorldInspectorPlugin::new(),
+            
+            // Bevy Save
+            SavePlugins,
+
+            // Bevy Tilemap
+            TilemapPlugin,
+        ))
         
-
-        // Inspector
-        .add_plugin(WorldInspectorPlugin::new())
-
-        // Bevy Save
-        .add_plugins(SavePlugins)
-
-        .add_plugin(TilemapPlugin)
-
-        // Setup
-        .add_startup_system(setup)
-
-        // Systems
-        .add_system(movement)
-        .add_system(update)
-        .add_system(save)
+        .add_systems(Startup, setup)
+        .add_systems(Update, (movement, update, save))
 
         .run();
 }

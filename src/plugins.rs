@@ -54,7 +54,6 @@ impl Plugin for SaveablesPlugin {
         
         #[cfg(feature = "bevy_render")]
         app
-            .register_saveable::<ComputedVisibility>()
             .register_saveable::<Visibility>();
 
         #[cfg(all(feature = "bevy_render", feature = "bevy_asset"))]

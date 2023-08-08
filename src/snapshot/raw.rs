@@ -134,7 +134,7 @@ where
 }
 
 impl<'a> Applier<'a, &'a RawSnapshot> {
-    pub(crate) fn apply(self) -> Result<(), SaveableError> {
+    pub(crate) fn apply(mut self) -> Result<(), SaveableError> {
         let registry_arc = self.world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
 
@@ -156,9 +156,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             data.insert(self.world, resource.as_reflect());
 
             if let Some(mapper) = reg.data::<ReflectMapEntities>() {
-                mapper
-                    .map_entities(self.world, &self.map)
-                    .map_err(SaveableError::MapEntitiesError)?;
+                mapper.map_all_entities(self.world, &mut self.map);
             }
         }
 
@@ -271,7 +269,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
             let entity = saved
                 .map(&self.map)
-                .or_else(|| fallback.get(Entity::from_raw(index)).ok())
+                .or_else(|| fallback.get(Entity::from_raw(index)))
                 .unwrap_or_else(|| self.world.spawn_empty().id());
 
             spawned.push(entity);
@@ -298,9 +296,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
         // ReflectMapEntities
         for reg in registry.iter() {
             if let Some(mapper) = reg.data::<ReflectMapEntities>() {
-                mapper
-                    .map_entities(self.world, &self.map)
-                    .map_err(SaveableError::MapEntitiesError)?;
+                mapper.map_all_entities(self.world, &mut self.map);
             }
         }
 

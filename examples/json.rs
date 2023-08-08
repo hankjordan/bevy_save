@@ -76,7 +76,6 @@ impl Loader for JSONLoader {
     }
 }
 
-#[rustfmt::skip]
 fn main() {
     let mut fancy_map = FancyMap::default();
 
@@ -87,16 +86,16 @@ fn main() {
     fancy_map.bool = true;
 
     App::new()
-        .add_plugins(DefaultPlugins.build().set(AssetPlugin {
-            asset_folder: "examples/assets".to_owned(),
-            ..default()
-        }))
-
-        // Inspector
-        .add_plugin(WorldInspectorPlugin::new())        
-
-        // Bevy Save
-        .add_plugins(SavePlugins)
+        .add_plugins((
+            DefaultPlugins.build().set(AssetPlugin {
+                asset_folder: "examples/assets".to_owned(),
+                ..default()
+            }),
+            // Inspector
+            WorldInspectorPlugin::new(),
+            // Bevy Save
+            SavePlugins,
+        ))
 
         // Override the AppSaver and AppLoader with our custom saver and loader
         .insert_resource(AppSaver::new(JSONSaver))
@@ -114,9 +113,8 @@ fn main() {
         .insert_resource(fancy_map)
 
         // Systems
-        .add_startup_system(setup_world)
-        .add_system(apply_velocity)
-        .add_system(handle_save_input)
-
+        .add_systems(Startup, setup_world)
+        .add_systems(Update, (apply_velocity, handle_save_input))
+        
         .run();
 }

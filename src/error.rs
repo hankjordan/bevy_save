@@ -1,4 +1,3 @@
-use bevy::ecs::entity::MapEntitiesError;
 use thiserror::Error;
 
 /// An error that may occur when loading saves or rollbacks.
@@ -24,10 +23,6 @@ pub enum SaveableError {
         /// The type name of the unregistered type
         type_name: String,
     },
-
-    /// An error occurred while mapping entities.
-    #[error("error mapping entities: {0}")]
-    MapEntitiesError(MapEntitiesError),
 
     /// Deserialization failure or other error.
     #[error("other error: {0}")]

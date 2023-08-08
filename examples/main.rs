@@ -20,21 +20,11 @@ pub struct Health {
 #[reflect(Component)]
 pub struct Player;
 
-fn setup(
-    mut commands: Commands,
-) {
-    commands
-        .spawn((
-            SpatialBundle::default(),
-            Health { amount: 25.0 },
-            Player,
-        ));
+fn setup(mut commands: Commands) {
+    commands.spawn((SpatialBundle::default(), Health { amount: 25.0 }, Player));
 }
 
-fn damage(
-    buttons: Res<Input<MouseButton>>,
-    mut players: Query<&mut Health, With<Player>>,
-) {
+fn damage(buttons: Res<Input<MouseButton>>, mut players: Query<&mut Health, With<Player>>) {
     if buttons.just_released(MouseButton::Left) {
         for mut health in &mut players {
             health.amount -= 1.0;
@@ -56,10 +46,7 @@ fn heal(
     }
 }
 
-fn status(
-    balance: Res<Balance>,
-    players: Query<(Entity, &Health), Changed<Health>>,
-) {
+fn status(balance: Res<Balance>, players: Query<(Entity, &Health), Changed<Health>>) {
     if balance.is_changed() {
         info!("Balance: {:?} gp", balance.amount);
     }
@@ -69,9 +56,7 @@ fn status(
     }
 }
 
-fn interact(
-    world: &mut World
-) {
+fn interact(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
     if keys.just_released(KeyCode::Space) {
@@ -109,19 +94,19 @@ fn interact(
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.build().set(AssetPlugin {
-            asset_folder: "examples/assets".to_owned(),
-            ..default()
-        }))
-
-        // Inspector
-        .add_plugin(WorldInspectorPlugin::new())
-    
-        // Bevy Save
-        .add_plugins(SavePlugins)
-
+        .add_plugins((
+            DefaultPlugins.build().set(AssetPlugin {
+                asset_folder: "examples/assets".to_owned(),
+                ..default()
+            }),
+            // Inspector
+            WorldInspectorPlugin::new(),
+            // Bevy Save
+            SavePlugins,
+        ))
+        
         .insert_resource(Balance { amount: 42 })
-
+        
         .register_saveable::<Balance>()
         .register_saveable::<Health>()
         .register_saveable::<Player>()
@@ -130,12 +115,8 @@ fn main() {
         // This could be used to track rollback state or to prevent players from making changes to their decisions during rollback.
         .ignore_rollback::<Balance>()
 
-        .add_startup_system(setup)
+        .add_systems(Startup, setup)
+        .add_systems(Update, (damage, heal, status, interact))
 
-        .add_system(damage)
-        .add_system(heal)
-        .add_system(status)
-        .add_system(interact)
-        
         .run();
 }

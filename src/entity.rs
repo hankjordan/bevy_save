@@ -23,7 +23,7 @@ impl SaveableEntity {
 
     /// Attempts to map the stored index with the given [`EntityMap`].
     pub fn map(&self, map: &EntityMap) -> Option<Entity> {
-        map.get(Entity::from_raw(self.entity)).ok()
+        map.get(Entity::from_raw(self.entity))
     }
 
     /// Map the stored index with the given [`EntityMap`] or return an Entity with a one-to-one mapping.
