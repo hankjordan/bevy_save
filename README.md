@@ -118,7 +118,7 @@ It is also possible to match `DynamicScene` behavior by using `DespawnMode::None
 
 `bevy_save` also supports `MapEntities` via reflection to allow you to update entity ids within components and resources.
 
-See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.10.1/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
+See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.11.0/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ### Entity hooks
 
@@ -227,6 +227,7 @@ NOTE: We do not track Bevy main.
 
 | Bevy Version | Crate Version                     |
 |--------------|-----------------------------------|
+| `0.11`       | `0.9`                             |
 | `0.10`       | `0.4`, `0.5`, `0.6`, `0.7`, `0.8` |
 | `0.9`        | `0.1`, `0.2`, `0.3`               |
 
@@ -283,14 +284,14 @@ Registering a type again after it has already been registered will have no effec
 —
 :hammer_and_wrench: = In progress
 
-[img_bevy]: https://img.shields.io/badge/Bevy-0.10-blue
+[img_bevy]: https://img.shields.io/badge/Bevy-0.11-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [img_downloads]:https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
 
-[bevy]: https://crates.io/crates/bevy/0.10.1
+[bevy]: https://crates.io/crates/bevy/0.11.0
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save/
 [license]: https://github.com/hankjordan/bevy_save#license
