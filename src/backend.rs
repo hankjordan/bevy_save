@@ -106,7 +106,7 @@ mod desktop {
 pub use desktop::FileIO;
 
 // TODO
-/*
+#[cfg(target_arch="wasm32")]
 mod wasm {
     use web_sys::Storage;
 
@@ -147,40 +147,17 @@ mod wasm {
         type Writer = WebWriter;
 
         fn reader(name: &str) -> Result<Self::Reader, SaveableError> {
-            let storage = web_sys::window()
-                .expect("No window")
-                .local_storage()
-                .expect("Failed to get local storage")
-                .expect("No local storage");
-
-            let value = storage.get_item(name)
-                .expect("Failed to get value")
-                .expect("No value");
-
-            Ok(WebReader {
-                value
-            })
+            todo!()
         }
 
         fn writer(name: &str) -> Result<Self::Writer, SaveableError> {
-            let storage = web_sys::window()
-                .expect("No window")
-                .local_storage()
-                .expect("Failed to get local storage")
-                .expect("No local storage");
-
-            Ok(WebWriter {
-                storage,
-                key: name.to_owned(),
-                value: String::new(),
-            })
+            todo!()
         }
     }
 }
 
 #[cfg(target_arch = "wasm32")]
 pub use wasm::WebStorage;
-*/
 
 /// The App's [`Backend`].
 ///
@@ -220,5 +197,12 @@ impl AppBackend {
 impl Default for AppBackend {
     fn default() -> Self {
         Self(Box::new(FileIO))
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Default for AppBackend {
+    fn default() -> Self {
+        Self(Box::new(WebStorage))
     }
 }
