@@ -114,7 +114,7 @@ impl DespawnMode {
     where
         F: ReadOnlyWorldQuery + Send + Sync + 'static,
     {
-        DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
+        DespawnMode::AllWith(<dyn Filter>::boxed::<F>())
     }
 }
 
