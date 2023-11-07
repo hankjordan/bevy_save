@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use bevy::{
     ecs::{
-        entity::EntityMap,
         reflect::ReflectMapEntities,
         system::CommandQueue,
     },
     prelude::*,
     reflect::TypeRegistration,
+    utils::HashMap,
 };
 
 use crate::{
@@ -82,7 +82,9 @@ where
         let names = resources.map(|s| s.into()).collect::<HashSet<String>>();
 
         let mut builder = Builder::new::<RawSnapshot>(self.world)
-            .filter(|reg: &&TypeRegistration| names.contains(reg.type_name()) && (self.filter)(reg))
+            .filter(|reg: &&TypeRegistration| {
+                names.contains(reg.type_info().type_path()) && (self.filter)(reg)
+            })
             .extract_all_resources();
 
         self.resources.append(&mut builder.resources);
@@ -98,7 +100,7 @@ where
 
         saveables
             .types()
-            .filter_map(|name| Some((name, registry.get_with_name(name)?)))
+            .filter_map(|path| Some((path, registry.get_with_type_path(path)?)))
             .filter(|(_, reg)| (self.filter)(reg))
             .filter_map(|(name, reg)| Some((name, reg.data::<ReflectResource>()?)))
             .filter_map(|(name, res)| Some((name, res.reflect(self.world)?)))
@@ -141,15 +143,17 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
         // Resources
 
         for resource in &self.snapshot.resources {
+            let path = resource.get_represented_type_info().unwrap().type_path();
+
             let reg = registry
-                .get_with_name(resource.type_name())
+                .get_with_type_path(path)
                 .ok_or_else(|| SaveableError::UnregisteredType {
-                    type_name: resource.type_name().to_string(),
+                    type_path: path.to_string(),
                 })?;
 
             let data = reg.data::<ReflectResource>().ok_or_else(|| {
                 SaveableError::UnregisteredResource {
-                    type_name: resource.type_name().to_string(),
+                    type_path: path.to_string(),
                 }
             })?;
 
@@ -250,7 +254,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
         let mapping = self.mapping.as_ref().unwrap_or(&mapping_default);
 
         let fallback = if let MappingMode::Simple = &mapping {
-            let mut fallback = EntityMap::default();
+            let mut fallback = HashMap::default();
 
             for entity in self.world.iter_entities() {
                 fallback.insert(Entity::from_raw(entity.id().index()), entity.id());
@@ -258,7 +262,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
             fallback
         } else {
-            EntityMap::default()
+            HashMap::default()
         };
 
         let mut spawned = Vec::new();
@@ -269,7 +273,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
             let entity = saved
                 .map(&self.map)
-                .or_else(|| fallback.get(Entity::from_raw(index)))
+                .or_else(|| fallback.get(&Entity::from_raw(index)).copied())
                 .unwrap_or_else(|| self.world.spawn_empty().id());
 
             spawned.push(entity);
@@ -277,15 +281,17 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             let entity_mut = &mut self.world.entity_mut(entity);
 
             for component in &saved.components {
+                let path = component.get_represented_type_info().unwrap().type_path();
+
                 let reg = registry
-                    .get_with_name(component.type_name())
+                    .get_with_type_path(path)
                     .ok_or_else(|| SaveableError::UnregisteredType {
-                        type_name: component.type_name().to_string(),
+                        type_path: path.to_string(),
                     })?;
 
                 let data = reg.data::<ReflectComponent>().ok_or_else(|| {
                     SaveableError::UnregisteredComponent {
-                        type_name: component.type_name().to_string(),
+                        type_path: path.to_string(),
                     }
                 })?;
 

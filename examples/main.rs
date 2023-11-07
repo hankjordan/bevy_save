@@ -96,7 +96,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.build().set(AssetPlugin {
-                asset_folder: "examples/assets".to_owned(),
+                file_path: "examples/assets".to_owned(),
                 ..default()
             }),
             // Inspector

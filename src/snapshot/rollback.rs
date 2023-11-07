@@ -135,7 +135,7 @@ where
 
         let mut builder = Builder::new::<RawSnapshot>(self.world)
             .filter(|reg: &&TypeRegistration| {
-                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+                registry.can_rollback(reg.type_info().type_path()) && (self.filter)(reg)
             })
             .extract_entities(entities);
 
@@ -154,7 +154,7 @@ where
 
         let mut builder = Builder::new::<RawSnapshot>(self.world)
             .filter(|reg: &&TypeRegistration| {
-                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+                registry.can_rollback(reg.type_info().type_path()) && (self.filter)(reg)
             })
             .extract_resources(resources);
 
@@ -168,7 +168,7 @@ where
 
         let mut builder = Builder::new::<RawSnapshot>(self.world)
             .filter(|reg: &&TypeRegistration| {
-                registry.can_rollback(reg.type_name()) && (self.filter)(reg)
+                registry.can_rollback(reg.type_info().type_path()) && (self.filter)(reg)
             })
             .extract_all_resources();
 

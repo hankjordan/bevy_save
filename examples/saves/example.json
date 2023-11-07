@@ -3,9 +3,9 @@
     "resources": {
       "manual::FancyMap": {
         "map": {
+          "MyKey": 123,
           "Another": 456,
-          "More!": -555,
-          "MyKey": 123
+          "More!": -555
         },
         "float": 42.005,
         "bool": true
@@ -17,18 +17,19 @@
       },
       "1": {
         "components": {
+          "bevy_render::view::visibility::Visibility": "Inherited",
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 0.6977593,
-              "y": 2.3955195,
+              "x": 1.055875,
+              "y": 3.111749,
               "z": 2.0
             },
-            "rotation": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0,
+              "w": 1.0
+            },
             "scale": {
               "x": 1.0,
               "y": 1.0,
@@ -55,18 +56,12 @@
                 }
               },
               "translation": {
-                "x": 0.69075924,
-                "y": 2.3815196,
+                "x": 1.0489653,
+                "y": 3.0979297,
                 "z": 2.0
               }
             }
           ],
-          "bevy_render::view::visibility::Visibility": "Inherited",
-          "bevy_render::view::visibility::ComputedVisibility": {
-            "flags": {
-              "bits": 2
-            }
-          },
           "manual::Velocity": [
             {
               "x": 1.0,
@@ -77,18 +72,19 @@
       },
       "2": {
         "components": {
+          "bevy_render::view::visibility::Visibility": "Inherited",
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 7.164149,
-              "y": 2.3955195,
+              "x": 12.893993,
+              "y": 3.111749,
               "z": 2.0
             },
-            "rotation": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0,
+              "w": 1.0
+            },
             "scale": {
               "x": 1.0,
               "y": 1.0,
@@ -115,18 +111,12 @@
                 }
               },
               "translation": {
-                "x": 7.052149,
-                "y": 2.3815196,
+                "x": 12.783441,
+                "y": 3.0979297,
                 "z": 2.0
               }
             }
           ],
-          "bevy_render::view::visibility::Visibility": "Inherited",
-          "bevy_render::view::visibility::ComputedVisibility": {
-            "flags": {
-              "bits": 2
-            }
-          },
           "manual::Velocity": [
             {
               "x": 16.0,
@@ -137,18 +127,19 @@
       },
       "3": {
         "components": {
+          "bevy_render::view::visibility::Visibility": "Inherited",
           "bevy_transform::components::transform::Transform": {
             "translation": {
-              "x": 0.6977593,
-              "y": 2.6044815,
+              "x": 1.055875,
+              "y": 1.8882511,
               "z": 2.0
             },
-            "rotation": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0,
+              "w": 1.0
+            },
             "scale": {
               "x": 1.0,
               "y": 1.0,
@@ -175,18 +166,12 @@
                 }
               },
               "translation": {
-                "x": 0.69075924,
-                "y": 2.6184814,
+                "x": 1.0489653,
+                "y": 1.9020702,
                 "z": 2.0
               }
             }
           ],
-          "bevy_render::view::visibility::Visibility": "Inherited",
-          "bevy_render::view::visibility::ComputedVisibility": {
-            "flags": {
-              "bits": 2
-            }
-          },
           "manual::Velocity": [
             {
               "x": 1.0,
@@ -197,18 +182,19 @@
       },
       "4": {
         "components": {
+          "bevy_render::view::visibility::Visibility": "Inherited",
           "bevy_transform::components::transform::Transform": {
             "translation": {
               "x": 0.0,
-              "y": -0.39551866,
+              "y": -1.1117493,
               "z": 8.0
             },
-            "rotation": [
-              0.0,
-              0.0,
-              0.0,
-              1.0
-            ],
+            "rotation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0,
+              "w": 1.0
+            },
             "scale": {
               "x": 1.0,
               "y": 1.0,
@@ -236,17 +222,11 @@
               },
               "translation": {
                 "x": 0.0,
-                "y": -0.38151863,
+                "y": -1.0979302,
                 "z": 8.0
               }
             }
           ],
-          "bevy_render::view::visibility::Visibility": "Inherited",
-          "bevy_render::view::visibility::ComputedVisibility": {
-            "flags": {
-              "bits": 2
-            }
-          },
           "manual::Velocity": [
             {
               "x": 0.0,

@@ -75,26 +75,24 @@ const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.build().set(AssetPlugin {
-            asset_folder: "examples/assets".to_owned(),
+            file_path: "examples/assets".to_owned(),
             ..default()
         }))
         .insert_resource(Scoreboard { score: 0 })
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_event::<CollisionEvent>()
-        // Configure how frequently our gameplay systems are run
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_systems(Startup, setup)
         // Add our gameplay simulation systems to the fixed timestep schedule
         .add_systems(
             FixedUpdate,
             (
+                apply_velocity,
+                move_paddle,
                 check_for_collisions,
-                apply_velocity.before(check_for_collisions),
-                move_paddle
-                    .before(check_for_collisions)
-                    .after(apply_velocity),
-                play_collision_sound.after(check_for_collisions),
-            ),
+                play_collision_sound,
+            )
+                // `chain`ing systems together runs them in order
+                .chain(),
         )
         .add_systems(Update, (update_scoreboard, bevy::window::close_on_esc))
 
@@ -120,7 +118,7 @@ fn main() {
 
         // Setup
         .add_systems(Startup, (setup_help, setup_entity_count).after(setup))
-
+        
         // Systems
         .add_systems(Update, (update_entity_count, handle_save_input, update_toasts))
 
@@ -315,11 +313,6 @@ fn setup(
     commands.spawn(WallBundle::new(WallLocation::Top));
 
     // Bricks
-    // Negative scales result in flipped sprites / meshes,
-    // which is definitely not what we want here
-    assert!(BRICK_SIZE.x > 0.0);
-    assert!(BRICK_SIZE.y > 0.0);
-
     let total_width_of_bricks = (RIGHT_WALL - LEFT_WALL) - 2. * GAP_BETWEEN_BRICKS_AND_SIDES;
     let bottom_edge_of_bricks = paddle_y + GAP_BETWEEN_PADDLE_AND_BRICKS;
     let total_height_of_bricks = TOP_WALL - bottom_edge_of_bricks - GAP_BETWEEN_BRICKS_AND_CEILING;
@@ -602,6 +595,15 @@ fn handle_save_input(world: &mut World) {
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
         world.save("breakout").expect("Failed to save");
+
+        let file = std::fs::File::create("examples/saves/breakout.json").expect("Could not open file for serialization");
+
+        let mut ser = serde_json::Serializer::pretty(file);
+
+        world
+            .serialize(&mut ser)
+            .expect("Could not serialize World");
+
         text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
         world.load("breakout").expect("Failed to load");

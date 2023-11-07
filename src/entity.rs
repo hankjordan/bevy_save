@@ -1,6 +1,6 @@
 use bevy::{
-    ecs::entity::EntityMap,
     prelude::*,
+    utils::HashMap,
 };
 
 use crate::prelude::*;
@@ -21,13 +21,13 @@ impl SaveableEntity {
         self.components.is_empty()
     }
 
-    /// Attempts to map the stored index with the given [`EntityMap`].
-    pub fn map(&self, map: &EntityMap) -> Option<Entity> {
-        map.get(Entity::from_raw(self.entity))
+    /// Attempts to map the stored index with the given entity map.
+    pub fn map(&self, map: &HashMap<Entity, Entity>) -> Option<Entity> {
+        map.get(&Entity::from_raw(self.entity)).copied()
     }
 
-    /// Map the stored index with the given [`EntityMap`] or return an Entity with a one-to-one mapping.
-    pub fn try_map(&self, map: &EntityMap) -> Entity {
+    /// Map the stored index with the given entity map or return an Entity with a one-to-one mapping.
+    pub fn try_map(&self, map: &HashMap<Entity, Entity>) -> Entity {
         self.map(map).unwrap_or(Entity::from_raw(self.entity))
     }
 }

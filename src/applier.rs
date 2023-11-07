@@ -6,12 +6,11 @@ use std::{
 
 use bevy::{
     ecs::{
-        entity::EntityMap,
         query::ReadOnlyWorldQuery,
         system::EntityCommands,
         world::EntityRef,
     },
-    prelude::*,
+    prelude::*, utils::HashMap,
 };
 
 /// A [`ReadOnlyWorldQuery`] filter.
@@ -202,7 +201,7 @@ impl AppMappingMode {
 pub struct Applier<'a, S> {
     pub(crate) world: &'a mut World,
     pub(crate) snapshot: S,
-    pub(crate) map: EntityMap,
+    pub(crate) map: HashMap<Entity, Entity>,
     pub(crate) despawn: Option<DespawnMode>,
     pub(crate) mapping: Option<MappingMode>,
     pub(crate) hook: Option<BoxedHook>,
@@ -214,15 +213,15 @@ impl<'a, S> Applier<'a, S> {
         Self {
             world,
             snapshot,
-            map: EntityMap::default(),
+            map: HashMap::default(),
             despawn: None,
             mapping: None,
             hook: None,
         }
     }
 
-    /// Map entities to new ids with the [`EntityMap`].
-    pub fn map(mut self, map: EntityMap) -> Self {
+    /// Map entities to new ids with the entity map.
+    pub fn map(mut self, map: HashMap<Entity, Entity>) -> Self {
         self.map = map;
         self
     }

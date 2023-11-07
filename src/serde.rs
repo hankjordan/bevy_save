@@ -11,8 +11,8 @@ use bevy::{
             TypedReflectSerializer,
             UntypedReflectDeserializer,
         },
+        TypeRegistry,
         TypeRegistryArc,
-        TypeRegistryInternal,
     },
 };
 use serde::{
@@ -74,7 +74,7 @@ impl<'a> Serialize for ReflectsSerializer<'a> {
 
         for reflect in self.types {
             state.serialize_entry(
-                reflect.type_name(),
+                reflect.get_represented_type_info().unwrap().type_path(),
                 &TypedReflectSerializer::new(&**reflect, &self.registry.read()),
             )?;
         }
@@ -84,11 +84,11 @@ impl<'a> Serialize for ReflectsSerializer<'a> {
 }
 
 struct ReflectsDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> ReflectsDeserializer<'a> {
-    fn new(registry: &'a TypeRegistryInternal) -> Self {
+    fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -107,7 +107,7 @@ impl<'a, 'de> DeserializeSeed<'de> for ReflectsDeserializer<'a> {
 }
 
 struct ReflectsVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for ReflectsVisitor<'a> {
@@ -131,7 +131,7 @@ impl<'a, 'de> Visitor<'de> for ReflectsVisitor<'a> {
 
             let registration = self
                 .registry
-                .get_with_name(&key)
+                .get_with_type_path(&key)
                 .ok_or_else(|| de::Error::custom(format!("no registration found for `{key}`")))?;
 
             reflects.push(
@@ -196,11 +196,11 @@ impl<'a> Serialize for EntitySerializer<'a> {
 
 struct EntityDeserializer<'a> {
     id: u32,
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> EntityDeserializer<'a> {
-    fn new(id: u32, registry: &'a TypeRegistryInternal) -> Self {
+    fn new(id: u32, registry: &'a TypeRegistry) -> Self {
         Self { id, registry }
     }
 }
@@ -221,7 +221,7 @@ impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
 
 struct EntityVisitor<'a> {
     id: u32,
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
@@ -307,11 +307,11 @@ impl<'a> Serialize for EntitiesSerializer<'a> {
 }
 
 struct EntitiesDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> EntitiesDeserializer<'a> {
-    fn new(registry: &'a TypeRegistryInternal) -> Self {
+    fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -330,7 +330,7 @@ impl<'a, 'de> DeserializeSeed<'de> for EntitiesDeserializer<'a> {
 }
 
 struct EntitiesVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for EntitiesVisitor<'a> {
@@ -397,11 +397,11 @@ impl<'a> Serialize for RawSnapshotSerializer<'a> {
 }
 
 struct RawSnapshotDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> RawSnapshotDeserializer<'a> {
-    fn new(registry: &'a TypeRegistryInternal) -> Self {
+    fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -424,7 +424,7 @@ impl<'a, 'de> DeserializeSeed<'de> for RawSnapshotDeserializer<'a> {
 }
 
 struct RawSnapshotVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for RawSnapshotVisitor<'a> {
@@ -521,12 +521,12 @@ impl<'a> Serialize for RollbackSerializer<'a> {
 
 /// A deserializer for [`Rollback`] that uses reflection.
 pub struct RollbackDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> RollbackDeserializer<'a> {
     /// Returns a new instance of [`RollbackDeserializer`].
-    pub fn new(registry: &'a TypeRegistryInternal) -> Self {
+    pub fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -545,7 +545,7 @@ impl<'a, 'de> DeserializeSeed<'de> for RollbackDeserializer<'a> {
 }
 
 struct RollbackVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for RollbackVisitor<'a> {
@@ -596,11 +596,11 @@ impl<'a> Serialize for RollbackListSerializer<'a> {
 }
 
 struct RollbackListDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> RollbackListDeserializer<'a> {
-    fn new(registry: &'a TypeRegistryInternal) -> Self {
+    fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -619,7 +619,7 @@ impl<'a, 'de> DeserializeSeed<'de> for RollbackListDeserializer<'a> {
 }
 
 struct RollbackListVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for RollbackListVisitor<'a> {
@@ -691,12 +691,12 @@ impl<'a> Serialize for RollbacksSerializer<'a> {
 
 /// A deserializer for [`Rollbacks`] that uses reflection.
 pub struct RollbacksDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> RollbacksDeserializer<'a> {
     /// Returns a new instance of [`RollbacksDeserializer`].
-    pub fn new(registry: &'a TypeRegistryInternal) -> Self {
+    pub fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -715,7 +715,7 @@ impl<'a, 'de> DeserializeSeed<'de> for RollbacksDeserializer<'a> {
 }
 
 struct RollbacksVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
@@ -835,12 +835,12 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
 
 /// A deserializer for [`Snapshot`] that uses reflection.
 pub struct SnapshotDeserializer<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a> SnapshotDeserializer<'a> {
     /// Returns a new instance of [`SnapshotDeserializer`].
-    pub fn new(registry: &'a TypeRegistryInternal) -> Self {
+    pub fn new(registry: &'a TypeRegistry) -> Self {
         Self { registry }
     }
 }
@@ -859,7 +859,7 @@ impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
 }
 
 struct SnapshotVisitor<'a> {
-    registry: &'a TypeRegistryInternal,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
