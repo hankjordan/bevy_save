@@ -6,6 +6,7 @@ use bevy::{
 use crate::prelude::*;
 
 /// A reflection-powered serializable representation of an entity and its components.
+#[derive(Debug)]
 pub(crate) struct SaveableEntity {
     /// The transiently unique identifier of a corresponding `Entity`.
     pub entity: u32,

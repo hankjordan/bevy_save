@@ -31,7 +31,7 @@ impl<'w> Builder<'w> {
     /// # let world = &mut app.world;
     /// Builder::new::<Snapshot>(world)
     ///     // Exclude `Transform` from this `Snapshot`
-    ///     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    ///     .filter(|reg| reg.type_info().type_path() != "bevy_transform::components::transform::Transform")
     /// 
     ///     // Extract all matching entities and resources
     ///     .extract_all()

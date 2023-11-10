@@ -15,6 +15,7 @@ use crate::{
     prelude::*,
 };
 
+#[derive(Debug)]
 pub(crate) struct RawSnapshot {
     pub(crate) resources: Vec<Box<dyn Reflect>>,
     pub(crate) entities: Vec<SaveableEntity>,
@@ -297,7 +298,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     }
                 })?;
 
-                data.apply_or_insert(entity_mut, &**component);
+                data.insert(entity_mut, &**component);
             }
         }
 

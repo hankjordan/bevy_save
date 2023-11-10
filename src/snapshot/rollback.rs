@@ -11,6 +11,7 @@ use crate::{
 /// A rollback snapshot of the game state.
 ///
 /// [`Rollback`] excludes types that opt out of rollback.
+#[derive(Debug)]
 pub struct Rollback {
     pub(crate) snapshot: RawSnapshot,
 }
@@ -71,7 +72,7 @@ impl Rollback {
     /// # let world = &mut app.world;
     /// Rollback::builder(world)
     ///     // Exclude `Transform` from this `Rollback`
-    ///     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    ///     .filter(|reg| reg.type_info().type_path() != "bevy_transform::components::transform::Transform")
     ///
     ///     // Extract all matching entities and resources
     ///     .extract_all()
@@ -99,7 +100,7 @@ impl Rollback {
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
-    /// # use bevy::ecs::entity::EntityMap;
+    /// # use bevy::utils::HashMap;
     /// # use bevy_save::prelude::*;
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
@@ -109,7 +110,7 @@ impl Rollback {
     ///
     /// rollback
     ///     .applier(world)
-    ///     .map(EntityMap::default())
+    ///     .map(HashMap::default())
     ///     .despawn(DespawnMode::default())
     ///     .mapping(MappingMode::default())
     ///     .apply();

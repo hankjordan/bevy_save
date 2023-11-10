@@ -13,6 +13,7 @@ use crate::{
 /// A complete snapshot of the game state.
 ///
 /// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
+#[derive(Debug)]
 pub struct Snapshot {
     pub(crate) snapshot: RawSnapshot,
     pub(crate) rollbacks: Option<Rollbacks>,
@@ -82,7 +83,7 @@ impl Snapshot {
     /// # let world = &mut app.world;
     /// Snapshot::builder(world)
     ///     // Exclude `Transform` from this `Snapshot`
-    ///     .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    ///     .filter(|reg| reg.type_info().type_path() != "bevy_transform::components::transform::Transform")
     ///
     ///     // Extract all matching entities and resources
     ///     .extract_all()
@@ -109,7 +110,7 @@ impl Snapshot {
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
-    /// # use bevy::ecs::entity::EntityMap;
+    /// # use bevy::utils::HashMap;
     /// # use bevy_save::prelude::*;
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
@@ -119,7 +120,7 @@ impl Snapshot {
     ///
     /// snapshot
     ///     .applier(world)
-    ///     .map(EntityMap::default())
+    ///     .map(HashMap::default())
     ///     .despawn(DespawnMode::default())
     ///     .mapping(MappingMode::default())
     ///     .apply();
