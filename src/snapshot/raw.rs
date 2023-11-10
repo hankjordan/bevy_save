@@ -177,13 +177,14 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     .entities
                     .iter()
                     .map(|e| e.try_map(&self.map))
+                    .map(|e| e.index())
                     .collect::<HashSet<_>>();
 
                 let mut invalid = self
                     .world
                     .iter_entities()
                     .map(|e| e.id())
-                    .filter(|e| !valid.contains(e))
+                    .filter(|e| !valid.contains(&e.index()))
                     .collect::<Vec<_>>();
 
                 if let DespawnMode::MissingWith(filter) = despawn {
@@ -202,13 +203,14 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     .entities
                     .iter()
                     .filter_map(|e| e.map(&self.map))
+                    .map(|e| e.index())
                     .collect::<HashSet<_>>();
 
                 let mut invalid = self
                     .world
                     .iter_entities()
                     .map(|e| e.id())
-                    .filter(|e| !valid.contains(e))
+                    .filter(|e| !valid.contains(&e.index()))
                     .collect::<Vec<_>>();
 
                 if let DespawnMode::UnmappedWith(filter) = despawn {
