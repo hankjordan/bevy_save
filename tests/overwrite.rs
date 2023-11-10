@@ -11,6 +11,7 @@ struct Collect {
 fn test_collect() {
     let mut app = App::new();
 
+    app.add_plugins(MinimalPlugins);
     app.add_plugins(SavePlugins);
 
     app.register_saveable::<Collect>();
@@ -67,6 +68,7 @@ struct Basic {
 fn test_basic() {
     let mut app = App::new();
 
+    app.add_plugins(MinimalPlugins);
     app.add_plugins(SavePlugins);
 
     app.register_saveable::<Basic>();

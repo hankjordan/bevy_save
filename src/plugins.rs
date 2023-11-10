@@ -54,7 +54,8 @@ impl Plugin for SaveablesPlugin {
         
         #[cfg(feature = "bevy_render")]
         app
-            .register_saveable::<Visibility>();
+            .register_saveable::<Visibility>()
+            .register_type::<Color>();
 
         #[cfg(all(feature = "bevy_render", feature = "bevy_asset"))]
         app
@@ -63,9 +64,6 @@ impl Plugin for SaveablesPlugin {
         #[cfg(feature = "bevy_sprite")]
         app
             .register_saveable::<Sprite>()
-
-            // Fix `bevy_reflect: Add ReflectComponent registration for Sprite #8206`
-            .register_type_data::<Sprite, ReflectComponent>()
             .register_type::<Option<Vec2>>()
             .register_type::<Option<Rect>>();
 

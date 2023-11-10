@@ -9,6 +9,8 @@ struct Selectable;
 #[test]
 fn issue21() {
     let mut app = App::new();
+
+    app.add_plugins(MinimalPlugins);
     app.add_plugins(SavePlugins);
 
     let world = &mut app.world;
