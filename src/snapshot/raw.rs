@@ -291,7 +291,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
                     }
                 })?;
 
-                data.apply_or_insert(entity_mut, &**component);
+                data.insert(entity_mut, &**component);
             }
         }
 
