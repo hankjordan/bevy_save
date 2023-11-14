@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     marker::PhantomData,
-    sync::Arc,
 };
 
 use bevy::{
@@ -159,42 +158,6 @@ pub enum MappingMode {
     ///
     /// `bevy_scene` default
     Strict,
-}
-
-/// The App's default [`DespawnMode`].
-///
-/// `bevy_save` will use this when applying snapshots without a specified [`DespawnMode`].
-#[derive(Resource, Default, Deref, DerefMut, Clone)]
-pub struct AppDespawnMode(Arc<DespawnMode>);
-
-impl AppDespawnMode {
-    /// Create a new [`AppDespawnMode`] from the given [`DespawnMode`].
-    pub fn new(mode: DespawnMode) -> Self {
-        Self(Arc::new(mode))
-    }
-
-    /// Override the current [`DespawnMode`].
-    pub fn set(&mut self, mode: DespawnMode) {
-        self.0 = Arc::new(mode);
-    }
-}
-
-/// The App's default [`MappingMode`].
-///
-/// `bevy_save` will use this when applying snapshots without a specified [`MappingMode`].
-#[derive(Resource, Default, Deref, DerefMut, Clone)]
-pub struct AppMappingMode(Arc<MappingMode>);
-
-impl AppMappingMode {
-    /// Create a new [`AppMappingMode`] from the given [`MappingMode`].
-    pub fn new(mode: MappingMode) -> Self {
-        Self(Arc::new(mode))
-    }
-
-    /// Override the current [`MappingMode`].
-    pub fn set(&mut self, mode: MappingMode) {
-        self.0 = Arc::new(mode);
-    }
 }
 
 /// [`Applier`] lets you configure how a snapshot will be applied to the [`World`].

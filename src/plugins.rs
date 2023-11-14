@@ -12,7 +12,6 @@ impl PluginGroup for SavePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(SavePlugin)
-            .add(SaverPlugin)
             .add(SaveablesPlugin)
     }
 }
@@ -24,21 +23,11 @@ pub struct SavePlugin;
 impl Plugin for SavePlugin {
     fn build(&self, app: &mut App) {
         app
+            .init_pipeline::<&str>()
+            .init_pipeline::<DebugPipeline>()
+            
             .init_resource::<SaveableRegistry>()
             .init_resource::<Rollbacks>();
-    }
-}
-
-/// Serialization and deserialization.
-pub struct SaverPlugin;
-
-#[rustfmt::skip]
-impl Plugin for SaverPlugin {
-    fn build(&self, app: &mut App) {
-        app
-            .init_resource::<AppBackend>()
-            .init_resource::<AppSaver>()
-            .init_resource::<AppLoader>();
     }
 }
 

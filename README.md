@@ -7,26 +7,23 @@ A framework for saving and loading game state in Bevy.
 
 ## Features
 
-### Serialization and Deserialization
-
-While Bevy's `DynamicScene` only allows you to save entities and components, `bevy_save` enables you to save everything, including resources.
-
-- `World::serialize<S>()` and `World::deserialize<D>()` allow you to manually serialize and deserialize game state with your own serializer / deserializer.
-
 ### Save file management
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [whatever platform](#platforms) it is running on.
 
 - `World::save()` and `World::load()` uses your app's save location to save and load your game state, handling all serialization and deserialization for you.
-- The `AppSaver` and `AppLoader` resources determine what save format is used.
-  - By default, this is set up to use `rmp_serde` for serialization and deserialization.
-  - However, is extremely easy to switch to a custom save file format, see `"examples/json.rs"` for how you can do this.
-- The `AppBackend` resource determines how and where to store save files.
-  - The default `FileIO` backend saves each named snapshot to an individual file on the disk.
-  - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
-  - You can override the backend by modifying the `AppBackend` resource with your own `Backend` implementation.
+- These methods accept a `Pipeline`, a strongly typed representation of how you are going to be saving and loading.
+- The `Pipeline` trait uses the `Backend` trait as an interface between disk / database and `bevy_save`.
+- The `Backend` trait uses the `Saver` and `Loader` traits to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
+  - The default `Pipeline` uses the `FileIO` backend which saves each snapshot to an individual file on the disk by the given key.
+    - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
+    - You can use a different backend by implementing your own `Pipeline` with a custom `Backend`.
+  - The default `Pipeline` is set up to use `rmp_serde` as the file format.
+    - However, is extremely easy to switch to a custom save file format, see `"examples/manual.rs"` for how you can do this.
 
 #### Save directory location
+
+With the default `FileIO` backend, your save directory is managed for you.
 
 `WORKSPACE` is the name of your project's workspace (parent folder) name.
 
@@ -57,6 +54,7 @@ The `Rollbacks` resource also gives you fine-tuned control of the currently stor
 As long as the type implements `Reflect`, it can be registered and used with `bevy_save`.
 **Types that are not explicitly registered in the `SaveableRegistry` are not included in save/load**.
 
+- `App.init_pipeline::<P>()` initializes a `Pipeline` for use with save / load.
 - `App.register_saveable::<T>()` registers a type as saveable, allowing it to be included in saves and rollbacks.
 - `App.ignore_rollback::<T>()` excludes a type from rollback.
 - `App.allow_rollback::<T>()` allows you to re-include a type in rollback after it has already been set to ignore rollback.
@@ -75,12 +73,7 @@ As Entity ids are not intended to be used as unique identifiers, `bevy_save` sup
 
 First, you'll need to get a `SnapshotApplier`:
 
-- `World::deserialize_applier()` while manually deserializing a snapshot.
-- `World::load_applier()` while loading from a named save.
 - `World::rollback_applier()` while rolling back / forward.
-
-Or directly on the snapshot types:
-
 - `Snapshot::applier()`
 - `Rollback::applier()`
 
@@ -215,6 +208,16 @@ Snapshot::builder(world)
     .build()
 ```
 
+### Pipeline
+
+Save / load pipelines allow you to use multiple different configurations of `Backend`, `Saver`, and `Loader` in the same `App`.
+
+Pipelines also let you re-use `Snapshot` appliers and extractors. 
+
+```rust,ignore
+
+```
+
 ## License
 
 `bevy_save` is dual-licensed under MIT and Apache-2.0.
@@ -227,6 +230,7 @@ NOTE: We do not track Bevy main.
 
 | Bevy Version | Crate Version                     |
 |--------------|-----------------------------------|
+| `0.12`       | `0.10`                            |
 | `0.11`       | `0.9`                             |
 | `0.10`       | `0.4`, `0.5`, `0.6`, `0.7`, `0.8` |
 | `0.9`        | `0.1`, `0.2`, `0.3`               |
@@ -284,15 +288,15 @@ Registering a type again after it has already been registered will have no effec
 —
 :hammer_and_wrench: = In progress
 
-[img_bevy]: https://img.shields.io/badge/Bevy-0.11-blue
+[img_bevy]: https://img.shields.io/badge/Bevy-0.12-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [img_downloads]:https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
 
-[bevy]: https://crates.io/crates/bevy/0.11.0
+[bevy]: https://crates.io/crates/bevy/0.12.0
 [crates]: https://crates.io/crates/bevy_save
-[doc]: https://docs.rs/bevy_save/
+[doc]: https://docs.rs/bevy_save
 [license]: https://github.com/hankjordan/bevy_save#license
 [tracking]: https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking

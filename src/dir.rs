@@ -22,6 +22,6 @@ lazy_static! {
 }
 
 /// Returns the absolute path to a save file given its name.
-pub fn get_save_file(name: &str) -> PathBuf {
-    SAVE_DIR.join(format!("{name}.sav"))
+pub fn get_save_file<K: std::fmt::Display>(key: K) -> PathBuf {
+    SAVE_DIR.join(format!("{key}.sav"))
 }

@@ -13,6 +13,7 @@ use bevy::{
 use crate::{
     entity::SaveableEntity,
     prelude::*,
+    Error,
 };
 
 #[derive(Debug)]
@@ -137,7 +138,7 @@ where
 }
 
 impl<'a> Applier<'a, &'a RawSnapshot> {
-    pub(crate) fn apply(mut self) -> Result<(), SaveableError> {
+    pub(crate) fn apply(mut self) -> Result<(), Error> {
         let registry_arc = self.world.resource::<AppTypeRegistry>().clone();
         let registry = registry_arc.read();
 
@@ -148,15 +149,15 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
 
             let reg = registry
                 .get_with_type_path(path)
-                .ok_or_else(|| SaveableError::UnregisteredType {
+                .ok_or_else(|| Error::UnregisteredType {
                     type_path: path.to_string(),
                 })?;
 
-            let data = reg.data::<ReflectResource>().ok_or_else(|| {
-                SaveableError::UnregisteredResource {
-                    type_path: path.to_string(),
-                }
-            })?;
+            let data =
+                reg.data::<ReflectResource>()
+                    .ok_or_else(|| Error::UnregisteredResource {
+                        type_path: path.to_string(),
+                    })?;
 
             data.insert(self.world, resource.as_reflect());
 
@@ -166,14 +167,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
         }
 
         // Entities
-
-        let despawn_default = self
-            .world
-            .get_resource::<AppDespawnMode>()
-            .cloned()
-            .unwrap_or_default();
-
-        let despawn = self.despawn.as_ref().unwrap_or(&despawn_default);
+        let despawn = self.despawn.unwrap_or_default();
 
         match despawn {
             DespawnMode::Missing | DespawnMode::MissingWith(_) => {
@@ -248,13 +242,7 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             DespawnMode::None => {}
         }
 
-        let mapping_default = self
-            .world
-            .get_resource::<AppMappingMode>()
-            .cloned()
-            .unwrap_or_default();
-
-        let mapping = self.mapping.as_ref().unwrap_or(&mapping_default);
+        let mapping = self.mapping.unwrap_or_default();
 
         let fallback = if let MappingMode::Simple = &mapping {
             let mut fallback = HashMap::default();
@@ -286,17 +274,18 @@ impl<'a> Applier<'a, &'a RawSnapshot> {
             for component in &saved.components {
                 let path = component.get_represented_type_info().unwrap().type_path();
 
-                let reg = registry
-                    .get_with_type_path(path)
-                    .ok_or_else(|| SaveableError::UnregisteredType {
-                        type_path: path.to_string(),
-                    })?;
+                let reg =
+                    registry
+                        .get_with_type_path(path)
+                        .ok_or_else(|| Error::UnregisteredType {
+                            type_path: path.to_string(),
+                        })?;
 
-                let data = reg.data::<ReflectComponent>().ok_or_else(|| {
-                    SaveableError::UnregisteredComponent {
-                        type_path: path.to_string(),
-                    }
-                })?;
+                let data =
+                    reg.data::<ReflectComponent>()
+                        .ok_or_else(|| Error::UnregisteredComponent {
+                            type_path: path.to_string(),
+                        })?;
 
                 data.insert(entity_mut, &**component);
             }

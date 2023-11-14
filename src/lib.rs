@@ -8,8 +8,6 @@
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
 
-pub use bevy_save_erased_serde as erased_serde;
-
 pub use crate::{
     app::*,
     applier::*,
@@ -18,6 +16,7 @@ pub use crate::{
     clone::*,
     dir::*,
     error::*,
+    pipeline::*,
     plugins::*,
     registry::*,
     rollbacks::*,
@@ -35,6 +34,7 @@ mod clone;
 mod dir;
 mod entity;
 mod error;
+mod pipeline;
 mod plugins;
 mod registry;
 mod rollbacks;
@@ -52,11 +52,7 @@ pub mod prelude {
         builder::*,
         clone::*,
         dir::*,
-        erased_serde::{
-            IntoDeserializer,
-            IntoSerializer,
-        },
-        error::*,
+        pipeline::*,
         plugins::*,
         registry::*,
         rollbacks::*,

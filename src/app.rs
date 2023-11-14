@@ -7,6 +7,9 @@ use crate::prelude::*;
 
 /// Extension trait that adds save-related methods to Bevy's [`App`].
 pub trait AppSaveableExt {
+    /// Initialize a [`Pipeline`], allowing it to be used with [`WorldSaveableExt`] methods.
+    fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self;
+
     /// Register a type as saveable - it will be included in rollback and affected by save/load.
     fn register_saveable<T: GetTypeRegistration>(&mut self) -> &mut Self;
 
@@ -18,6 +21,11 @@ pub trait AppSaveableExt {
 }
 
 impl AppSaveableExt for App {
+    fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self {
+        P::build(self);
+        self
+    }
+
     fn register_saveable<T: GetTypeRegistration>(&mut self) -> &mut Self {
         self ////
             .init_resource::<SaveableRegistry>()

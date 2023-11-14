@@ -3,187 +3,98 @@ use std::io::{
     Write,
 };
 
-use bevy::prelude::*;
-
-use crate::{
-    erased_serde::Error,
-    prelude::*,
+use serde::{
+    Deserializer,
+    Serializer,
 };
-
-// Writer |------------------------------------------------------------------------------------------------------------
-
-/// A borrowed or owned writer.
-pub enum Writer<'w> {
-    /// Borrowed variant.
-    Borrowed(&'w mut dyn Write),
-
-    /// Owned variant.
-    Owned(Box<dyn Write + 'w>),
-}
-
-impl<'w, W: Write> From<&'w mut W> for Writer<'w> {
-    fn from(value: &'w mut W) -> Self {
-        Self::Borrowed(value)
-    }
-}
-
-impl<'w, W: Write + 'w> From<Box<W>> for Writer<'w> {
-    fn from(value: Box<W>) -> Self {
-        Self::Owned(value)
-    }
-}
-
-impl<'w> std::ops::Deref for Writer<'w> {
-    type Target = dyn Write + 'w;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Borrowed(wr) => wr,
-            Self::Owned(wr) => wr,
-        }
-    }
-}
-
-impl<'w> std::ops::DerefMut for Writer<'w> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            Self::Borrowed(wr) => wr,
-            Self::Owned(wr) => wr,
-        }
-    }
-}
-
-impl<'w> std::io::Write for Writer<'w> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        (**self).write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        (**self).flush()
-    }
-
-    fn write_vectored(&mut self, bufs: &[std::io::IoSlice<'_>]) -> std::io::Result<usize> {
-        (**self).write_vectored(bufs)
-    }
-    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        (**self).write_all(buf)
-    }
-    fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::io::Result<()> {
-        (**self).write_fmt(fmt)
-    }
-}
-
-/// An owned [`Writer`].
-pub type OwnedWriter = Writer<'static>;
-
-// Reader |------------------------------------------------------------------------------------------------------------
-
-/// A borrowed or owned reader.
-pub enum Reader<'r> {
-    /// Borrowed variant.
-    Borrowed(&'r mut dyn Read),
-
-    /// Owned variant.
-    Owned(Box<dyn Read + 'r>),
-}
-
-impl<'r, R: Read> From<&'r mut R> for Reader<'r> {
-    fn from(value: &'r mut R) -> Self {
-        Self::Borrowed(value)
-    }
-}
-
-impl<'r, R: Read + 'r> From<Box<R>> for Reader<'r> {
-    fn from(value: Box<R>) -> Self {
-        Self::Owned(value)
-    }
-}
-
-impl<'r> std::ops::Deref for Reader<'r> {
-    type Target = dyn Read + 'r;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Borrowed(re) => re,
-            Self::Owned(re) => re,
-        }
-    }
-}
-
-impl<'r> std::ops::DerefMut for Reader<'r> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            Self::Borrowed(re) => re,
-            Self::Owned(re) => re,
-        }
-    }
-}
-
-impl<'r> std::io::Read for Reader<'r> {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        (**self).read(buf)
-    }
-
-    fn read_vectored(&mut self, bufs: &mut [std::io::IoSliceMut<'_>]) -> std::io::Result<usize> {
-        (**self).read_vectored(bufs)
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> std::io::Result<usize> {
-        (**self).read_to_end(buf)
-    }
-
-    fn read_to_string(&mut self, buf: &mut String) -> std::io::Result<usize> {
-        (**self).read_to_string(buf)
-    }
-
-    fn read_exact(&mut self, buf: &mut [u8]) -> std::io::Result<()> {
-        (**self).read_exact(buf)
-    }
-}
-
-/// An owned [`Reader`].
-pub type OwnedReader = Reader<'static>;
 
 // Saver / Loader |----------------------------------------------------------------------------------------------------
 
+/// Implemented for all types whose mutable reference is a [`Serializer`].
+pub trait AsSerializer {
+    /// The [`Serializer`] type.
+    type Output<'a>: Serializer + 'a
+    where
+        Self: 'a;
+
+    /// Coerce the type into a mutable reference.
+    fn as_serializer(&mut self) -> Self::Output<'_>;
+}
+
+impl<T> AsSerializer for T
+where
+    for<'a> &'a mut T: Serializer,
+{
+    type Output<'a> = &'a mut T where Self: 'a;
+
+    fn as_serializer(&mut self) -> Self::Output<'_> {
+        self
+    }
+}
+
+/// Implemented for all types whose mutable reference is a [`Deserializer`].
+pub trait AsDeserializer {
+    /// The [`Deserializer`] type.
+    type Output<'a>: for<'de> Deserializer<'de> + 'a
+    where
+        Self: 'a;
+
+    /// Coerce the type into a mutable reference.
+    fn as_deserializer(&mut self) -> Self::Output<'_>;
+}
+
+impl<T> AsDeserializer for T
+where
+    for<'a, 'de> &'a mut T: Deserializer<'de>,
+{
+    type Output<'a> = &'a mut T where Self: 'a;
+
+    fn as_deserializer(&mut self) -> Self::Output<'_> {
+        self
+    }
+}
+
 /// Handles serialization of save data.
-///
-/// Use [`AppSaver`] to override the [`Saver`] that `bevy_save` uses for saving snapshots.
-pub trait Saver: Send + Sync + 'static {
-    /// Build a serializer trait object from the given writer.
+pub trait Saver {
+    /// The type which can be used as a [`Serializer`].
+    type Serializer<W: Write>: AsSerializer;
+
+    /// Builds a [`Serializer`] from the given writer.
     ///
     /// # Example
     /// ```
     /// # use bevy_save::prelude::*;
-    /// pub struct RMPSaver;
-    ///
     /// impl Saver for RMPSaver {
-    ///     fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w> {
-    ///         IntoSerializer::erase(rmp_serde::Serializer::new(writer))
+    ///     type Serializer<W: Write> = rmp_serde::Serializer<W, rmp_serde::config::DefaultConfig>;
+    ///
+    ///     fn build<W: Write>(writer: W) -> Self::Serializer<W> {
+    ///         rmp_serde::Serializer::new(writer)
     ///     }
     /// }
     /// ```
-    fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w>;
+    fn build<W: Write>(writer: W) -> Self::Serializer<W>;
 }
 
 /// Handles deserialization of save data.
-///
-/// Use [`AppLoader`] to override the [`Loader`] that `bevy_save` uses for loading snapshots.
-pub trait Loader: Send + Sync + 'static {
-    /// Build a deserializer trait object from the given reader.
-    /// 
+pub trait Loader {
+    /// The type which can be used as a [`Deserializer`].
+    type Deserializer<R: Read>: AsDeserializer;
+
+    /// Builds a [`Deserializer`] from the given reader.
+    ///
     /// # Example
     /// ```
     /// # use bevy_save::prelude::*;
-    /// pub struct RMPLoader;
-    /// 
     /// impl Loader for RMPLoader {
-    ///     fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
-    ///         IntoDeserializer::erase(rmp_serde::Deserializer::new(reader))
+    ///     type Deserializer<R: Read> =
+    ///         rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>, rmp_serde::config::DefaultConfig>;
+    ///
+    ///     fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
+    ///         rmp_serde::Deserializer::new(reader)
     ///     }
     /// }
     /// ```
-    fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de>;
+    fn build<R: Read>(reader: R) -> Self::Deserializer<R>;
 }
 
 // Saver / Loader Implementations |------------------------------------------------------------------------------------
@@ -192,8 +103,10 @@ pub trait Loader: Send + Sync + 'static {
 pub struct RMPSaver;
 
 impl Saver for RMPSaver {
-    fn serializer<'w>(&self, writer: Writer<'w>) -> IntoSerializer<'w> {
-        IntoSerializer::erase(rmp_serde::Serializer::new(writer))
+    type Serializer<W: Write> = rmp_serde::Serializer<W, rmp_serde::config::DefaultConfig>;
+
+    fn build<W: Write>(writer: W) -> Self::Serializer<W> {
+        rmp_serde::Serializer::new(writer)
     }
 }
 
@@ -201,97 +114,47 @@ impl Saver for RMPSaver {
 pub struct RMPLoader;
 
 impl Loader for RMPLoader {
-    fn deserializer<'r, 'de>(&self, reader: Reader<'r>) -> IntoDeserializer<'r, 'de> {
-        IntoDeserializer::erase(rmp_serde::Deserializer::new(reader))
+    type Deserializer<R: Read> =
+        rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>, rmp_serde::config::DefaultConfig>;
+
+    fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
+        rmp_serde::Deserializer::new(reader)
     }
 }
 
-// Resources |---------------------------------------------------------------------------------------------------------
+/// An implementation of [`Saver`] that uses [`serde_json::Serializer`].
+pub struct JSONSaver;
 
-/// The App's [`Saver`].
-///
-/// `bevy_save` will use this when saving snapshots.
-#[derive(Resource)]
-pub struct AppSaver(Box<dyn Saver>);
+impl Saver for JSONSaver {
+    type Serializer<W: Write> =
+        serde_json::Serializer<W, serde_json::ser::PrettyFormatter<'static>>;
 
-impl AppSaver {
-    /// Create a new [`AppSaver`] from the given [`Saver`].
-    pub fn new<S: Saver>(saver: S) -> Self {
-        Self(Box::new(saver))
-    }
-
-    /// Override the current [`Saver`].
-    pub fn set<S: Saver>(&mut self, saver: S) {
-        self.0 = Box::new(saver);
-    }
-
-    /// Returns the current [`Saver`] serializer.
-    pub fn serializer<'w, W>(&self, writer: W) -> IntoSerializer<'w>
-    where
-        W: Into<Writer<'w>>,
-    {
-        self.0.serializer(writer.into())
-    }
-
-    /// Serialize the value to the given writer using the current [`Saver`].
-    ///
-    /// # Errors
-    /// - See [`Error`]
-    pub fn serialize<'w, T, W>(&self, value: &T, writer: W) -> Result<(), Error>
-    where
-        T: ?Sized + serde::Serialize,
-        W: Into<Writer<'w>>,
-    {
-        value.serialize(&mut self.serializer(writer)).map(|_| ())
+    fn build<W: Write>(writer: W) -> Self::Serializer<W> {
+        serde_json::Serializer::pretty(writer)
     }
 }
 
-impl Default for AppSaver {
-    fn default() -> Self {
-        Self::new(RMPSaver)
+/// An implementation of [`Loader`] that uses [`serde_json::Deserializer`].
+pub struct JSONLoader;
+
+impl Loader for JSONLoader {
+    type Deserializer<R: Read> = serde_json::Deserializer<serde_json::de::IoRead<R>>;
+
+    fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
+        serde_json::Deserializer::from_reader(reader)
     }
 }
 
-/// The App's [`Loader`].
-///
-/// `bevy_save` will use this when loading snapshots.
-#[derive(Resource)]
-pub struct AppLoader(Box<dyn Loader>);
+// Defaults |-----------------------------------------------------------------------------------------------------------
 
-impl AppLoader {
-    /// Create a new [`AppLoader`] from the given [`Loader`].
-    pub fn new<L: Loader>(loader: L) -> Self {
-        Self(Box::new(loader))
-    }
+/// The [`Saver`] the default [`Pipeline`] will use.
+pub type DefaultSaver = RMPSaver;
 
-    /// Override the current [`Loader`].
-    pub fn set<L: Loader>(&mut self, loader: L) {
-        self.0 = Box::new(loader);
-    }
+/// The [`Loader`] the default [`Pipeline`] will use.
+pub type DefaultLoader = RMPLoader;
 
-    /// Returns the current [`Loader`] deserializer.
-    pub fn deserializer<'r, 'de: 'r, R>(&self, reader: R) -> IntoDeserializer<'r, 'de>
-    where
-        R: Into<Reader<'r>>,
-    {
-        self.0.deserializer(reader.into())
-    }
+/// The [`Saver`] the default debug [`Pipeline`] will use.
+pub type DefaultDebugSaver = JSONSaver;
 
-    /// Deserialize the type `T` from the given reader using the current [`Loader`].
-    ///
-    /// # Errors
-    /// - See [`Error`]
-    pub fn deserialize<'r, 'de: 'r, T, R>(&self, reader: R) -> Result<T, Error>
-    where
-        T: serde::Deserialize<'de>,
-        R: Into<Reader<'r>>,
-    {
-        T::deserialize(&mut self.deserializer(reader))
-    }
-}
-
-impl Default for AppLoader {
-    fn default() -> Self {
-        Self::new(RMPLoader)
-    }
-}
+/// The [`Loader`] the default debug [`Pipeline`] will use.
+pub type DefaultDebugLoader = JSONLoader;

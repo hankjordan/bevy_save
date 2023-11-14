@@ -6,6 +6,7 @@ use bevy::{
 use crate::{
     prelude::*,
     snapshot::RawSnapshot,
+    Error,
 };
 
 /// A rollback snapshot of the game state.
@@ -61,7 +62,7 @@ impl Rollback {
     }
 
     /// Create a [`Builder`] from the [`World`], allowing you to create partial or filtered snapshots.
-    /// 
+    ///
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
@@ -91,7 +92,7 @@ impl Rollback {
     ///
     /// # Errors
     /// - See [`SaveableError`]
-    pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
+    pub fn apply(&self, world: &mut World) -> Result<(), Error> {
         self.applier(world).apply()
     }
 
@@ -210,7 +211,7 @@ macro_rules! impl_rollback_applier {
             ///
             /// # Errors
             /// - See [`SaveableError`]
-            pub fn apply(self) -> Result<(), SaveableError> {
+            pub fn apply(self) -> Result<(), Error> {
                 let applier = Applier {
                     world: self.world,
                     snapshot: &self.snapshot.snapshot,

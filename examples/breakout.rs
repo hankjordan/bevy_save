@@ -283,14 +283,11 @@ fn setup(
     // Scoreboard
     commands.spawn((
         TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: TEXT_COLOR,
-                    ..default()
-                },
-            ),
+            TextSection::new("Score: ", TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: TEXT_COLOR,
+                ..default()
+            }),
             TextSection::from_style(TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: SCORE_COLOR,
@@ -522,14 +519,11 @@ fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
             right: HELP_TEXT_PADDING,
             ..default()
         }),
-        EntityCount
+        EntityCount,
     ));
 }
 
-fn update_entity_count(
-    entities: Query<Entity>,
-    mut counters: Query<&mut Text, With<EntityCount>>,
-) {
+fn update_entity_count(entities: Query<Entity>, mut counters: Query<&mut Text, With<EntityCount>>) {
     let mut text = counters.single_mut();
     text.sections[0].value = format!("Entities: {:?}", entities.iter().len());
 }
@@ -596,13 +590,9 @@ fn handle_save_input(world: &mut World) {
     } else if keys.just_released(KeyCode::Return) {
         world.save("breakout").expect("Failed to save");
 
-        let file = std::fs::File::create("examples/saves/breakout.json").expect("Could not open file for serialization");
-
-        let mut ser = serde_json::Serializer::pretty(file);
-
         world
-            .serialize(&mut ser)
-            .expect("Could not serialize World");
+            .save(DebugPipeline("examples/saves/breakout.json"))
+            .expect("Failed to save");
 
         text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
@@ -622,7 +612,7 @@ fn handle_save_input(world: &mut World) {
 
         info!(text);
         toaster.show(text);
-        
+
         state.apply(world);
     }
 }

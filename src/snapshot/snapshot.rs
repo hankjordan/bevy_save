@@ -7,6 +7,7 @@ use bevy::{
 
 use crate::{
     prelude::*,
+    Error,
     snapshot::RawSnapshot,
 };
 
@@ -102,7 +103,7 @@ impl Snapshot {
     ///
     /// # Errors
     /// - See [`SaveableError`]
-    pub fn apply(&self, world: &mut World) -> Result<(), SaveableError> {
+    pub fn apply(&self, world: &mut World) -> Result<(), Error> {
         self.applier(world).apply()
     }
 
@@ -235,7 +236,7 @@ macro_rules! impl_snapshot_applier {
             ///
             /// # Errors
             /// - See [`SaveableError`]
-            pub fn apply(self) -> Result<(), SaveableError> {
+            pub fn apply(self) -> Result<(), Error> {
                 let applier = Applier {
                     world: self.world,
                     snapshot: &self.snapshot.snapshot,

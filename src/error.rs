@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// An error that may occur when loading saves or rollbacks.
 #[derive(Error, Debug)]
-pub enum SaveableError {
+pub enum Error {
     /// A Component was not registered in the AppTypeRegistry.
     #[error("scene contains the unregistered component `{type_path}`. you must add `#[reflect(Component)]` to your type")]
     UnregisteredComponent {
@@ -24,14 +24,42 @@ pub enum SaveableError {
         type_path: String,
     },
 
-    /// Deserialization failure or other error.
+    /// Saving or serialization error.
+    #[error("error occurred while saving")]
+    Saving,
+
+    /// Loading or deserialization error.
+    #[error("error occurred while loading")]
+    Loading,
+
+    /// IO / Filesystem error.
+    #[error("io error: {0}")]
+    IO(std::io::Error),
+
+    /// Other error.
     #[error("other error: {0}")]
     Other(Box<dyn std::error::Error>),
 }
 
-impl SaveableError {
-    /// Deserialization failure or other error.
+impl Error {
+    /// Saving or serialization error.
+    pub fn saving(_: impl std::error::Error) -> Self {
+        Self::Saving
+    }
+
+    /// Loading or deserialization error.
+    pub fn loading(_: impl std::error::Error) -> Self {
+        Self::Loading
+    }
+
+    /// Other error.
     pub fn other(error: impl std::error::Error + 'static) -> Self {
         Self::Other(Box::new(error))
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Self::IO(value)
     }
 }
