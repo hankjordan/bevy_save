@@ -1,0 +1,10 @@
+{
+  "resources": {},
+  "entities": {
+    "2": {
+      "components": {
+        "pipeline::Tile": "Stone"
+      }
+    }
+  }
+}

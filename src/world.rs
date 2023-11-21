@@ -1,36 +1,18 @@
 use bevy::prelude::*;
 
 use crate::{
-    Applier,
+    Capture,
     CloneReflect,
     Error,
     Pipeline,
-    Rollback,
     Rollbacks,
     Snapshot,
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
-    /// Returns a [`Snapshot`] of the current [`World`] state.
-    fn snapshot(&self) -> Snapshot;
-
-    /// Creates a checkpoint for rollback.
-    fn checkpoint(&mut self);
-
-    /// Rolls back / forward the [`World`] state.
-    ///
-    /// # Errors
-    /// - See [`SaveableError`]
-    fn rollback(&mut self, checkpoints: isize) -> Result<(), Error>;
-
-    /// Rolls back / forward the [`World`] state.
-    ///
-    /// The applier allows you to customize how the [`Rollback`] will be applied to the [`World`].
-    ///
-    /// # Errors
-    /// - See [`SaveableError`]
-    fn rollback_applier(&mut self, checkpoints: isize) -> Option<Applier<Rollback>>;
+    /// Captures a [`Snapshot`] from the current [`World`] state.
+    fn snapshot<C: Capture>(&self) -> Snapshot;
 
     /// Saves the game state with the given [`Pipeline`].
     ///
@@ -46,28 +28,8 @@ pub trait WorldSaveableExt: Sized {
 }
 
 impl WorldSaveableExt for World {
-    fn snapshot(&self) -> Snapshot {
-        Snapshot::from_world(self)
-    }
-
-    fn checkpoint(&mut self) {
-        let rollback = Rollback::from_world(self);
-        let mut state = self.resource_mut::<Rollbacks>();
-        state.checkpoint(rollback);
-    }
-
-    fn rollback(&mut self, checkpoints: isize) -> Result<(), Error> {
-        self.rollback_applier(checkpoints)
-            .map_or(Ok(()), |a| a.apply())
-    }
-
-    fn rollback_applier(&mut self, checkpoints: isize) -> Option<Applier<Rollback>> {
-        let mut state = self.resource_mut::<Rollbacks>();
-
-        state
-            .rollback(checkpoints)
-            .map(|r| r.clone_value())
-            .map(|snap| snap.into_applier(self))
+    fn snapshot<C: Capture>(&self) -> Snapshot {
+        C::capture(self)
     }
 
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
@@ -76,5 +38,36 @@ impl WorldSaveableExt for World {
 
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
         pipeline.load(self)
+    }
+}
+
+/// Extension trait that adds rollback-related methods to Bevy's [`World`].
+pub trait WorldRollbackExt {
+    /// Creates a checkpoint for rollback.
+    fn checkpoint<C: Capture>(&mut self);
+
+    /// Rolls back / forward the [`World`] state.
+    ///
+    /// # Errors
+    /// - See [`Error`]
+    fn rollback<C: Capture>(&mut self, checkpoints: isize) -> Result<(), Error>;
+}
+
+impl WorldRollbackExt for World {
+    fn checkpoint<C: Capture>(&mut self) {
+        let rollback = C::capture(self);
+        self.resource_mut::<Rollbacks>().checkpoint(rollback);
+    }
+
+    fn rollback<C: Capture>(&mut self, checkpoints: isize) -> Result<(), Error> {
+        if let Some(rollback) = self
+            .resource_mut::<Rollbacks>()
+            .rollback(checkpoints)
+            .map(|r| r.clone_value())
+        {
+            C::apply(self, &rollback)
+        } else {
+            Ok(())
+        }
     }
 }

@@ -1,0 +1,10 @@
+{
+  "resources": {},
+  "entities": {
+    "3": {
+      "components": {
+        "pipeline::Tile": "Empty"
+      }
+    }
+  }
+}

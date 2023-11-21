@@ -1,4 +1,5 @@
 use std::{
+    any::TypeId,
     collections::HashSet,
     marker::PhantomData,
 };
@@ -6,10 +7,21 @@ use std::{
 use bevy::{
     ecs::{
         query::ReadOnlyWorldQuery,
-        system::EntityCommands,
+        reflect::ReflectMapEntities,
+        system::{
+            CommandQueue,
+            EntityCommands,
+        },
         world::EntityRef,
     },
-    prelude::*, utils::HashMap,
+    prelude::*,
+    scene::SceneSpawnError,
+    utils::HashMap,
+};
+
+use crate::{
+    Error,
+    Snapshot,
 };
 
 /// A [`ReadOnlyWorldQuery`] filter.
@@ -160,53 +172,169 @@ pub enum MappingMode {
     Strict,
 }
 
-/// [`Applier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct Applier<'a, S> {
-    pub(crate) world: &'a mut World,
-    pub(crate) snapshot: S,
-    pub(crate) map: HashMap<Entity, Entity>,
-    pub(crate) despawn: Option<DespawnMode>,
-    pub(crate) mapping: Option<MappingMode>,
-    pub(crate) hook: Option<BoxedHook>,
+/// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
+pub struct SnapshotApplier<'a> {
+    snapshot: &'a Snapshot,
+    world: &'a mut World,
+    entity_map: Option<&'a mut HashMap<Entity, Entity>>,
+    type_registry: Option<&'a AppTypeRegistry>,
+    hook: Option<Box<dyn Hook>>,
 }
 
-impl<'a, S> Applier<'a, S> {
-    /// Create a new [`Applier`] with default settings from the world and snapshot.
-    pub fn new(world: &'a mut World, snapshot: S) -> Self {
+impl<'a> SnapshotApplier<'a> {
+    /// Create a new [`SnapshotApplier`] with from the world and snapshot.
+    pub fn new(snapshot: &'a Snapshot, world: &'a mut World) -> Self {
         Self {
-            world,
             snapshot,
-            map: HashMap::default(),
-            despawn: None,
-            mapping: None,
+            world,
+            entity_map: None,
+            type_registry: None,
             hook: None,
         }
     }
+}
 
-    /// Map entities to new ids with the entity map.
-    pub fn map(mut self, map: HashMap<Entity, Entity>) -> Self {
-        self.map = map;
+impl<'a> SnapshotApplier<'a> {
+    /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
+    pub fn entity_map(mut self, entity_map: &'a mut HashMap<Entity, Entity>) -> Self {
+        self.entity_map = Some(entity_map);
         self
     }
 
-    /// Change how the snapshot affects entities when applying.
-    pub fn despawn(mut self, mode: DespawnMode) -> Self {
-        self.despawn = Some(mode);
+    /// The [`AppTypeRegistry`] used for reflection information.
+    ///
+    /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
+    pub fn type_registry(mut self, type_registry: &'a AppTypeRegistry) -> Self {
+        self.type_registry = Some(type_registry);
         self
     }
 
-    /// Change how the snapshot maps entities when applying.
-    pub fn mapping(mut self, mode: MappingMode) -> Self {
-        self.mapping = Some(mode);
-        self
-    }
-
-    /// Add a [`Hook`] that will run for each entity when applying.
-    pub fn hook<F>(mut self, hook: F) -> Self
-    where
-        F: Hook + 'static,
-    {
+    /// Add a [`Hook`] that will run for each entity after applying.
+    pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
         self.hook = Some(Box::new(hook));
         self
+    }
+}
+
+impl<'a> SnapshotApplier<'a> {
+    /// Apply the [`Snapshot`] to the [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
+    ///
+    /// # Errors
+    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
+    pub fn apply(self) -> Result<(), Error> {
+        let default_type_registry = self.world.get_resource::<AppTypeRegistry>().cloned();
+
+        let type_registry = self
+            .type_registry
+            .or(default_type_registry.as_ref())
+            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to apply.")
+            .read();
+
+        let mut default_entity_map = HashMap::new();
+
+        let entity_map = self.entity_map.unwrap_or(&mut default_entity_map);
+
+        for resource in &self.snapshot.resources {
+            let type_info = resource.get_represented_type_info().ok_or_else(|| {
+                SceneSpawnError::NoRepresentedType {
+                    type_path: resource.reflect_type_path().to_string(),
+                }
+            })?;
+            let registration = type_registry.get(type_info.type_id()).ok_or_else(|| {
+                SceneSpawnError::UnregisteredButReflectedType {
+                    type_path: type_info.type_path().to_string(),
+                }
+            })?;
+            let reflect_resource = registration.data::<ReflectResource>().ok_or_else(|| {
+                SceneSpawnError::UnregisteredResource {
+                    type_path: type_info.type_path().to_string(),
+                }
+            })?;
+
+            // If the world already contains an instance of the given resource
+            // just apply the (possibly) new value, otherwise insert the resource
+            reflect_resource.apply_or_insert(self.world, &**resource);
+        }
+
+        // For each component types that reference other entities, we keep track
+        // of which entities in the scene use that component.
+        // This is so we can update the scene-internal references to references
+        // of the actual entities in the world.
+        let mut scene_mappings: HashMap<TypeId, Vec<Entity>> = HashMap::default();
+
+        for scene_entity in &self.snapshot.entities {
+            // Fetch the entity with the given entity id from the `entity_map`
+            // or spawn a new entity with a transiently unique id if there is
+            // no corresponding entry.
+            let entity = *entity_map
+                .entry(scene_entity.entity)
+                .or_insert_with(|| self.world.spawn_empty().id());
+
+            let entity_mut = &mut self.world.entity_mut(entity);
+
+            // Apply/ add each component to the given entity.
+            for component in &scene_entity.components {
+                let type_info = component.get_represented_type_info().ok_or_else(|| {
+                    SceneSpawnError::NoRepresentedType {
+                        type_path: component.reflect_type_path().to_string(),
+                    }
+                })?;
+                let registration = type_registry.get(type_info.type_id()).ok_or_else(|| {
+                    SceneSpawnError::UnregisteredButReflectedType {
+                        type_path: type_info.type_path().to_string(),
+                    }
+                })?;
+                let reflect_component =
+                    registration.data::<ReflectComponent>().ok_or_else(|| {
+                        SceneSpawnError::UnregisteredComponent {
+                            type_path: type_info.type_path().to_string(),
+                        }
+                    })?;
+
+                // If this component references entities in the scene, track it
+                // so we can update it to the entity in the world.
+                if registration.data::<ReflectMapEntities>().is_some() {
+                    scene_mappings
+                        .entry(registration.type_id())
+                        .or_insert(Vec::new())
+                        .push(entity);
+                }
+
+                // If the entity already has the given component attached,
+                // just apply the (possibly) new value, otherwise add the
+                // component to the entity.
+                reflect_component.apply_or_insert(entity_mut, &**component);
+            }
+        }
+
+        // Updates references to entities in the scene to entities in the world
+        for (type_id, entities) in scene_mappings {
+            let registration = type_registry.get(type_id).expect(
+                "we should be getting TypeId from this TypeRegistration in the first place",
+            );
+            if let Some(map_entities_reflect) = registration.data::<ReflectMapEntities>() {
+                map_entities_reflect.map_entities(self.world, entity_map, &entities);
+            }
+        }
+
+        // Entity hook
+        if let Some(hook) = &self.hook {
+            let mut queue = CommandQueue::default();
+            let mut commands = Commands::new(&mut queue, self.world);
+
+            for (_, entity) in entity_map {
+                let entity_ref = self.world.entity(*entity);
+                let mut entity_mut = commands.entity(*entity);
+
+                hook(&entity_ref, &mut entity_mut);
+            }
+
+            queue.apply(self.world);
+        }
+
+        Ok(())
     }
 }

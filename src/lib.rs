@@ -32,7 +32,6 @@ mod backend;
 mod builder;
 mod clone;
 mod dir;
-mod entity;
 mod error;
 mod pipeline;
 mod plugins;

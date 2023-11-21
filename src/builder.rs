@@ -1,23 +1,27 @@
 use std::collections::BTreeMap;
 
 use bevy::{
+    ecs::component::ComponentId,
     prelude::*,
-    reflect::TypeRegistration,
+    scene::DynamicEntity,
 };
 
-use crate::entity::SaveableEntity;
+use crate::{
+    CloneReflect,
+    Rollbacks,
+    Snapshot,
+};
 
-/// A snapshot builder that may extract entities and resources from a [`World`].
-pub struct Builder<'w, S = (), F = fn(&&TypeRegistration) -> bool> {
-    pub(crate) world: &'w World,
-    pub(crate) filter: F,
-    pub(crate) entities: BTreeMap<Entity, SaveableEntity>,
-    pub(crate) resources: BTreeMap<String, Box<dyn Reflect>>,
-    pub(crate) snapshot: Option<S>,
+/// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
+pub struct SnapshotBuilder<'a> {
+    world: &'a World,
+    entities: BTreeMap<Entity, DynamicEntity>,
+    resources: BTreeMap<ComponentId, Box<dyn Reflect>>,
+    rollbacks: Option<Rollbacks>,
 }
 
-impl<'w> Builder<'w> {
-    /// Create a new [`Builder`] from the [`World`] and snapshot.
+impl<'a> SnapshotBuilder<'a> {
+    /// Create a new [`SnapshotBuilder`] from the [`World`] and snapshot.
     ///
     /// You must call at least one of the `extract` methods or the built snapshot will be empty.
     ///
@@ -29,10 +33,7 @@ impl<'w> Builder<'w> {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// Builder::new::<Snapshot>(world)
-    ///     // Exclude `Transform` from this `Snapshot`
-    ///     .filter(|reg| reg.type_info().type_path() != "bevy_transform::components::transform::Transform")
-    /// 
+    /// SnapshotBuilder::new(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///     
@@ -42,85 +43,163 @@ impl<'w> Builder<'w> {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn new<S>(world: &'w World) -> Builder<'w, S> {
-        Builder {
+    pub fn new(world: &'a World) -> Self {
+        Self {
             world,
-            filter: |_| true,
-            entities: BTreeMap::default(),
-            resources: BTreeMap::default(),
-            snapshot: None,
+            entities: BTreeMap::new(),
+            resources: BTreeMap::new(),
+            rollbacks: None,
         }
     }
 }
 
-impl<'w, S> Builder<'w, S> {
-    /// Change the type filter of the builder.
-    ///
-    /// Only matching types are included in the snapshot.
-    pub fn filter<F>(self, filter: F) -> Builder<'w, S, F>
-    where
-        F: Fn(&&TypeRegistration) -> bool,
-    {
-        Builder {
-            world: self.world,
-            filter,
-            entities: self.entities,
-            resources: self.resources,
-            snapshot: self.snapshot,
-        }
-    }
-}
-
-/// A snapshot builder that may extract entities and resources from a [`World`].
-///
-/// Filters extracted components and resources with the given filter.
-///
-/// Re-extracting an entity or resource that was already extracted will cause the previously extracted data to be overwritten.
-pub trait Build: Sized {
-    /// The snapshot being built.
-    type Output;
-
-    /// Extract all entities and resources from the builder's [`World`].
-    fn extract_all(self) -> Self {
-        self.extract_all_entities().extract_all_resources()
-    }
-
-    /// Extract a single entity from the builder's [`World`].
-    fn extract_entity(self, entity: Entity) -> Self {
+impl<'a> SnapshotBuilder<'a> {
+    /// Extract a single entity from the builder’s [`World`].
+    pub fn extract_entity(self, entity: Entity) -> Self {
         self.extract_entities([entity].into_iter())
     }
 
-    /// Extract entities from the builder's [`World`].
-    fn extract_entities(self, entities: impl Iterator<Item = Entity>) -> Self;
+    /// Extract the given entities from the builder’s [`World`].
+    pub fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
+        let registry = self.world.resource::<AppTypeRegistry>().read();
 
-    /// Extract all entities from the builder's [`World`].
-    fn extract_all_entities(self) -> Self;
+        for entity in entities.filter_map(|e| self.world.get_entity(e)) {
+            let id = entity.id();
+            let mut entry = DynamicEntity {
+                entity: id,
+                components: Vec::new(),
+            };
 
-    /// Extract a single resource with the given type name from the builder's [`World`].
-    fn extract_resource<S: Into<String>>(self, resource: S) -> Self {
-        self.extract_resources([resource].into_iter())
+            for component in entity.archetype().components() {
+                let reflect = self
+                    .world
+                    .components()
+                    .get_info(component)
+                    .and_then(|info| info.type_id())
+                    .and_then(|id| registry.get(id))
+                    .and_then(|reg| reg.data::<ReflectComponent>())
+                    .and_then(|reflect| reflect.reflect(entity));
+
+                if let Some(reflect) = reflect {
+                    entry.components.push(reflect.clone_value());
+                }
+            }
+
+            self.entities.insert(id, entry);
+        }
+
+        self
     }
 
-    /// Extract resources with the given type names from the builder's [`World`].
-    fn extract_resources<S: Into<String>>(self, resources: impl Iterator<Item = S>) -> Self;
+    /// Extract all entities from the builder’s [`World`].
+    pub fn extract_all_entities(self) -> Self {
+        let entites = self.world.iter_entities().map(|e| e.id());
+        self.extract_entities(entites)
+    }
+
+    /// Extract a single resource with the given type path from the builder's [`World`].
+    pub fn extract_resource<T: AsRef<str>>(self, type_path: T) -> Self {
+        self.extract_resources([type_path].into_iter())
+    }
+
+    /// Extract resources with the given type paths from the builder's [`World`].
+    pub fn extract_resources<T: AsRef<str>>(mut self, type_paths: impl Iterator<Item = T>) -> Self {
+        let registry = self.world.resource::<AppTypeRegistry>().read();
+
+        type_paths
+            .filter_map(|p| registry.get_with_type_path(p.as_ref()))
+            .filter_map(|r| {
+                Some((
+                    self.world.components().get_resource_id(r.type_id())?,
+                    r.data::<ReflectResource>()?
+                        .reflect(self.world)?
+                        .clone_value(),
+                ))
+            })
+            .for_each(|(i, r)| {
+                self.resources.insert(i, r);
+            });
+
+        self
+    }
 
     /// Extract all resources from the builder's [`World`].
-    fn extract_all_resources(self) -> Self;
+    pub fn extract_all_resources(self) -> Self {
+        let registry = self.world.resource::<AppTypeRegistry>().read();
 
-    /// Clear all extracted entities and resources.
-    fn clear(self) -> Self {
-        self.clear_entities().clear_resources()
+        let resources = self
+            .world
+            .storages()
+            .resources
+            .iter()
+            .map(|(id, _)| id)
+            .filter_map(move |id| self.world.components().get_info(id))
+            .filter_map(|info| info.type_id())
+            .filter_map(|id| registry.get(id))
+            .map(|reg| reg.type_info().type_path());
+
+        self.extract_resources(resources)
     }
 
+    /// Extract [`Rollbacks`] from the builder's [`World`].
+    pub fn extract_rollbacks(mut self) -> Self {
+        self.rollbacks = self
+            .world
+            .get_resource::<Rollbacks>()
+            .map(|r| r.clone_value());
+
+        self
+    }
+
+    /// Extract all entities, and resources from the builder's [`World`].
+    pub fn extract_all(self) -> Self {
+        self.extract_all_entities().extract_all_resources()
+    }
+
+    /// Extract all entities, resources, and [`Rollbacks`] from the builder's [`World`].
+    pub fn extract_all_with_rollbacks(self) -> Self {
+        self.extract_all().extract_rollbacks()
+    }
+}
+
+impl<'a> SnapshotBuilder<'a> {
     /// Clear all extracted entities.
-    fn clear_entities(self) -> Self;
+    pub fn clear_entities(mut self) -> Self {
+        self.entities.clear();
+        self
+    }
 
     /// Clear all extracted resources.
-    fn clear_resources(self) -> Self;
+    pub fn clear_resources(mut self) -> Self {
+        self.resources.clear();
+        self
+    }
 
-    /// Clear all entities without any components.
-    fn clear_empty(self) -> Self;
+    /// Clear all extracted entities without any components.
+    pub fn clear_empty(mut self) -> Self {
+        self.entities.retain(|_, e| !e.components.is_empty());
+        self
+    }
 
-    /// Build the extracted resources into a snapshot.
-    fn build(self) -> Self::Output;
+    /// Clear [`Rollbacks`] from the snapshot.
+    pub fn clear_rollbacks(mut self) -> Self {
+        self.rollbacks = None;
+        self
+    }
+
+    /// Clear all extracted entities and resources.
+    pub fn clear(self) -> Self {
+        self.clear_entities().clear_resources()
+    }
+}
+
+impl<'a> SnapshotBuilder<'a> {
+    /// Build the extracted entities and resources into a [`Snapshot`].
+    pub fn build(self) -> Snapshot {
+        Snapshot {
+            entities: self.entities.into_values().collect(),
+            resources: self.resources.into_values().collect(),
+            rollbacks: None,
+        }
+    }
 }

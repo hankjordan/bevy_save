@@ -61,7 +61,7 @@ fn interact(world: &mut World) {
 
     if keys.just_released(KeyCode::Space) {
         info!("Checkpoint");
-        world.checkpoint();
+        world.checkpoint::<()>();
     } else if keys.just_released(KeyCode::Return) {
         info!("Save");
         world.save("example").expect("Failed to save");
@@ -70,10 +70,10 @@ fn interact(world: &mut World) {
         world.load("example").expect("Failed to load");
     } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
-        world.rollback(1).expect("Failed to rollback");
+        world.rollback::<()>(1).expect("Failed to rollback");
     } else if keys.just_released(KeyCode::Right) {
         info!("Rollforward");
-        world.rollback(-1).expect("Failed to rollforward");
+        world.rollback::<()>(-1).expect("Failed to rollforward");
     } else if keys.just_pressed(KeyCode::E) {
         info!("Info");
 

@@ -1,8 +1,9 @@
 //! An example of how to implement your own `Pipeline`.
 
-use std::collections::HashMap;
-
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    utils::HashMap,
+};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
 
@@ -23,8 +24,8 @@ pub enum Tile {
     IronOre,
 }
 
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, Reflect)]
-#[reflect(Hash)]
+#[derive(Clone, Copy, Component, Debug, Default, Hash, PartialEq, Eq, Reflect)]
+#[reflect(Component, Hash)]
 pub struct TilePosition {
     x: i32,
     y: i32,
@@ -70,6 +71,20 @@ fn display_world(keys: Res<Input<KeyCode>>, map: Res<TileMap>, tiles: Query<&Til
     }
 }
 
+fn handle_despawn_input(
+    mut commands: Commands,
+    input: Res<Input<KeyCode>>,
+    mut map: ResMut<TileMap>,
+    tiles: Query<(Entity, &TilePosition), With<Tile>>,
+) {
+    if input.just_released(KeyCode::D) {
+        for (entity, position) in &tiles {
+            map.map.remove(position).unwrap();
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
 fn handle_save_input(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
@@ -78,24 +93,42 @@ fn handle_save_input(world: &mut World) {
     if keys.just_released(KeyCode::Return) {
         // Save every tile individually.
         for position in world.resource::<TileMap>().map.keys() {
-            world.save(TilePipeline(*position)).expect("Failed to save");
+            world
+                .save(TilePipeline::new(*position))
+                .expect("Failed to save");
         }
     } else if keys.just_released(KeyCode::Back) {
         // For ease of implementation, let's just load the origin.
         world
-            .load(TilePipeline(TilePosition { x: 0, y: 0 }))
+            .load(TilePipeline::new(TilePosition { x: 0, y: 0 }))
             .expect("Failed to load");
     }
 }
 
-pub struct TilePipeline(pub TilePosition);
+pub struct TilePipeline {
+    position: TilePosition,
+    key: String,
+}
+
+impl TilePipeline {
+    pub fn new(position: TilePosition) -> Self {
+        Self {
+            position,
+            key: format!("examples/saves/pipeline/{}.{}.json", position.x, position.y),
+        }
+    }
+}
 
 impl Pipeline for TilePipeline {
     type Backend = DefaultDebugBackend;
     type Saver = DefaultDebugSaver;
     type Loader = DefaultDebugLoader;
 
-    type Key = String;
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        &self.key
+    }
 
     fn capture(&self, world: &World) -> Snapshot {
         Snapshot::builder(world)
@@ -103,22 +136,28 @@ impl Pipeline for TilePipeline {
                 *world
                     .resource::<TileMap>()
                     .map
-                    .get(&self.0)
+                    .get(&self.position)
                     .expect("Could not find tile"),
             )
             .build()
     }
 
-    fn apply(world: &mut World, snapshot: Snapshot) -> Result<(), bevy_save::Error> {
-        snapshot
-            .applier(world)
-            .despawn(DespawnMode::None)
-            .mapping(MappingMode::Strict)
-            .apply()
-    }
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+        let mut mapper = HashMap::new();
 
-    fn key(self) -> Self::Key {
-        format!("examples/saves/pipeline/{}-{}.json", self.0.x, self.0.y)
+        world.resource_scope(|world, mut tiles: Mut<TileMap>| {
+            for saved in &snapshot.entities {
+                if let Some(existing) = tiles.map.get(&self.position) {
+                    mapper.insert(saved.entity, *existing);
+                } else {
+                    let new = world.spawn_empty().id();
+                    mapper.insert(saved.entity, new);
+                    tiles.map.insert(self.position, new);
+                }
+            }
+        });
+
+        snapshot.applier(world).entity_map(&mut mapper).apply()
     }
 }
 
@@ -145,6 +184,9 @@ fn main() {
         .init_resource::<TileMap>()
         // Systems
         .add_systems(Startup, setup_world)
-        .add_systems(Update, (display_world, handle_save_input))
+        .add_systems(
+            Update,
+            (display_world, handle_despawn_input, handle_save_input),
+        )
         .run();
 }

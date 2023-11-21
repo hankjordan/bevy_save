@@ -585,7 +585,7 @@ fn handle_save_input(world: &mut World) {
     let mut text = None;
 
     if keys.just_released(KeyCode::Space) {
-        world.checkpoint();
+        world.checkpoint::<()>();
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
         world.save("breakout").expect("Failed to save");
@@ -599,10 +599,10 @@ fn handle_save_input(world: &mut World) {
         world.load("breakout").expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
-        world.rollback(1).expect("Failed to rollback");
+        world.rollback::<()>(1).expect("Failed to rollback");
         text = Some("Rollback");
     } else if keys.just_released(KeyCode::D) {
-        world.rollback(-1).expect("Failed to rollforward");
+        world.rollback::<()>(-1).expect("Failed to rollforward");
         text = Some("Rollforward");
     }
 
