@@ -579,6 +579,47 @@ impl<'w, 's> Toaster<'w, 's> {
     }
 }
 
+struct BreakoutPipeline;
+
+impl Pipeline for BreakoutPipeline {
+    type Backend = DefaultDebugBackend;
+    type Format = DefaultDebugFormat;
+
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/breakout"
+    }
+
+    fn capture(&self, world: &World) -> Snapshot {
+        let entities = world
+            .iter_entities()
+            .filter(|e| e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>())
+            .map(|e| e.id());
+
+        Snapshot::builder(world)
+            .deny::<bevy::sprite::Mesh2dHandle>()
+            .deny::<Handle<ColorMaterial>>()
+            .extract_entities(entities)
+            .extract_resource::<Scoreboard>()
+            .extract_rollbacks()
+            .build()
+    }
+
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+        let mut query =
+            world.query_filtered::<Entity, Or<(With<Paddle>, With<Ball>, With<Brick>)>>();
+
+        let entities = query.iter(world).collect::<Vec<_>>();
+
+        for entity in entities {
+            world.despawn(entity);
+        }
+
+        snapshot.apply(world)
+    }
+}
+
 fn handle_save_input(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
@@ -588,15 +629,10 @@ fn handle_save_input(world: &mut World) {
         world.checkpoint::<()>();
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
-        world.save("breakout").expect("Failed to save");
-
-        world
-            .save(DebugPipeline("examples/saves/breakout.json"))
-            .expect("Failed to save");
-
+        world.save(BreakoutPipeline).expect("Failed to save");
         text = Some("Save");
     } else if keys.just_released(KeyCode::Back) {
-        world.load("breakout").expect("Failed to load");
+        world.load(BreakoutPipeline).expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
         world.rollback::<()>(1).expect("Failed to rollback");

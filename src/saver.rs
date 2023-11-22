@@ -8,7 +8,7 @@ use serde::{
     Serializer,
 };
 
-// Saver / Loader |----------------------------------------------------------------------------------------------------
+// Traits |------------------------------------------------------------------------------------------------------------
 
 /// Implemented for all types whose mutable reference is a [`Serializer`].
 pub trait AsSerializer {
@@ -54,10 +54,19 @@ where
     }
 }
 
-/// Handles serialization of save data.
-pub trait Saver {
-    /// The type which can be used as a [`Serializer`].
+/// Handles serialization and deserialization of save data.
+pub trait Format {
+    /// The type that will be used as a [`Serializer`].
     type Serializer<W: Write>: AsSerializer;
+    /// The type that will be used as a [`Deserializer`].
+    type Deserializer<R: Read>: AsDeserializer;
+
+    /// The file extension used by the format.
+    ///
+    /// Defaults to `.sav`.
+    fn extension() -> &'static str {
+        ".sav"
+    }
 
     /// Builds a [`Serializer`] from the given writer.
     ///
@@ -72,13 +81,7 @@ pub trait Saver {
     ///     }
     /// }
     /// ```
-    fn build<W: Write>(writer: W) -> Self::Serializer<W>;
-}
-
-/// Handles deserialization of save data.
-pub trait Loader {
-    /// The type which can be used as a [`Deserializer`].
-    type Deserializer<R: Read>: AsDeserializer;
+    fn serializer<W: Write>(writer: W) -> Self::Serializer<W>;
 
     /// Builds a [`Deserializer`] from the given reader.
     ///
@@ -94,67 +97,57 @@ pub trait Loader {
     ///     }
     /// }
     /// ```
-    fn build<R: Read>(reader: R) -> Self::Deserializer<R>;
+    fn deserializer<R: Read>(reader: R) -> Self::Deserializer<R>;
 }
 
-// Saver / Loader Implementations |------------------------------------------------------------------------------------
+// Implementations |---------------------------------------------------------------------------------------------------
 
-/// An implementation of [`Saver`] that uses [`rmp_serde::Serializer`].
-pub struct RMPSaver;
+/// An implementation of [`Format`] that uses [`rmp_serde`].
+pub struct RMPFormat;
 
-impl Saver for RMPSaver {
+impl Format for RMPFormat {
     type Serializer<W: Write> = rmp_serde::Serializer<W, rmp_serde::config::DefaultConfig>;
-
-    fn build<W: Write>(writer: W) -> Self::Serializer<W> {
-        rmp_serde::Serializer::new(writer)
-    }
-}
-
-/// An implementation of [`Loader`] that uses [`rmp_serde::Deserializer`].
-pub struct RMPLoader;
-
-impl Loader for RMPLoader {
     type Deserializer<R: Read> =
         rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>, rmp_serde::config::DefaultConfig>;
 
-    fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
+    fn extension() -> &'static str {
+        ".mp"
+    }
+
+    fn serializer<W: Write>(writer: W) -> Self::Serializer<W> {
+        rmp_serde::Serializer::new(writer)
+    }
+
+    fn deserializer<R: Read>(reader: R) -> Self::Deserializer<R> {
         rmp_serde::Deserializer::new(reader)
     }
 }
 
-/// An implementation of [`Saver`] that uses [`serde_json::Serializer`].
-pub struct JSONSaver;
+/// An implementation of [`Format`] that uses [`serde_json`].
+pub struct JSONFormat;
 
-impl Saver for JSONSaver {
+impl Format for JSONFormat {
     type Serializer<W: Write> =
         serde_json::Serializer<W, serde_json::ser::PrettyFormatter<'static>>;
-
-    fn build<W: Write>(writer: W) -> Self::Serializer<W> {
-        serde_json::Serializer::pretty(writer)
-    }
-}
-
-/// An implementation of [`Loader`] that uses [`serde_json::Deserializer`].
-pub struct JSONLoader;
-
-impl Loader for JSONLoader {
     type Deserializer<R: Read> = serde_json::Deserializer<serde_json::de::IoRead<R>>;
 
-    fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
+    fn extension() -> &'static str {
+        ".json"
+    }
+
+    fn serializer<W: Write>(writer: W) -> Self::Serializer<W> {
+        serde_json::Serializer::pretty(writer)
+    }
+
+    fn deserializer<R: Read>(reader: R) -> Self::Deserializer<R> {
         serde_json::Deserializer::from_reader(reader)
     }
 }
 
-// Defaults |-----------------------------------------------------------------------------------------------------------
+// Defaults |----------------------------------------------------------------------------------------------------------
 
-/// The [`Saver`] the default [`Pipeline`] will use.
-pub type DefaultSaver = RMPSaver;
+/// The [`Format`] the default [`Pipeline`](crate::Pipeline) will use.
+pub type DefaultFormat = RMPFormat;
 
-/// The [`Loader`] the default [`Pipeline`] will use.
-pub type DefaultLoader = RMPLoader;
-
-/// The [`Saver`] the default debug [`Pipeline`] will use.
-pub type DefaultDebugSaver = JSONSaver;
-
-/// The [`Loader`] the default debug [`Pipeline`] will use.
-pub type DefaultDebugLoader = JSONLoader;
+/// The [`Format`] the default [`Pipeline`](crate::Pipeline) will use.
+pub type DefaultDebugFormat = JSONFormat;

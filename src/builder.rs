@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    any::Any,
+    collections::BTreeMap,
+};
 
 use bevy::{
     ecs::component::ComponentId,
@@ -17,6 +20,7 @@ pub struct SnapshotBuilder<'a> {
     world: &'a World,
     entities: BTreeMap<Entity, DynamicEntity>,
     resources: BTreeMap<ComponentId, Box<dyn Reflect>>,
+    filter: SceneFilter,
     rollbacks: Option<Rollbacks>,
 }
 
@@ -48,8 +52,61 @@ impl<'a> SnapshotBuilder<'a> {
             world,
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
+            filter: SceneFilter::default(),
             rollbacks: None,
         }
+    }
+}
+
+impl<'a> SnapshotBuilder<'a> {
+    /// Specify a custom [`SceneFilter`] to be used with this builder.
+    ///
+    /// This filter is applied to both components and resources.
+    pub fn filter(mut self, filter: SceneFilter) -> Self {
+        self.filter = filter;
+        self
+    }
+
+    /// Allows the given type, `T`, to be included in the generated snapshot.
+    ///
+    /// This method may be called multiple times for any number of types.
+    ///
+    /// This is the inverse of [`deny`](Self::deny).
+    /// If `T` has already been denied, then it will be removed from the blacklist.
+    pub fn allow<T: Any>(mut self) -> Self {
+        self.filter = self.filter.allow::<T>();
+        self
+    }
+
+    /// Denies the given type, `T`, from being included in the generated snapshot.
+    ///
+    /// This method may be called multiple times for any number of types.
+    ///
+    /// This is the inverse of [`allow`](Self::allow).
+    /// If `T` has already been allowed, then it will be removed from the whitelist.
+    pub fn deny<T: Any>(mut self) -> Self {
+        self.filter = self.filter.deny::<T>();
+        self
+    }
+
+    /// Updates the filter to allow all types.
+    ///
+    /// This is useful for resetting the filter so that types may be selectively [denied].
+    ///
+    /// [denied]: Self::deny
+    pub fn allow_all(mut self) -> Self {
+        self.filter = SceneFilter::allow_all();
+        self
+    }
+
+    /// Updates the filter to deny all types.
+    ///
+    /// This is useful for resetting the filter so that types may be selectively [allowed].
+    ///
+    /// [allowed]: Self::allow
+    pub fn deny_all(mut self) -> Self {
+        self.filter = SceneFilter::deny_all();
+        self
     }
 }
 
@@ -76,6 +133,7 @@ impl<'a> SnapshotBuilder<'a> {
                     .components()
                     .get_info(component)
                     .and_then(|info| info.type_id())
+                    .filter(|id| self.filter.is_allowed_by_id(*id))
                     .and_then(|id| registry.get(id))
                     .and_then(|reg| reg.data::<ReflectComponent>())
                     .and_then(|reflect| reflect.reflect(entity));
@@ -97,17 +155,38 @@ impl<'a> SnapshotBuilder<'a> {
         self.extract_entities(entites)
     }
 
+    /// Extract a single resource from the builder's [`World`].
+    pub fn extract_resource<T: Resource>(self) -> Self {
+        let registry = self.world.resource::<AppTypeRegistry>().read();
+
+        let path = self
+            .world
+            .components()
+            .resource_id::<T>()
+            .and_then(|i| self.world.components().get_info(i))
+            .and_then(|i| i.type_id())
+            .and_then(|i| registry.get(i))
+            .map(|i| i.type_info().type_path())
+            .into_iter();
+
+        self.extract_resources_by_path(path)
+    }
+
     /// Extract a single resource with the given type path from the builder's [`World`].
-    pub fn extract_resource<T: AsRef<str>>(self, type_path: T) -> Self {
-        self.extract_resources([type_path].into_iter())
+    pub fn extract_resource_by_path<T: AsRef<str>>(self, type_path: T) -> Self {
+        self.extract_resources_by_path([type_path].into_iter())
     }
 
     /// Extract resources with the given type paths from the builder's [`World`].
-    pub fn extract_resources<T: AsRef<str>>(mut self, type_paths: impl Iterator<Item = T>) -> Self {
+    pub fn extract_resources_by_path<T: AsRef<str>>(
+        mut self,
+        type_paths: impl Iterator<Item = T>,
+    ) -> Self {
         let registry = self.world.resource::<AppTypeRegistry>().read();
 
         type_paths
             .filter_map(|p| registry.get_with_type_path(p.as_ref()))
+            .filter(|r| self.filter.is_allowed_by_id((*r).type_id()))
             .filter_map(|r| {
                 Some((
                     self.world.components().get_resource_id(r.type_id())?,
@@ -138,7 +217,7 @@ impl<'a> SnapshotBuilder<'a> {
             .filter_map(|id| registry.get(id))
             .map(|reg| reg.type_info().type_path());
 
-        self.extract_resources(resources)
+        self.extract_resources_by_path(resources)
     }
 
     /// Extract [`Rollbacks`] from the builder's [`World`].

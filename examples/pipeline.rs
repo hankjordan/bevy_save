@@ -121,8 +121,7 @@ impl TilePipeline {
 
 impl Pipeline for TilePipeline {
     type Backend = DefaultDebugBackend;
-    type Saver = DefaultDebugSaver;
-    type Loader = DefaultDebugLoader;
+    type Format = DefaultDebugFormat;
 
     type Key<'a> = &'a str;
 

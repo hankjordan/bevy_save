@@ -109,8 +109,11 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
     }
 }
 
+/// Handles serialization of a collection of snapshots.
 pub struct SnapshotListSerializer<'a> {
+    /// The snapshots to serialize.
     pub snapshots: &'a [Snapshot],
+    /// Type registry in which the components and resources types used in the snapshots are registered.
     pub registry: &'a TypeRegistryArc,
 }
 
@@ -132,8 +135,11 @@ impl<'a> Serialize for SnapshotListSerializer<'a> {
     }
 }
 
+/// Handles serialization of the global rollbacks store.
 pub struct RollbacksSerializer<'a> {
+    /// The rollbacks to serialize.
     pub rollbacks: &'a Rollbacks,
+    /// Type registry in which the components and resources types used in the rollbacks are registered.
     pub registry: &'a TypeRegistryArc,
 }
 
@@ -381,7 +387,7 @@ impl<'a, 'de> DeserializeSeed<'de> for RollbacksDeserializer<'a> {
     }
 }
 
-pub struct RollbacksVisitor<'a> {
+struct RollbacksVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
@@ -448,6 +454,7 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
     }
 }
 
+/// Handles deserialization for a collection of snapshots.
 pub struct SnapshotListDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
@@ -465,7 +472,7 @@ impl<'a, 'de> DeserializeSeed<'de> for SnapshotListDeserializer<'a> {
     }
 }
 
-pub struct SnapshotListVisitor<'a> {
+struct SnapshotListVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 

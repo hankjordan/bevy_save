@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use thiserror::Error;
 
 /// An error that may occur when loading saves or rollbacks.
@@ -26,12 +27,14 @@ pub enum Error {
 
 impl Error {
     /// Saving or serialization error.
-    pub fn saving(_: impl std::error::Error) -> Self {
+    pub fn saving(err: impl std::error::Error) -> Self {
+        error!("Saving error: {err:?}");
         Self::Saving
     }
 
     /// Loading or deserialization error.
-    pub fn loading(_: impl std::error::Error) -> Self {
+    pub fn loading(err: impl std::error::Error) -> Self {
+        error!("Loading error: {err:?}");
         Self::Loading
     }
 

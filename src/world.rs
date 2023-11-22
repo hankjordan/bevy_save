@@ -6,7 +6,7 @@ use crate::{
     Error,
     Pipeline,
     Rollbacks,
-    Snapshot,
+    Snapshot, SnapshotSerializer, Backend, SnapshotDeserializer,
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
@@ -33,11 +33,26 @@ impl WorldSaveableExt for World {
     }
 
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
-        pipeline.save(self)
+        let registry = self.resource::<AppTypeRegistry>();
+        let backend = self.resource::<P::Backend>();
+
+        let snapshot = pipeline.capture(self);
+
+        let ser = SnapshotSerializer::new(&snapshot, registry);
+
+        backend.save::<P::Format, _>(pipeline.key(), ser)
     }
 
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
-        pipeline.load(self)
+        let registry = self.resource::<AppTypeRegistry>().clone();
+        let reg = registry.read();
+        let backend = self.resource::<P::Backend>();
+
+        let de = SnapshotDeserializer { registry: &reg };
+
+        let snapshot = backend.load::<P::Format, _>(pipeline.key(), de)?;
+
+        pipeline.apply(self, &snapshot)
     }
 }
 
