@@ -1,4 +1,5 @@
 # Bevy_save
+
 [![][img_bevy]][bevy] [![][img_version]][crates] [![][img_doc]][doc] [![][img_license]][license] [![][img_tracking]][tracking] [![][img_downloads]][crates]
 
 A framework for saving and loading game state in Bevy.
@@ -14,12 +15,12 @@ A framework for saving and loading game state in Bevy.
 - `World::save()` and `World::load()` uses your app's save location to save and load your game state, handling all serialization and deserialization for you.
 - These methods accept a `Pipeline`, a strongly typed representation of how you are going to be saving and loading.
 - The `Pipeline` trait uses the `Backend` trait as an interface between disk / database and `bevy_save`.
-- The `Backend` trait uses the `Saver` and `Loader` traits to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
+- The `Backend` trait uses the `Format` trait to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
   - The default `Pipeline` uses the `FileIO` backend which saves each snapshot to an individual file on the disk by the given key.
     - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
-    - You can use a different backend by implementing your own `Pipeline` with a custom `Backend`.
+    - You can use a different `Backend` by implementing your own `Pipeline` with a custom `Backend`.
   - The default `Pipeline` is set up to use `rmp_serde` as the file format.
-    - However, is extremely easy to switch to a custom save file format, see `"examples/manual.rs"` for how you can do this.
+    - You can use to a different `Format` by implementing your own `Pipeline` with a custom `Format`.
 
 #### Save directory location
 
@@ -27,9 +28,15 @@ With the default `FileIO` backend, your save directory is managed for you.
 
 `WORKSPACE` is the name of your project's workspace (parent folder) name.
 
-| Windows                                             | Linux/*BSD                       | MacOS                                           |
-|-----------------------------------------------------|----------------------------------|-------------------------------------------------|
+| Windows                                             | Linux/\*BSD                      | MacOS                                           |
+| --------------------------------------------------- | -------------------------------- | ----------------------------------------------- |
 | `C:\Users\%USERNAME%\AppData\Local\WORKSPACE\saves` | `~/.local/share/WORKSPACE/saves` | `~/Library/Application Support/WORKSPACE/saves` |
+
+On WASM, snapshots are saved to `LocalStorage`, with the key:
+
+```
+WORKSPACE.KEY
+```
 
 ### Snapshots and Rollback
 
@@ -49,7 +56,7 @@ The `Rollbacks` resource also gives you fine-tuned control of the currently stor
 
 ### Type registration
 
-`bevy_save` adds methods to Bevy's `App` for registering types that should be saved. 
+`bevy_save` adds methods to Bevy's `App` for registering types that should be saved.
 As long as the type implements `Reflect`, it can be registered and used with `bevy_save`.
 
 - `App.init_pipeline::<P>()` initializes a `Pipeline` for use with save / load.
@@ -66,10 +73,10 @@ As Entity ids are not intended to be used as unique identifiers, `bevy_save` sup
 
 First, you'll need to get a `SnapshotApplier`:
 
-- `Snapshot::applier()` 
+- `Snapshot::applier()`
 - `SnapshotApplier::new()`
 
-The `SnapshotApplier` will then allow you to configure the `EntityMap` (and other settings) before applying:
+The `SnapshotApplier` will then allow you to configure the entity map (and other settings) before applying:
 
 ```rust,ignore
 let snapshot = Snapshot::from_world(world);
@@ -78,7 +85,7 @@ snapshot
     .applier(world)
 
     // Your entity map
-    .entity_map(EntityMap::default())
+    .entity_map(HashMap::default())
 
     // Despawn all entities matching (With<A>, Without<B>)
     .despawn::<(With<A>, Without<B>)>()
@@ -123,7 +130,7 @@ let snapshot = Snapshot::from_world(world);
 
 snapshot
     .applier(world)
-    
+
     .hook(|entity, cmds| {
         if entity.contains::<A>() {
             cmds.despawn();
@@ -178,19 +185,19 @@ Snapshot::builder(world)
 
     // Extract all matching entities and resources
     .extract_all()
-    
+
     // Clear all extracted entities without any components
     .clear_empty()
-    
+
     // Build the `Snapshot`
     .build()
 ```
 
 ### Pipeline
 
-Save / load pipelines allow you to use multiple different configurations of `Backend`, `Saver`, and `Loader` in the same `App`.
+Pipelines allow you to use multiple different configurations of `Backend` and `Format` in the same `App`.
 
-Pipelines also let you re-use `Snapshot` appliers and extractors. 
+Pipelines also let you re-use `Snapshot` appliers and extractors.
 
 ## License
 
@@ -203,22 +210,22 @@ Pipelines also let you re-use `Snapshot` appliers and extractors.
 NOTE: We do not track Bevy main.
 
 | Bevy Version | Crate Version                     |
-|--------------|-----------------------------------|
-| `0.12`       | `0.10`                            |
+| ------------ | --------------------------------- |
+| `0.12`       | `0.10`, `0.11`                    |
 | `0.11`       | `0.9`                             |
 | `0.10`       | `0.4`, `0.5`, `0.6`, `0.7`, `0.8` |
 | `0.9`        | `0.1`, `0.2`, `0.3`               |
 
 ### Platforms
 
-| Platform | Support              |
-|----------|----------------------|
-| Windows  | :heavy_check_mark:   |
-| MacOS    | :heavy_check_mark:   |
-| Linux    | :heavy_check_mark:   |
-| WASM     | :heavy_check_mark:   |
-| Android  | :question:           |
-| iOS      | :question:           |
+| Platform | Support            |
+| -------- | ------------------ |
+| Windows  | :heavy_check_mark: |
+| MacOS    | :heavy_check_mark: |
+| Linux    | :heavy_check_mark: |
+| WASM     | :heavy_check_mark: |
+| Android  | :question:         |
+| iOS      | :question:         |
 
 :heavy_check_mark: = First Class Support
 —
@@ -234,9 +241,8 @@ NOTE: We do not track Bevy main.
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
-[img_downloads]:https://img.shields.io/crates/d/bevy_save.svg
+[img_downloads]: https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
-
 [bevy]: https://crates.io/crates/bevy/0.12.0
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save
