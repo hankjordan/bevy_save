@@ -1,7 +1,7 @@
 {
   "resources": {
     "breakout::Scoreboard": {
-      "score": 1
+      "score": 0
     }
   },
   "entities": {
@@ -62,8 +62,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -100,8 +100,8 @@
       "components": {
         "bevy_transform::components::transform::Transform": {
           "translation": {
-            "x": 146.13538,
-            "y": -177.27924,
+            "x": 254.55855,
+            "y": -257.4181,
             "z": 1.0
           },
           "rotation": {
@@ -136,8 +136,8 @@
               }
             },
             "translation": {
-              "x": 150.84943,
-              "y": -172.56519,
+              "x": 249.8445,
+              "y": -262.13214,
               "z": 1.0
             }
           }
@@ -152,8 +152,8 @@
         "breakout::Ball": {},
         "breakout::Velocity": [
           {
-            "x": -282.8427,
-            "y": -282.8427
+            "x": 282.8427,
+            "y": 282.8427
           }
         ],
         "bevy_render::primitives::Aabb": {
@@ -227,8 +227,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -318,8 +318,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -409,8 +409,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -500,8 +500,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -591,8 +591,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -682,8 +682,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -773,8 +773,99 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
+          "anchor": "Center"
+        },
+        "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
+          "Weak": {
+            "Uuid": {
+              "uuid": "97128bb1-2588-480b-bdc6-87b4adbec477"
+            }
+          }
+        },
+        "bevy_render::view::visibility::Visibility": "Inherited",
+        "bevy_render::view::visibility::InheritedVisibility": [
+          true
+        ],
+        "bevy_render::view::visibility::ViewVisibility": [
+          true
+        ],
+        "breakout::Collider": {},
+        "breakout::Brick": {},
+        "bevy_render::primitives::Aabb": {
+          "center": {
+            "x": -0.0,
+            "y": -0.0,
+            "z": 0.0
+          },
+          "half_extents": {
+            "x": 0.5,
+            "y": 0.5,
+            "z": 0.0
+          }
+        }
+      }
+    },
+    "16": {
+      "components": {
+        "bevy_transform::components::transform::Transform": {
+          "translation": {
+            "x": 367.5,
+            "y": 45.0,
+            "z": 0.0
+          },
+          "rotation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 1.0
+          },
+          "scale": {
+            "x": 100.0,
+            "y": 30.0,
+            "z": 1.0
+          }
+        },
+        "bevy_transform::components::global_transform::GlobalTransform": [
+          {
+            "matrix3": {
+              "x_axis": {
+                "x": 100.0,
+                "y": 0.0,
+                "z": 0.0
+              },
+              "y_axis": {
+                "x": 0.0,
+                "y": 30.0,
+                "z": 0.0
+              },
+              "z_axis": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 1.0
+              }
+            },
+            "translation": {
+              "x": 367.5,
+              "y": 45.0,
+              "z": 0.0
+            }
+          }
+        ],
+        "bevy_sprite::sprite::Sprite": {
+          "color": {
+            "Rgba": {
+              "red": 0.5,
+              "green": 0.5,
+              "blue": 1.0,
+              "alpha": 1.0
+            }
+          },
+          "flip_x": false,
+          "flip_y": false,
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -864,8 +955,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -955,8 +1046,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1046,8 +1137,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1137,8 +1228,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1228,8 +1319,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1319,8 +1410,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1410,8 +1501,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1501,8 +1592,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1592,8 +1683,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1683,8 +1774,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1774,8 +1865,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1865,8 +1956,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -1956,8 +2047,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2047,8 +2138,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2138,8 +2229,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2229,8 +2320,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2320,8 +2411,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2411,8 +2502,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2502,8 +2593,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2593,8 +2684,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2684,8 +2775,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2775,8 +2866,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2866,8 +2957,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -2957,8 +3048,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3048,8 +3139,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3139,8 +3230,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3230,8 +3321,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3321,8 +3412,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3412,8 +3503,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3503,8 +3594,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3594,8 +3685,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3685,8 +3776,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3776,8 +3867,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3867,8 +3958,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -3958,8 +4049,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4049,8 +4140,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4140,8 +4231,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4231,8 +4322,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4322,8 +4413,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4413,8 +4504,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4504,8 +4595,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4595,8 +4686,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4686,8 +4777,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4777,8 +4868,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4868,8 +4959,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -4959,8 +5050,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -5050,8 +5141,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {
@@ -5141,8 +5232,8 @@
           },
           "flip_x": false,
           "flip_y": false,
-          "custom_size": "None",
-          "rect": "None",
+          "custom_size": null,
+          "rect": null,
           "anchor": "Center"
         },
         "bevy_asset::handle::Handle<bevy_render::texture::image::Image>": {

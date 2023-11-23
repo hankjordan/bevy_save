@@ -13,6 +13,7 @@ use bevy::{
             Collision,
         },
         MaterialMesh2dBundle,
+        Mesh2dHandle,
     },
     utils::Instant,
 };
@@ -591,14 +592,14 @@ impl Pipeline for BreakoutPipeline {
         "examples/saves/breakout"
     }
 
-    fn capture(&self, world: &World) -> Snapshot {
+    fn capture(world: &World) -> Snapshot {
         let entities = world
             .iter_entities()
             .filter(|e| e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>())
             .map(|e| e.id());
 
         Snapshot::builder(world)
-            .deny::<bevy::sprite::Mesh2dHandle>()
+            .deny::<Mesh2dHandle>()
             .deny::<Handle<ColorMaterial>>()
             .extract_entities(entities)
             .extract_resource::<Scoreboard>()
@@ -606,7 +607,7 @@ impl Pipeline for BreakoutPipeline {
             .build()
     }
 
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         let mut query =
             world.query_filtered::<Entity, Or<(With<Paddle>, With<Ball>, With<Brick>)>>();
 
@@ -616,7 +617,19 @@ impl Pipeline for BreakoutPipeline {
             world.despawn(entity);
         }
 
-        snapshot.apply(world)
+        let mut meshes = world.resource_mut::<Assets<Mesh>>();
+        let mesh = Mesh2dHandle(meshes.add(shape::Circle::default().into()));
+        let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
+        let material = materials.add(ColorMaterial::from(BALL_COLOR));
+
+        snapshot
+            .applier(world)
+            .hook(move |entity, cmd| {
+                if entity.contains::<Ball>() {
+                    cmd.insert((mesh.clone(), material.clone()));
+                }
+            })
+            .apply()
     }
 }
 
@@ -626,7 +639,7 @@ fn handle_save_input(world: &mut World) {
     let mut text = None;
 
     if keys.just_released(KeyCode::Space) {
-        world.checkpoint::<()>();
+        world.checkpoint::<BreakoutPipeline>();
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Return) {
         world.save(BreakoutPipeline).expect("Failed to save");
@@ -635,10 +648,10 @@ fn handle_save_input(world: &mut World) {
         world.load(BreakoutPipeline).expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
-        world.rollback::<()>(1).expect("Failed to rollback");
+        world.rollback::<BreakoutPipeline>(1).expect("Failed to rollback");
         text = Some("Rollback");
     } else if keys.just_released(KeyCode::D) {
-        world.rollback::<()>(-1).expect("Failed to rollforward");
+        world.rollback::<BreakoutPipeline>(-1).expect("Failed to rollforward");
         text = Some("Rollforward");
     }
 

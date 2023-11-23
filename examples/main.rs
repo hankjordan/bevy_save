@@ -56,24 +56,37 @@ fn status(balance: Res<Balance>, players: Query<(Entity, &Health), Changed<Healt
     }
 }
 
+struct MainPipeline;
+
+impl Pipeline for MainPipeline {
+    type Backend = DefaultDebugBackend;
+    type Format = DefaultDebugFormat;
+
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/example"
+    }
+}
+
 fn interact(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
     if keys.just_released(KeyCode::Space) {
         info!("Checkpoint");
-        world.checkpoint::<()>();
+        world.checkpoint::<MainPipeline>();
     } else if keys.just_released(KeyCode::Return) {
         info!("Save");
-        world.save("example").expect("Failed to save");
+        world.save(MainPipeline).expect("Failed to save");
     } else if keys.just_released(KeyCode::Back) {
         info!("Load");
-        world.load("example").expect("Failed to load");
+        world.load(MainPipeline).expect("Failed to load");
     } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
-        world.rollback::<()>(1).expect("Failed to rollback");
+        world.rollback::<MainPipeline>(1).expect("Failed to rollback");
     } else if keys.just_released(KeyCode::Right) {
         info!("Rollforward");
-        world.rollback::<()>(-1).expect("Failed to rollforward");
+        world.rollback::<MainPipeline>(-1).expect("Failed to rollforward");
     } else if keys.just_pressed(KeyCode::E) {
         info!("Info");
 

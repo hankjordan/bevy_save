@@ -28,8 +28,17 @@ pub trait Pipeline: Sized {
     /// This is where you would do any special filtering you might need.
     /// 
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
-    fn capture(&self, world: &World) -> Snapshot {
+    fn capture(world: &World) -> Snapshot {
         Snapshot::from_world(world)
+    }
+
+    /// Retrieve a [`Snapshot`] from the [`World`], using the [`Pipeline`] as a seed.
+    /// 
+    /// This is where you would do any special filtering you might need.
+    /// 
+    /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
+    fn capture_seed(&self, world: &World) -> Snapshot {
+        Self::capture(world)
     }
 
     /// Apply a [`Snapshot`] to the [`World`].
@@ -38,8 +47,18 @@ pub trait Pipeline: Sized {
     /// 
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
+    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
         snapshot.apply(world)
+    }
+
+    /// Apply a [`Snapshot`] to the [`World`], using the [`Pipeline`] as a seed.
+    /// 
+    /// Entity mapping goes here, along with your spawn hook and any other transformations you might need to perform.
+    /// 
+    /// # Errors
+    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
+    fn apply_seed(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
+        Self::apply(world, snapshot)
     }
 }
 
@@ -67,26 +86,3 @@ impl<'a> Pipeline for DebugPipeline<'a> {
         self.0
     }
 }
-
-// TODO: replace
-/// A simplified, stateless version of [`Pipeline`] for capturing and applying [`Snapshot`].
-pub trait Capture {
-    /// Retrieve a [`Snapshot`] from the [`World`].
-    /// 
-    /// This is where you would do any special filtering you might need.
-    fn capture(world: &World) -> Snapshot {
-        Snapshot::builder(world).extract_all().build()
-    }
-
-    /// Apply a [`Snapshot`] to the [`World`].
-    /// 
-    /// Entity mapping goes here, along with your spawn hook and any other transformations you might need to perform.
-    /// 
-    /// # Errors
-    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
-        snapshot.apply(world)
-    }
-}
-
-impl Capture for () {}

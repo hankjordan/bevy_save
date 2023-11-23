@@ -129,7 +129,7 @@ impl Pipeline for TilePipeline {
         &self.key
     }
 
-    fn capture(&self, world: &World) -> Snapshot {
+    fn capture_seed(&self, world: &World) -> Snapshot {
         Snapshot::builder(world)
             .extract_entity(
                 *world
@@ -141,7 +141,7 @@ impl Pipeline for TilePipeline {
             .build()
     }
 
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    fn apply_seed(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         let mut mapper = HashMap::new();
 
         world.resource_scope(|world, mut tiles: Mut<TileMap>| {

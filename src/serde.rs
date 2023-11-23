@@ -303,7 +303,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
                     if entities.is_some() {
                         return Err(Error::duplicate_field(SNAPSHOT_ENTITIES));
                     }
-                    entities = Some(map.next_value_seed(SnapshotEntityMapDeserializer {
+                    entities = Some(map.next_value_seed(EntityMapDeserializer {
                         registry: self.registry,
                     })?);
                 }
@@ -341,7 +341,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
         A: SeqAccess<'de>,
     {
         let entities = seq
-            .next_element_seed(SnapshotEntityMapDeserializer {
+            .next_element_seed(EntityMapDeserializer {
                 registry: self.registry,
             })?
             .ok_or_else(|| Error::missing_field(SNAPSHOT_ENTITIES))?;
@@ -500,29 +500,29 @@ impl<'a, 'de> Visitor<'de> for SnapshotListVisitor<'a> {
 }
 
 /// Handles deserialization for a collection of entities.
-pub struct SnapshotEntityMapDeserializer<'a> {
+pub struct EntityMapDeserializer<'a> {
     /// Type registry in which the component types used by the entities to deserialize are registered.
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SnapshotEntityMapDeserializer<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for EntityMapDeserializer<'a> {
     type Value = Vec<DynamicEntity>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_map(SnapshotEntityMapVisitor {
+        deserializer.deserialize_map(EntityMapVisitor {
             registry: self.registry,
         })
     }
 }
 
-struct SnapshotEntityMapVisitor<'a> {
+struct EntityMapVisitor<'a> {
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for SnapshotEntityMapVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for EntityMapVisitor<'a> {
     type Value = Vec<DynamicEntity>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -535,7 +535,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotEntityMapVisitor<'a> {
     {
         let mut entities = Vec::new();
         while let Some(entity) = map.next_key::<Entity>()? {
-            let entity = map.next_value_seed(SnapshotEntityDeserializer {
+            let entity = map.next_value_seed(EntityDeserializer {
                 entity,
                 registry: self.registry,
             })?;
@@ -547,37 +547,33 @@ impl<'a, 'de> Visitor<'de> for SnapshotEntityMapVisitor<'a> {
 }
 
 /// Handle deserialization of an entity and its components.
-pub struct SnapshotEntityDeserializer<'a> {
+pub struct EntityDeserializer<'a> {
     /// Id of the deserialized entity.
     pub entity: Entity,
     /// Type registry in which the component types used by the entity to deserialize are registered.
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SnapshotEntityDeserializer<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
     type Value = DynamicEntity;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_struct(
-            ENTITY_STRUCT,
-            &[ENTITY_COMPONENTS],
-            SnapshotEntityVisitor {
-                entity: self.entity,
-                registry: self.registry,
-            },
-        )
+        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_COMPONENTS], EntityVisitor {
+            entity: self.entity,
+            registry: self.registry,
+        })
     }
 }
 
-struct SnapshotEntityVisitor<'a> {
+struct EntityVisitor<'a> {
     pub entity: Entity,
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for SnapshotEntityVisitor<'a> {
+impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
     type Value = DynamicEntity;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
