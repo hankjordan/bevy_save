@@ -608,15 +608,6 @@ impl Pipeline for BreakoutPipeline {
     }
 
     fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
-        let mut query =
-            world.query_filtered::<Entity, Or<(With<Paddle>, With<Ball>, With<Brick>)>>();
-
-        let entities = query.iter(world).collect::<Vec<_>>();
-
-        for entity in entities {
-            world.despawn(entity);
-        }
-
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = Mesh2dHandle(meshes.add(shape::Circle::default().into()));
         let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
@@ -624,6 +615,7 @@ impl Pipeline for BreakoutPipeline {
 
         snapshot
             .applier(world)
+            .despawn::<Or<(With<Paddle>, With<Ball>, With<Brick>)>>()
             .hook(move |entity, cmd| {
                 if entity.contains::<Ball>() {
                     cmd.insert((mesh.clone(), material.clone()));

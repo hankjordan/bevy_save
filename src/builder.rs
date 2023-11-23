@@ -278,7 +278,7 @@ impl<'a> SnapshotBuilder<'a> {
         Snapshot {
             entities: self.entities.into_values().collect(),
             resources: self.resources.into_values().collect(),
-            rollbacks: None,
+            rollbacks: self.rollbacks,
         }
     }
 }

@@ -1,6 +1,5 @@
 use std::{
     any::TypeId,
-    collections::HashSet,
     marker::PhantomData,
 };
 
@@ -23,110 +22,6 @@ use crate::{
     Error,
     Snapshot,
 };
-
-/// A [`ReadOnlyWorldQuery`] filter.
-pub trait Filter: Send + Sync {
-    /// Collect all entities from the given [`World`] matching the filter.
-    fn collect(&self, world: &mut World) -> HashSet<Entity>;
-}
-
-struct FilterMarker<F>(PhantomData<F>);
-
-impl<F> Filter for FilterMarker<F>
-where
-    F: ReadOnlyWorldQuery + Send + Sync,
-{
-    fn collect(&self, world: &mut World) -> HashSet<Entity> {
-        world
-            .query_filtered::<Entity, F>()
-            .iter(world)
-            .collect::<HashSet<_>>()
-    }
-}
-
-/// A boxed [`Filter`].
-pub type BoxedFilter = Box<dyn Filter>;
-
-impl dyn Filter {
-    /// Create an opaque type that implements [`Filter`] from a [`ReadOnlyWorldQuery`].
-    ///
-    /// # Example
-    /// ```
-    /// # use bevy::prelude::*;
-    /// # use bevy_save::prelude::*;
-    /// #[derive(Component)]
-    /// struct A;
-    ///
-    /// #[derive(Component)]
-    /// struct B;
-    ///
-    /// let filter = <dyn Filter>::new::<(With<A>, Without<B>)>();
-    /// ```
-    pub fn new<F>() -> impl Filter
-    where
-        F: ReadOnlyWorldQuery + Send + Sync,
-    {
-        FilterMarker::<F>(PhantomData)
-    }
-
-    /// Create a [`BoxedFilter`] from a [`ReadOnlyWorldQuery`].
-    pub fn boxed<F>() -> BoxedFilter
-    where
-        F: ReadOnlyWorldQuery + Send + Sync + 'static,
-    {
-        Box::new(Self::new::<F>())
-    }
-}
-
-/// Determines what the snapshot will do to existing entities when applied.
-#[derive(Default)]
-pub enum DespawnMode {
-    /// Despawn entities missing from the save
-    ///
-    /// `bevy_save` default
-    #[default]
-    Missing,
-
-    /// Despawn entities missing from the save matching filter
-    MissingWith(BoxedFilter),
-
-    /// Despawn unmapped entities
-    Unmapped,
-
-    /// Despawn unmapped entities matching filter
-    UnmappedWith(BoxedFilter),
-
-    /// Despawn all entities
-    ///
-    /// This is probably not what you want - in most cases this will close your app's [`Window`]
-    All,
-
-    /// Despawn all entities matching filter
-    AllWith(BoxedFilter),
-
-    /// Keep all entities
-    ///
-    /// `bevy_scene` default
-    None,
-}
-
-impl DespawnMode {
-    /// Create a new instance of [`DespawnMode::UnmappedWith`] with the given filter.
-    pub fn unmapped_with<F>() -> Self
-    where
-        F: ReadOnlyWorldQuery + Send + Sync + 'static,
-    {
-        DespawnMode::UnmappedWith(<dyn Filter>::boxed::<F>())
-    }
-
-    /// Create a new instance of [`DespawnMode::AllWith`] with the given filter.
-    pub fn all_with<F>() -> Self
-    where
-        F: ReadOnlyWorldQuery + Send + Sync + 'static,
-    {
-        DespawnMode::AllWith(<dyn Filter>::boxed::<F>())
-    }
-}
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
 ///
@@ -157,28 +52,14 @@ impl<T> Hook for T where T: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + 
 /// A boxed [`Hook`].
 pub type BoxedHook = Box<dyn Hook>;
 
-/// Determines how the snapshot will map entities when applied.
-#[derive(Default)]
-pub enum MappingMode {
-    /// If unmapped, attempt a one-to-one mapping. If that fails, spawn a new entity.
-    ///
-    /// `bevy_save` default
-    #[default]
-    Simple,
-
-    /// If unmapped, spawn a new entity.
-    ///
-    /// `bevy_scene` default
-    Strict,
-}
-
 /// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct SnapshotApplier<'a> {
+pub struct SnapshotApplier<'a, F = ()> {
     snapshot: &'a Snapshot,
     world: &'a mut World,
     entity_map: Option<&'a mut HashMap<Entity, Entity>>,
     type_registry: Option<&'a AppTypeRegistry>,
-    hook: Option<Box<dyn Hook>>,
+    despawn: Option<PhantomData<F>>,
+    hook: Option<BoxedHook>,
 }
 
 impl<'a> SnapshotApplier<'a> {
@@ -189,12 +70,13 @@ impl<'a> SnapshotApplier<'a> {
             world,
             entity_map: None,
             type_registry: None,
+            despawn: None,
             hook: None,
         }
     }
 }
 
-impl<'a> SnapshotApplier<'a> {
+impl<'a, A> SnapshotApplier<'a, A> {
     /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
     pub fn entity_map(mut self, entity_map: &'a mut HashMap<Entity, Entity>) -> Self {
         self.entity_map = Some(entity_map);
@@ -209,6 +91,18 @@ impl<'a> SnapshotApplier<'a> {
         self
     }
 
+    /// Change how the snapshot affects existing entities while applying.
+    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier<'a, F> {
+        SnapshotApplier {
+            snapshot: self.snapshot,
+            world: self.world,
+            entity_map: self.entity_map,
+            type_registry: self.type_registry,
+            despawn: Some(PhantomData),
+            hook: self.hook,
+        }
+    }
+
     /// Add a [`Hook`] that will run for each entity after applying.
     pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
         self.hook = Some(Box::new(hook));
@@ -216,7 +110,7 @@ impl<'a> SnapshotApplier<'a> {
     }
 }
 
-impl<'a> SnapshotApplier<'a> {
+impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
     /// Apply the [`Snapshot`] to the [`World`].
     ///
     /// # Panics
@@ -257,6 +151,19 @@ impl<'a> SnapshotApplier<'a> {
             // If the world already contains an instance of the given resource
             // just apply the (possibly) new value, otherwise insert the resource
             reflect_resource.apply_or_insert(self.world, &**resource);
+        }
+
+        // Despawn entities
+        if self.despawn.is_some() {
+            let invalid = self
+                .world
+                .query_filtered::<Entity, F>()
+                .iter(self.world)
+                .collect::<Vec<_>>();
+
+            for entity in invalid {
+                self.world.despawn(entity);
+            }
         }
 
         // For each component types that reference other entities, we keep track
