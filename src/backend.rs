@@ -1,18 +1,9 @@
-use std::{
-    fs::File,
-    io::{
-        BufReader,
-        BufWriter,
-    },
-};
-
 use serde::{
     de::DeserializeSeed,
     Serialize,
 };
 
 use crate::{
-    get_save_file,
     Error,
     Format,
 };
@@ -42,11 +33,20 @@ pub trait Backend<K> {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop {
+    use std::{
+        fs::File,
+        io::{
+            BufReader,
+            BufWriter,
+        },
+    };
+
     use bevy::prelude::*;
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
     use crate::{
+        get_save_file,
         AsDeserializer,
         AsSerializer,
     };
@@ -139,69 +139,57 @@ pub type DefaultBackend = desktop::FileIO;
 /// The [`Backend`] the default debug [`Pipeline`](crate::Pipeline) will use.
 pub type DefaultDebugBackend = desktop::DebugFileIO;
 
-// TODO
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use bevy::prelude::*;
-    use web_sys::Storage;
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
+    use crate::WORKSPACE;
 
     /// Simple `WebStorage` backend.
     #[derive(Default, Resource)]
     pub struct WebStorage;
 
-    pub struct WebReader {
-        value: String,
-    }
-
-    impl Read for WebReader {
-        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-            todo!()
-        }
-    }
-
-    pub struct WebWriter {
-        storage: Storage,
-        key: String,
-        value: String,
-    }
-
-    impl Write for WebWriter {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            todo!()
-        }
-
-        fn flush(&mut self) -> std::io::Result<()> {
-            todo!()
-        }
-    }
-
-    impl<K> Backend2<K> for WebStorage {
-        type Reader = WebReader;
-        type Writer = WebWriter;
-
-        fn reader(&mut self, key: K) -> Result<Self::Reader, Error> {
-            todo!()
-        }
-
-        fn writer(&mut self, key: K) -> Result<Self::Writer, Error> {
-            todo!()
-        }
-    }
-
     impl<'a> Backend<&'a str> for WebStorage {
-        fn save<S: Saver, T: Serialize>(&self, key: K, value: T) -> Result<(), Error> {
-            todo!()
+        fn save<F: Format, T: Serialize>(&self, key: &str, value: T) -> Result<(), Error> {
+            let storage = web_sys::window()
+                .expect("No window")
+                .local_storage()
+                .expect("Failed to get local storage")
+                .expect("No local storage");
+
+            storage
+                .set_item(
+                    &format!("{WORKSPACE}.{key}"),
+                    &serde_json::to_string(&value).map_err(Error::saving)?,
+                )
+                .expect("Failed to save");
+
+            Ok(())
         }
 
-        fn load_seed<'de, L: Loader, T: DeserializeSeed<'de>>(
+        fn load<'de, F: Format, T: DeserializeSeed<'de>>(
             &self,
-            key: K,
+            key: &str,
             seed: T,
         ) -> Result<T::Value, Error> {
-            todo!()
+            let storage = web_sys::window()
+                .expect("No window")
+                .local_storage()
+                .expect("Failed to get local storage")
+                .expect("No local storage");
+
+            let value = storage
+                .get_item(&format!("{WORKSPACE}.{key}"))
+                .expect("Failed to load")
+                .ok_or(Error::custom("Invalid key"))?;
+
+            let bytes = value.into_bytes();
+
+            let mut de = serde_json::Deserializer::from_reader(bytes.as_slice());
+
+            seed.deserialize(&mut de).map_err(Error::loading)
         }
     }
 }
@@ -209,6 +197,8 @@ mod wasm {
 #[cfg(target_arch = "wasm32")]
 pub use wasm::WebStorage;
 #[cfg(target_arch = "wasm32")]
+/// The [`Backend`] the default [`Pipeline`](crate::Pipeline) will use.
 pub type DefaultBackend = wasm::WebStorage;
 #[cfg(target_arch = "wasm32")]
+/// The [`Backend`] the default debug [`Pipeline`](crate::Pipeline) will use.
 pub type DefaultDebugBackend = wasm::WebStorage;

@@ -23,6 +23,10 @@ pub enum Error {
     /// Other error.
     #[error("other error: {0}")]
     Other(Box<dyn std::error::Error>),
+
+    /// Custom error.
+    #[error("custom error: {0}")]
+    Custom(String),
 }
 
 impl Error {
@@ -43,6 +47,11 @@ impl Error {
     /// Other error.
     pub fn other(error: impl std::error::Error + 'static) -> Self {
         Self::Other(Box::new(error))
+    }
+
+    /// Custom error.
+    pub fn custom(error: impl std::fmt::Display) -> Self {
+        Self::Custom(format!("{error}"))
     }
 }
 

@@ -216,7 +216,7 @@ NOTE: We do not track Bevy main.
 | Windows  | :heavy_check_mark:   |
 | MacOS    | :heavy_check_mark:   |
 | Linux    | :heavy_check_mark:   |
-| WASM     | :hammer_and_wrench:† |
+| WASM     | :heavy_check_mark:   |
 | Android  | :question:           |
 | iOS      | :question:           |
 
@@ -229,8 +229,6 @@ NOTE: We do not track Bevy main.
 :question: = Untested, probably won't work
 —
 :hammer_and_wrench: = In progress
-
-† Everything but `World::save` and `World::load` should work, full support is possible now via a custom backend
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.12-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg

@@ -46,18 +46,5 @@ impl Plugin for SaveablesPlugin {
         app
             .register_type::<Option<Vec2>>()
             .register_type::<Option<Rect>>();
-
-        #[cfg(feature = "bevy_ecs_tilemap")]
-        {
-            use bevy_ecs_tilemap::{
-                FrustumCulling,
-                prelude::*
-            };
-
-            app
-                .register_type::<Option<Entity>>()
-                .register_type::<Vec<Option<Entity>>>();
-        }
-        
     }
 }
