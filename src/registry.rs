@@ -1,67 +1,70 @@
-use std::collections::HashMap;
-
-use bevy::{
-    prelude::*,
-    reflect::GetTypeRegistration,
+use std::any::{
+    Any,
+    TypeId,
 };
 
-/// The global registry of types that should be tracked by `bevy_save`.
-///
-/// Only types that are registered in here and [`AppTypeRegistry`] are included in save/load and rollback.
-#[derive(Resource, Default)]
-pub struct SaveableRegistry {
-    types: HashMap<String, bool>,
+use bevy::prelude::*;
+
+fn take<T, F>(mut_ref: &mut T, closure: F)
+where
+    F: FnOnce(T) -> T,
+{
+    use std::ptr;
+
+    unsafe {
+        let old_t = ptr::read(mut_ref);
+        ptr::write(mut_ref, closure(old_t));
+    }
 }
 
-impl SaveableRegistry {
-    /// Register a type to be included in saves and rollback.
-    pub fn register<T: GetTypeRegistration>(&mut self) {
-        let type_reg = T::get_type_registration();
-        self.types
-            .insert(type_reg.type_info().type_path().into(), true);
+/// The global registry of types that should be included in [`Rollbacks`](crate::Rollbacks).
+///
+/// Only types that are registered in here and [`AppTypeRegistry`] are included in rollbacks.
+#[derive(Resource, Default)]
+pub struct RollbackRegistry {
+    types: SceneFilter,
+}
+
+impl RollbackRegistry {
+    /// Allow all types to roll back.
+    pub fn allow_all(&mut self) {
+        self.types = SceneFilter::allow_all();
+    }
+
+    /// Deny all types from rolling back.
+    pub fn deny_all(&mut self) {
+        self.types = SceneFilter::deny_all();
+    }
+
+    /// Include a type in rollbacks.
+    pub fn allow<T: Any>(&mut self) {
+        take(&mut self.types, |types| types.allow::<T>());
     }
 
     /// Exclude a type from rollback.
     ///
-    /// The type is still included in saves.
-    ///
-    /// # Panics
-    /// - If called on a type that has not been registered
-    pub fn ignore_rollback<T: GetTypeRegistration>(&mut self) {
-        let type_reg = T::get_type_registration();
-        *self
-            .types
-            .get_mut(type_reg.type_info().type_path())
-            .unwrap() = false;
+    /// The type is still included in normal snapshots.
+    pub fn deny<T: Any>(&mut self) {
+        take(&mut self.types, |types| types.deny::<T>());
     }
 
-    /// Include a type in rollbacks.
-    ///
-    /// # Panics
-    /// - If called on a type that has not been registered
-    pub fn allow_rollback<T: GetTypeRegistration>(&mut self) {
-        let type_reg = T::get_type_registration();
-        *self
-            .types
-            .get_mut(type_reg.type_info().type_path())
-            .unwrap() = true;
+    /// Check if a type is allowed to roll back.
+    pub fn is_allowed<T: Any>(&self) -> bool {
+        self.types.is_allowed::<T>()
     }
 
-    /// Returns whether or not a type name is registered in the [`SaveableRegistry`].
-    pub fn contains(&self, type_name: &str) -> bool {
-        self.types.contains_key(type_name)
+    /// Check if a type is allowed to roll back by id.
+    pub fn is_allowed_by_id(&self, type_id: TypeId) -> bool {
+        self.types.is_allowed_by_id(type_id)
     }
 
-    /// Returns whether or not a type name is included in rollback.
-    ///
-    /// # Panics
-    /// - If called on a type that has not been registered
-    pub fn can_rollback(&self, type_name: &str) -> bool {
-        *self.types.get(type_name).unwrap()
+    /// Check if a type is denied from rolling back.
+    pub fn is_denied<T: Any>(&self) -> bool {
+        self.types.is_denied::<T>()
     }
 
-    /// Returns an iterator over registered type names.
-    pub fn types(&self) -> impl Iterator<Item = &String> {
-        self.types.keys()
+    /// Check if a type is denied from rolling back by id.
+    pub fn is_denied_by_id(&self, type_id: TypeId) -> bool {
+        self.types.is_denied_by_id(type_id)
     }
 }

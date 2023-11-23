@@ -72,8 +72,7 @@ mod desktop {
             let mut ser = F::serializer(writer);
             let ser = ser.as_serializer();
 
-            // TODO
-            value.serialize(ser).expect("Failed to save");
+            value.serialize(ser).map_err(Error::saving)?;
 
             Ok(())
         }
@@ -90,8 +89,7 @@ mod desktop {
             let mut de = F::deserializer(reader);
             let de = de.as_deserializer();
 
-            // TODO
-            Ok(seed.deserialize(de).expect("Failed to load"))
+            seed.deserialize(de).map_err(Error::loading)
         }
     }
 

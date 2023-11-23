@@ -69,34 +69,9 @@ pub trait Format {
     }
 
     /// Builds a [`Serializer`] from the given writer.
-    ///
-    /// # Example
-    /// ```
-    /// # use bevy_save::prelude::*;
-    /// impl Saver for RMPSaver {
-    ///     type Serializer<W: Write> = rmp_serde::Serializer<W, rmp_serde::config::DefaultConfig>;
-    ///
-    ///     fn build<W: Write>(writer: W) -> Self::Serializer<W> {
-    ///         rmp_serde::Serializer::new(writer)
-    ///     }
-    /// }
-    /// ```
     fn serializer<W: Write>(writer: W) -> Self::Serializer<W>;
 
     /// Builds a [`Deserializer`] from the given reader.
-    ///
-    /// # Example
-    /// ```
-    /// # use bevy_save::prelude::*;
-    /// impl Loader for RMPLoader {
-    ///     type Deserializer<R: Read> =
-    ///         rmp_serde::Deserializer<rmp_serde::decode::ReadReader<R>, rmp_serde::config::DefaultConfig>;
-    ///
-    ///     fn build<R: Read>(reader: R) -> Self::Deserializer<R> {
-    ///         rmp_serde::Deserializer::new(reader)
-    ///     }
-    /// }
-    /// ```
     fn deserializer<R: Read>(reader: R) -> Self::Deserializer<R>;
 }
 

@@ -7,6 +7,7 @@ use crate::{
     Pipeline,
     Rollbacks,
     Snapshot,
+    SnapshotBuilder,
     SnapshotDeserializer,
     SnapshotSerializer,
 };
@@ -31,14 +32,14 @@ pub trait WorldSaveableExt: Sized {
 
 impl WorldSaveableExt for World {
     fn snapshot<P: Pipeline>(&self) -> Snapshot {
-        P::capture(self)
+        P::capture(Snapshot::builder(self))
     }
 
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
         let registry = self.resource::<AppTypeRegistry>();
         let backend = self.resource::<P::Backend>();
 
-        let snapshot = pipeline.capture_seed(self);
+        let snapshot = pipeline.capture_seed(Snapshot::builder(self));
 
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
@@ -72,7 +73,7 @@ pub trait WorldRollbackExt {
 
 impl WorldRollbackExt for World {
     fn checkpoint<P: Pipeline>(&mut self) {
-        let rollback = P::capture(self);
+        let rollback = P::capture(SnapshotBuilder::rollback(self));
         self.resource_mut::<Rollbacks>().checkpoint(rollback);
     }
 

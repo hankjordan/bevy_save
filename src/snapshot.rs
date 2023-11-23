@@ -65,7 +65,7 @@ impl Snapshot {
     ///     .build();
     /// ```
     pub fn builder(world: &World) -> SnapshotBuilder {
-        SnapshotBuilder::new(world)
+        SnapshotBuilder::snapshot(world)
     }
 
     /// Apply the [`Snapshot`] to the [`World`], using default applier settings.
@@ -83,12 +83,12 @@ impl Snapshot {
     /// # Example
     /// ```
     /// # use bevy::prelude::*;
-    /// # use bevy::ecs::entity::EntityMap;
     /// # use bevy_save::prelude::*;
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
+    /// # let parent = Entity::from_raw(0);
     /// let snapshot = Snapshot::from_world(world);
     ///
     /// snapshot

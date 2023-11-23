@@ -28,12 +28,14 @@ pub enum Error {
 impl Error {
     /// Saving or serialization error.
     pub fn saving(err: impl std::error::Error) -> Self {
+        // TODO
         error!("Saving error: {err:?}");
         Self::Saving
     }
 
     /// Loading or deserialization error.
     pub fn loading(err: impl std::error::Error) -> Self {
+        // TODO
         error!("Loading error: {err:?}");
         Self::Loading
     }

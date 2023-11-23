@@ -114,7 +114,7 @@ impl TilePipeline {
     pub fn new(position: TilePosition) -> Self {
         Self {
             position,
-            key: format!("examples/saves/pipeline/{}.{}.json", position.x, position.y),
+            key: format!("examples/saves/pipeline/{}.{}", position.x, position.y),
         }
     }
 }
@@ -129,8 +129,10 @@ impl Pipeline for TilePipeline {
         &self.key
     }
 
-    fn capture_seed(&self, world: &World) -> Snapshot {
-        Snapshot::builder(world)
+    fn capture_seed(&self, builder: SnapshotBuilder) -> Snapshot {
+        let world = builder.world();
+
+        builder
             .extract_entity(
                 *world
                     .resource::<TileMap>()
@@ -172,10 +174,10 @@ fn main() {
             // Bevy Save
             SavePlugins,
         ))
-        // Register our types as saveable
-        .register_saveable::<TileMap>()
-        .register_saveable::<TilePosition>()
-        .register_saveable::<Tile>()
+        // Register our types
+        .register_type::<TileMap>()
+        .register_type::<TilePosition>()
+        .register_type::<Tile>()
         // Bevy's reflection requires we register each generic instance of a type individually
         // Note that we only need to register it in the AppTypeRegistry and not in the SaveableRegistry
         .register_type::<HashMap<TilePosition, Entity>>()

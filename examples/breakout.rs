@@ -105,15 +105,13 @@ fn main() {
             SavePlugins,
         ))
 
-        // Register our types as saveable
-        .register_saveable::<Paddle>()
-        .register_saveable::<Ball>()
-        .register_saveable::<Velocity>()
-        .register_saveable::<Collider>()
-        .register_saveable::<Brick>()
-        .register_saveable::<Scoreboard>()
-
-        // Register our types as inspectable
+        // Register our types
+        .register_type::<Paddle>()
+        .register_type::<Ball>()
+        .register_type::<Velocity>()
+        .register_type::<Collider>()
+        .register_type::<Brick>()
+        .register_type::<Scoreboard>()
         .register_type::<ScoreboardText>()
         .register_type::<Toast>()
 
@@ -592,16 +590,13 @@ impl Pipeline for BreakoutPipeline {
         "examples/saves/breakout"
     }
 
-    fn capture(world: &World) -> Snapshot {
-        let entities = world
-            .iter_entities()
-            .filter(|e| e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>())
-            .map(|e| e.id());
-
-        Snapshot::builder(world)
+    fn capture(builder: SnapshotBuilder) -> Snapshot {
+        builder
             .deny::<Mesh2dHandle>()
             .deny::<Handle<ColorMaterial>>()
-            .extract_entities(entities)
+            .extract_entities_matching(|e| {
+                e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>()
+            })
             .extract_resource::<Scoreboard>()
             .extract_rollbacks()
             .build()

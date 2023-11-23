@@ -35,14 +35,13 @@ With the default `FileIO` backend, your save directory is managed for you.
 
 `bevy_save` is not just about save files, it is about total control over game state.
 
-This crate introduces a few snapshot types which may be used directly:
+This crate introduces a snapshot type which may be used directly:
 
 - `Snapshot` is a serializable snapshot of all saveable resources, entities, and components.
-- `Rollback` is a serializable snapshot of all saveable resources, entities, and components that are included in rollbacks.
 
 Or via the `World` extension methods:
 
-- `World::snapshot()` captures a snapshot of the current game state, including resources. (equivalent to `Snapshot::from_world()`)
+- `World::snapshot()` captures a snapshot of the current game state, including resources.
 - `World::checkpoint()` captures a snapshot for later rollback / rollforward.
 - `World::rollback()` rolls the game state backwards or forwards through any checkpoints you have created.
 
@@ -52,20 +51,14 @@ The `Rollbacks` resource also gives you fine-tuned control of the currently stor
 
 `bevy_save` adds methods to Bevy's `App` for registering types that should be saved. 
 As long as the type implements `Reflect`, it can be registered and used with `bevy_save`.
-**Types that are not explicitly registered in the `SaveableRegistry` are not included in save/load**.
 
 - `App.init_pipeline::<P>()` initializes a `Pipeline` for use with save / load.
-- `App.register_saveable::<T>()` registers a type as saveable, allowing it to be included in saves and rollbacks.
-- `App.ignore_rollback::<T>()` excludes a type from rollback.
-- `App.allow_rollback::<T>()` allows you to re-include a type in rollback after it has already been set to ignore rollback.
+- `App.allow_rollback::<T>()` allows a type to roll back.
+- `App.deny_rollback::<T>()` denies a type from rolling back.
 
 ### Type filtering
 
-While types that are not registered with `SaveableRegistry` are automatically filtered out for you,
-`bevy_save` also allows you to explicitly filter types when creating a snapshot.
-
-- `Snapshot::from_world_with_filter()`
-- `Rollback::from_world_with_filter()`
+`bevy_save` allows you to explicitly filter types when creating a snapshot.
 
 ### Entity mapping
 
@@ -73,9 +66,8 @@ As Entity ids are not intended to be used as unique identifiers, `bevy_save` sup
 
 First, you'll need to get a `SnapshotApplier`:
 
-- `World::rollback_applier()` while rolling back / forward.
-- `Snapshot::applier()`
-- `Rollback::applier()`
+- `Snapshot::applier()` 
+- `SnapshotApplier::new()`
 
 The `SnapshotApplier` will then allow you to configure the `EntityMap` (and other settings) before applying:
 
@@ -85,33 +77,20 @@ let snapshot = Snapshot::from_world(world);
 snapshot
     .applier(world)
 
-    // Your entity map - in many cases this can be omitted
-    .map(EntityMap::default())
+    // Your entity map
+    .entity_map(EntityMap::default())
 
     // Despawn all entities matching (With<A>, Without<B>)
-    .despawn(DespawnMode::all_with::<(With<A>, Without<B>)>())
-
-    // Do not overwrite existing entities
-    .mapping(MappingMode::Strict)
+    .despawn::<(With<A>, Without<B>)>()
 
     .apply();
 ```
-
-**By default, `bevy_save` snapshots do not behave like Bevy's `DynamicScene` when applying.**
-
-If you use the methods that do not return an `Applier` (`deserialize`, `load`, `rollback`, `apply`), the default settings are used:
-- `DespawnMode::Missing` - Any entities not present in the snapshot are despawned.
-- `MappingMode::Simple` - Existing entities may be overridden with snapshot data.
-
-You can change the default behavior using the `AppDespawnMode` and `AppMappingMode` resources.
-
-It is also possible to match `DynamicScene` behavior by using `DespawnMode::None` and `MappingMode::Strict`.
 
 #### MapEntities
 
 `bevy_save` also supports `MapEntities` via reflection to allow you to update entity ids within components and resources.
 
-See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.11.0/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
+See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.12.0/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ### Entity hooks
 
@@ -161,30 +140,29 @@ While `bevy_save` aims to make it as easy as possible to save your entire world,
 ```rust,ignore
 fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
     Snapshot::builder(world)
-        // Extract all saveable resources
+        // Extract all resources
         .extract_all_resources()
 
         // Extract all descendants of `target`
-        // This will include all saveable components
+        // This will include all components not denied by the builder's filter
         .extract_entities(children.iter_descendants(target))
 
-        // Entities without any saveable components will also be extracted
+        // Entities without any components will also be extracted
         // You can use `clear_empty` to remove them
-        // NOTE: If applied with the default `MappingMode` this may cause your `Window` entity to be despawned
-        // .clear_empty()
+        .clear_empty()
 
         // Build the `Snapshot`
         .build()
 }
 ```
 
-You are also able to extract resources by type name:
+You are also able to extract resources by type:
 
 ```rust,ignore
 Snapshot::builder(world)
     // Extract the resource by the type name
     // In this case, we extract the resource from the `manual` example
-    .extract_resource("manual::FancyMap")
+    .extract_resource::<FancyMap>()
 
     // Build the `Snapshot`
     // It will only contain the one resource we extracted
@@ -196,7 +174,7 @@ Additionally, explicit type filtering like `Applier` is available when building 
 ```rust,ignore
 Snapshot::builder(world)
     // Exclude `Transform` from this `Snapshot`
-    .filter(|reg| reg.type_name() != "bevy_transform::components::transform::Transform")
+    .deny::<Transform>()
 
     // Extract all matching entities and resources
     .extract_all()
@@ -213,10 +191,6 @@ Snapshot::builder(world)
 Save / load pipelines allow you to use multiple different configurations of `Backend`, `Saver`, and `Loader` in the same `App`.
 
 Pipelines also let you re-use `Snapshot` appliers and extractors. 
-
-```rust,ignore
-
-```
 
 ## License
 
@@ -257,36 +231,6 @@ NOTE: We do not track Bevy main.
 :hammer_and_wrench: = In progress
 
 † Everything but `World::save` and `World::load` should work, full support is possible now via a custom backend
-
-### Third-party Crates
-
-`bevy_save` should work with most third-party crates, but you must register their types as saveable to be included in saves.
-
-Registering as saveable requires the type implements `Reflect`. Components will also need to implement `ReflectComponent` and Resources will need to implement `ReflectResource`.
-
-If a type stores `Entity` values, it must also have a `MapEntities` implementation and `ReflectMapEntities` registration to handle entity remapping properly.
-
-Automatic registration for certain crates may be available via a feature flag. Only some types from those crates will be registered.
-
-Registering a type again after it has already been registered will have no effect.
-
-| Name                     | Support             | Feature Flag        | Example             | Notes                    | 
-|--------------------------|---------------------|---------------------|---------------------|--------------------------|
-| `bevy`                   | :heavy_check_mark:  | :white_check_mark:  | :white_check_mark:  |                          |
-| `bevy_ecs_tilemap`       | :ok:                | :white_check_mark:  | :white_check_mark:  | No `MapEntities` support |
-| `bevy_rapier`            | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
-| `bevy_tweening`          | :question:          | :hammer_and_wrench: | :hammer_and_wrench: |                          |
-| `leafwing-input-manager` | :zap:               | :hammer_and_wrench: | :hammer_and_wrench: |                          |
-
-:heavy_check_mark: = First Class Support
-—
-:ok: = Best Effort Support
-—
-:zap: = Untested, but should work
-—
-:question: = Untested, probably won't work
-—
-:hammer_and_wrench: = In progress
 
 [img_bevy]: https://img.shields.io/badge/Bevy-0.12-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg

@@ -28,8 +28,8 @@ pub trait Pipeline: Sized {
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
-    fn capture(world: &World) -> Snapshot {
-        Snapshot::from_world(world)
+    fn capture(builder: SnapshotBuilder) -> Snapshot {
+        builder.build()
     }
 
     /// Retrieve a [`Snapshot`] from the [`World`], using the [`Pipeline`] as a seed.
@@ -37,8 +37,8 @@ pub trait Pipeline: Sized {
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
-    fn capture_seed(&self, world: &World) -> Snapshot {
-        Self::capture(world)
+    fn capture_seed(&self, builder: SnapshotBuilder) -> Snapshot {
+        Self::capture(builder)
     }
 
     /// Apply a [`Snapshot`] to the [`World`].

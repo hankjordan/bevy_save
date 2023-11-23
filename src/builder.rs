@@ -11,6 +11,7 @@ use bevy::{
 
 use crate::{
     CloneReflect,
+    RollbackRegistry,
     Rollbacks,
     Snapshot,
 };
@@ -22,10 +23,11 @@ pub struct SnapshotBuilder<'a> {
     resources: BTreeMap<ComponentId, Box<dyn Reflect>>,
     filter: SceneFilter,
     rollbacks: Option<Rollbacks>,
+    is_rollback: bool,
 }
 
 impl<'a> SnapshotBuilder<'a> {
-    /// Create a new [`SnapshotBuilder`] from the [`World`] and snapshot.
+    /// Create a new [`SnapshotBuilder`] from the [`World`].
     ///
     /// You must call at least one of the `extract` methods or the built snapshot will be empty.
     ///
@@ -37,7 +39,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// SnapshotBuilder::new(world)
+    /// SnapshotBuilder::snapshot(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///     
@@ -47,14 +49,60 @@ impl<'a> SnapshotBuilder<'a> {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn new(world: &'a World) -> Self {
+    pub fn snapshot(world: &'a World) -> Self {
         Self {
             world,
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
             rollbacks: None,
+            is_rollback: false,
         }
+    }
+
+    /// Create a new [`SnapshotBuilder`] from the [`World`].
+    ///
+    /// Types extracted by this builder will respect the [`RollbackRegistry`](crate::RollbackRegistry).
+    ///
+    /// You must call at least one of the `extract` methods or the built snapshot will be empty.
+    ///
+    /// # Example
+    /// ```
+    /// # use bevy::prelude::*;
+    /// # use bevy_save::prelude::*;
+    /// # let mut app = App::new();
+    /// # app.add_plugins(MinimalPlugins);
+    /// # app.add_plugins(SavePlugins);
+    /// # let world = &mut app.world;
+    /// SnapshotBuilder::rollback(world)
+    ///     // Extract all matching entities and resources
+    ///     .extract_all()
+    ///     
+    ///     // Clear all extracted entities without any components
+    ///     .clear_empty()
+    ///     
+    ///     // Build the `Snapshot`
+    ///     .build();
+    /// ```
+    pub fn rollback(world: &'a World) -> Self {
+        Self {
+            world,
+            entities: BTreeMap::new(),
+            resources: BTreeMap::new(),
+            filter: SceneFilter::default(),
+            rollbacks: None,
+            is_rollback: true,
+        }
+    }
+}
+
+impl<'a> SnapshotBuilder<'a> {
+    /// Retrieve the builder's reference to the [`World`].
+    pub fn world<'w>(&self) -> &'w World
+    where
+        'a: 'w,
+    {
+        self.world
     }
 }
 
@@ -119,6 +167,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// Extract the given entities from the builder’s [`World`].
     pub fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
         let registry = self.world.resource::<AppTypeRegistry>().read();
+        let rollbacks = self.world.resource::<RollbackRegistry>();
 
         for entity in entities.filter_map(|e| self.world.get_entity(e)) {
             let id = entity.id();
@@ -134,6 +183,13 @@ impl<'a> SnapshotBuilder<'a> {
                     .get_info(component)
                     .and_then(|info| info.type_id())
                     .filter(|id| self.filter.is_allowed_by_id(*id))
+                    .filter(|id| {
+                        if self.is_rollback {
+                            rollbacks.is_allowed_by_id(*id)
+                        } else {
+                            true
+                        }
+                    })
                     .and_then(|id| registry.get(id))
                     .and_then(|reg| reg.data::<ReflectComponent>())
                     .and_then(|reflect| reflect.reflect(entity));
@@ -147,6 +203,12 @@ impl<'a> SnapshotBuilder<'a> {
         }
 
         self
+    }
+
+    /// Extract the entities matching the given filter from the builder’s [`World`].
+    pub fn extract_entities_matching<F: Fn(&EntityRef) -> bool>(self, filter: F) -> Self {
+        let entities = self.world.iter_entities().filter(filter).map(|e| e.id());
+        self.extract_entities(entities)
     }
 
     /// Extract all entities from the builder’s [`World`].
@@ -183,10 +245,18 @@ impl<'a> SnapshotBuilder<'a> {
         type_paths: impl Iterator<Item = T>,
     ) -> Self {
         let registry = self.world.resource::<AppTypeRegistry>().read();
+        let rollbacks = self.world.resource::<RollbackRegistry>();
 
         type_paths
             .filter_map(|p| registry.get_with_type_path(p.as_ref()))
             .filter(|r| self.filter.is_allowed_by_id((*r).type_id()))
+            .filter(|r| {
+                if self.is_rollback {
+                    rollbacks.is_allowed_by_id((*r).type_id())
+                } else {
+                    true
+                }
+            })
             .filter_map(|r| {
                 Some((
                     self.world.components().get_resource_id(r.type_id())?,
