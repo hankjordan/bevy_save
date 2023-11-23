@@ -45,7 +45,7 @@ fn issue21() {
 
     let snapshot = Snapshot::builder(world)
         .extract_all_entities()
-        .build();    
+        .build();
 
     let filter = <dyn Filter>::new::<With<Selectable>>();
 

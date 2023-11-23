@@ -24,27 +24,27 @@ pub trait Pipeline: Sized {
     fn key(&self) -> Self::Key<'_>;
 
     /// Retrieve a [`Snapshot`] from the [`World`].
-    /// 
+    ///
     /// This is where you would do any special filtering you might need.
-    /// 
+    ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
     fn capture(world: &World) -> Snapshot {
         Snapshot::from_world(world)
     }
 
     /// Retrieve a [`Snapshot`] from the [`World`], using the [`Pipeline`] as a seed.
-    /// 
+    ///
     /// This is where you would do any special filtering you might need.
-    /// 
+    ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
     fn capture_seed(&self, world: &World) -> Snapshot {
         Self::capture(world)
     }
 
     /// Apply a [`Snapshot`] to the [`World`].
-    /// 
+    ///
     /// Entity mapping goes here, along with your spawn hook and any other transformations you might need to perform.
-    /// 
+    ///
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
@@ -52,9 +52,9 @@ pub trait Pipeline: Sized {
     }
 
     /// Apply a [`Snapshot`] to the [`World`], using the [`Pipeline`] as a seed.
-    /// 
+    ///
     /// Entity mapping goes here, along with your spawn hook and any other transformations you might need to perform.
-    /// 
+    ///
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     fn apply_seed(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {

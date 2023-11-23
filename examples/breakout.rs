@@ -648,10 +648,14 @@ fn handle_save_input(world: &mut World) {
         world.load(BreakoutPipeline).expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::A) {
-        world.rollback::<BreakoutPipeline>(1).expect("Failed to rollback");
+        world
+            .rollback::<BreakoutPipeline>(1)
+            .expect("Failed to rollback");
         text = Some("Rollback");
     } else if keys.just_released(KeyCode::D) {
-        world.rollback::<BreakoutPipeline>(-1).expect("Failed to rollforward");
+        world
+            .rollback::<BreakoutPipeline>(-1)
+            .expect("Failed to rollforward");
         text = Some("Rollforward");
     }
 

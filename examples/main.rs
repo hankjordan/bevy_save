@@ -83,10 +83,14 @@ fn interact(world: &mut World) {
         world.load(MainPipeline).expect("Failed to load");
     } else if keys.just_released(KeyCode::Left) {
         info!("Rollback");
-        world.rollback::<MainPipeline>(1).expect("Failed to rollback");
+        world
+            .rollback::<MainPipeline>(1)
+            .expect("Failed to rollback");
     } else if keys.just_released(KeyCode::Right) {
         info!("Rollforward");
-        world.rollback::<MainPipeline>(-1).expect("Failed to rollforward");
+        world
+            .rollback::<MainPipeline>(-1)
+            .expect("Failed to rollforward");
     } else if keys.just_pressed(KeyCode::E) {
         info!("Info");
 
@@ -117,19 +121,14 @@ fn main() {
             // Bevy Save
             SavePlugins,
         ))
-        
         .insert_resource(Balance { amount: 42 })
-        
         .register_saveable::<Balance>()
         .register_saveable::<Health>()
         .register_saveable::<Player>()
-
         // While it is still included in saves, the Balance resource will not rollback / rollforward alongside other types.
         // This could be used to track rollback state or to prevent players from making changes to their decisions during rollback.
         .ignore_rollback::<Balance>()
-
         .add_systems(Startup, setup)
         .add_systems(Update, (damage, heal, status, interact))
-
         .run();
 }

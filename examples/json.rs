@@ -55,7 +55,7 @@ fn handle_save_input(world: &mut World) {
     let keys = world.resource::<Input<KeyCode>>();
 
     // Using DebugPipeline as the argument for save/load, we can save locally with JSON.
-    
+
     if keys.just_released(KeyCode::Return) {
         world.save(DebugPipeline(PATH)).expect("Failed to save");
     } else if keys.just_released(KeyCode::Back) {
@@ -83,21 +83,16 @@ fn main() {
             // Bevy Save
             SavePlugins,
         ))
-
         // Register our types as saveable
         .register_saveable::<FancyMap>()
         .register_saveable::<Velocity>()
-
         // Bevy's reflection requires we register each generic instance of a type individually
         // Note that we only need to register it in the AppTypeRegistry and not in the SaveableRegistry
         .register_type::<HashMap<String, i32>>()
-
         // Resources
         .insert_resource(fancy_map)
-
         // Systems
         .add_systems(Startup, setup_world)
         .add_systems(Update, (apply_velocity, handle_save_input))
-        
         .run();
 }

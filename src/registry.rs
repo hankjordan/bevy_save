@@ -6,7 +6,7 @@ use bevy::{
 };
 
 /// The global registry of types that should be tracked by `bevy_save`.
-/// 
+///
 /// Only types that are registered in here and [`AppTypeRegistry`] are included in save/load and rollback.
 #[derive(Resource, Default)]
 pub struct SaveableRegistry {
@@ -17,7 +17,8 @@ impl SaveableRegistry {
     /// Register a type to be included in saves and rollback.
     pub fn register<T: GetTypeRegistration>(&mut self) {
         let type_reg = T::get_type_registration();
-        self.types.insert(type_reg.type_info().type_path().into(), true);
+        self.types
+            .insert(type_reg.type_info().type_path().into(), true);
     }
 
     /// Exclude a type from rollback.
@@ -28,7 +29,10 @@ impl SaveableRegistry {
     /// - If called on a type that has not been registered
     pub fn ignore_rollback<T: GetTypeRegistration>(&mut self) {
         let type_reg = T::get_type_registration();
-        *self.types.get_mut(type_reg.type_info().type_path()).unwrap() = false;
+        *self
+            .types
+            .get_mut(type_reg.type_info().type_path())
+            .unwrap() = false;
     }
 
     /// Include a type in rollbacks.
@@ -37,7 +41,10 @@ impl SaveableRegistry {
     /// - If called on a type that has not been registered
     pub fn allow_rollback<T: GetTypeRegistration>(&mut self) {
         let type_reg = T::get_type_registration();
-        *self.types.get_mut(type_reg.type_info().type_path()).unwrap() = true;
+        *self
+            .types
+            .get_mut(type_reg.type_info().type_path())
+            .unwrap() = true;
     }
 
     /// Returns whether or not a type name is registered in the [`SaveableRegistry`].

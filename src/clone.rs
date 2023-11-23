@@ -1,4 +1,7 @@
-use bevy::{prelude::*, scene::DynamicEntity};
+use bevy::{
+    prelude::*,
+    scene::DynamicEntity,
+};
 
 /// Clone-like trait for duplicating [`Reflect`]-related types.
 pub trait CloneReflect {
@@ -18,7 +21,6 @@ impl CloneReflect for Vec<Box<dyn Reflect>> {
         result
     }
 }
-
 
 impl CloneReflect for DynamicEntity {
     fn clone_value(&self) -> Self {
