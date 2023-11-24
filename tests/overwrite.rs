@@ -1,5 +1,3 @@
-// TODO
-/*
 use bevy::prelude::*;
 use bevy_save::prelude::*;
 
@@ -16,7 +14,7 @@ fn test_collect() {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SavePlugins);
 
-    app.register_saveable::<Collect>();
+    app.register_type::<Collect>();
     app.register_type::<Vec<u32>>();
 
     let world = &mut app.world;
@@ -37,8 +35,9 @@ fn test_collect() {
         world.entity(entity).get::<Collect>(),
         Some(&Collect { data: vec![1] })
     );
+    assert_eq!(world.iter_entities().count(), 1);
 
-    let snapshot = world.snapshot();
+    let snapshot = Snapshot::builder(world).extract_entity(entity).build();
 
     world
         .entity_mut(entity)
@@ -52,12 +51,17 @@ fn test_collect() {
         Some(&Collect { data: vec![1, 2] })
     );
 
-    snapshot.applier(world).apply().unwrap();
+    snapshot
+        .applier(world)
+        .entity_map(&mut [(entity, entity)].into_iter().collect())
+        .apply()
+        .unwrap();
 
     assert_eq!(
         world.entity(entity).get::<Collect>(),
         Some(&Collect { data: vec![1] })
     );
+    assert_eq!(world.iter_entities().count(), 1);
 }
 
 #[derive(Component, Reflect, Default, Debug, Clone, PartialEq, Eq)]
@@ -73,23 +77,38 @@ fn test_basic() {
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SavePlugins);
 
-    app.register_saveable::<Basic>();
+    app.register_type::<Basic>();
 
     let world = &mut app.world;
 
     let entity = world.spawn_empty().insert(Basic { data: 0 }).id();
 
+    assert_eq!(
+        world.entity(entity).get::<Basic>(),
+        Some(&Basic { data: 0 })
+    );
+    assert_eq!(world.iter_entities().count(), 1);
+
     world.entity_mut(entity).get_mut::<Basic>().unwrap().data = 1;
 
-    let snapshot = world.snapshot();
+    let snapshot = Snapshot::builder(world).extract_entity(entity).build();
 
     world.entity_mut(entity).get_mut::<Basic>().unwrap().data = 2;
 
-    snapshot.applier(world).apply().unwrap();
+    assert_eq!(
+        world.entity(entity).get::<Basic>(),
+        Some(&Basic { data: 2 })
+    );
+
+    snapshot
+        .applier(world)
+        .entity_map(&mut [(entity, entity)].into_iter().collect())
+        .apply()
+        .unwrap();
 
     assert_eq!(
         world.entity(entity).get::<Basic>(),
         Some(&Basic { data: 1 })
     );
+    assert_eq!(world.iter_entities().count(), 1);
 }
-*/
