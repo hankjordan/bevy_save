@@ -89,12 +89,12 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
                 2
             },
         )?;
-        state.serialize_field(SNAPSHOT_RESOURCES, &ReflectMapSerializer {
-            entries: &self.snapshot.resources,
-            registry: self.registry,
-        })?;
         state.serialize_field(SNAPSHOT_ENTITIES, &EntityMapSerializer {
             entities: &self.snapshot.entities,
+            registry: self.registry,
+        })?;
+        state.serialize_field(SNAPSHOT_RESOURCES, &ReflectMapSerializer {
+            entries: &self.snapshot.resources,
             registry: self.registry,
         })?;
 
@@ -270,7 +270,7 @@ impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
     {
         deserializer.deserialize_struct(
             SNAPSHOT_STRUCT,
-            &[SNAPSHOT_RESOURCES, SNAPSHOT_ENTITIES],
+            &[SNAPSHOT_ENTITIES, SNAPSHOT_RESOURCES, SNAPSHOT_ROLLBACKS],
             SnapshotVisitor {
                 registry: self.registry,
             },
