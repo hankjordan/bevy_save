@@ -34,6 +34,8 @@ pub trait Pipeline: Sized {
 
     /// Retrieve a [`Snapshot`] from the [`World`], using the [`Pipeline`] as a seed.
     ///
+    /// This is usually used for partial snapshots.
+    ///
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
@@ -52,6 +54,8 @@ pub trait Pipeline: Sized {
     }
 
     /// Apply a [`Snapshot`] to the [`World`], using the [`Pipeline`] as a seed.
+    ///
+    /// This is usually used for partial snapshots.
     ///
     /// Entity mapping goes here, along with your spawn hook and any other transformations you might need to perform.
     ///

@@ -13,7 +13,7 @@ use crate::{
 
 /// A collection of serializable entities and resources.
 ///
-/// Can be serialized via [`SnapshotSerializer`] and deserialized via [`SnapshotDeserializer`].
+/// Can be serialized via [`SnapshotSerializer`](crate::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::SnapshotDeserializer).
 pub struct Snapshot {
     /// Entities contained in the snapshot.
     pub entities: Vec<DynamicEntity>,

@@ -40,26 +40,17 @@ use crate::{
     Snapshot,
 };
 
-/// Name of the serialized snapshot struct type.
-pub const SNAPSHOT_STRUCT: &str = "Snapshot";
-/// Name of the serialized resources field in a snapshot struct.
-pub const SNAPSHOT_RESOURCES: &str = "resources";
-/// Name of the serialized entities field in a snapshot struct.
-pub const SNAPSHOT_ENTITIES: &str = "entities";
-/// Name of the serialized rollbacks field in a snapshot struct.
-pub const SNAPSHOT_ROLLBACKS: &str = "rollbacks";
+const SNAPSHOT_STRUCT: &str = "Snapshot";
+const SNAPSHOT_ENTITIES: &str = "entities";
+const SNAPSHOT_RESOURCES: &str = "resources";
+const SNAPSHOT_ROLLBACKS: &str = "rollbacks";
 
-/// Name of the serialized rollbacks struct type.
-pub const ROLLBACKS_STRUCT: &str = "Rollbacks";
-/// Name of the serialized checkpoints field in a rollbacks struct.
-pub const ROLLBACKS_CHECKPOINTS: &str = "checkpoints";
-/// Name of the serialized active field in a rollbacks struct.
-pub const ROLLBACKS_ACTIVE: &str = "active";
+const ROLLBACKS_STRUCT: &str = "Rollbacks";
+const ROLLBACKS_CHECKPOINTS: &str = "checkpoints";
+const ROLLBACKS_ACTIVE: &str = "active";
 
-/// Name of the serialized entity struct type.
-pub const ENTITY_STRUCT: &str = "Entity";
-/// Name of the serialized component field in an entity struct.
-pub const ENTITY_COMPONENTS: &str = "components";
+const ENTITY_STRUCT: &str = "Entity";
+const ENTITY_COMPONENTS: &str = "components";
 
 /// Handles serialization of a snapshot as a struct containing its entities and resources.
 pub struct SnapshotSerializer<'a> {
@@ -109,12 +100,9 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
     }
 }
 
-/// Handles serialization of a collection of snapshots.
-pub struct SnapshotListSerializer<'a> {
-    /// The snapshots to serialize.
-    pub snapshots: &'a [Snapshot],
-    /// Type registry in which the components and resources types used in the snapshots are registered.
-    pub registry: &'a TypeRegistryArc,
+struct SnapshotListSerializer<'a> {
+    snapshots: &'a [Snapshot],
+    registry: &'a TypeRegistryArc,
 }
 
 impl<'a> Serialize for SnapshotListSerializer<'a> {
@@ -160,12 +148,9 @@ impl<'a> Serialize for RollbacksSerializer<'a> {
     }
 }
 
-/// Handles serialization of multiple entities as a map of entity id to serialized entity.
-pub struct EntityMapSerializer<'a> {
-    /// The entities to serialize.
-    pub entities: &'a [DynamicEntity],
-    /// Type registry in which the component types used by the entities are registered.
-    pub registry: &'a TypeRegistryArc,
+struct EntityMapSerializer<'a> {
+    entities: &'a [DynamicEntity],
+    registry: &'a TypeRegistryArc,
 }
 
 impl<'a> Serialize for EntityMapSerializer<'a> {
@@ -184,12 +169,9 @@ impl<'a> Serialize for EntityMapSerializer<'a> {
     }
 }
 
-/// Handles entity serialization as a map of component type to component value.
-pub struct EntitySerializer<'a> {
-    /// The entity to serialize.
-    pub entity: &'a DynamicEntity,
-    /// Type registry in which the component types used by the entity are registered.
-    pub registry: &'a TypeRegistryArc,
+struct EntitySerializer<'a> {
+    entity: &'a DynamicEntity,
+    registry: &'a TypeRegistryArc,
 }
 
 impl<'a> Serialize for EntitySerializer<'a> {
@@ -206,16 +188,9 @@ impl<'a> Serialize for EntitySerializer<'a> {
     }
 }
 
-/// Handles serializing a list of values with a unique type as a map of type to value.
-///
-/// Used to serialize snapshot resources in [`SnapshotSerializer`] and entity components in [`EntitySerializer`].
-/// Note that having several entries of the same type in `entries` will lead to an error when using the RON format and
-/// deserializing through [`ReflectMapDeserializer`].
-pub struct ReflectMapSerializer<'a> {
-    /// List of boxed values of unique type to serialize.
-    pub entries: &'a [Box<dyn Reflect>],
-    /// Type registry in which the types used in `entries` are registered.
-    pub registry: &'a TypeRegistryArc,
+struct ReflectMapSerializer<'a> {
+    entries: &'a [Box<dyn Reflect>],
+    registry: &'a TypeRegistryArc,
 }
 
 impl<'a> Serialize for ReflectMapSerializer<'a> {
@@ -454,8 +429,7 @@ impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
     }
 }
 
-/// Handles deserialization for a collection of snapshots.
-pub struct SnapshotListDeserializer<'a> {
+struct SnapshotListDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
@@ -499,10 +473,8 @@ impl<'a, 'de> Visitor<'de> for SnapshotListVisitor<'a> {
     }
 }
 
-/// Handles deserialization for a collection of entities.
-pub struct EntityMapDeserializer<'a> {
-    /// Type registry in which the component types used by the entities to deserialize are registered.
-    pub registry: &'a TypeRegistry,
+struct EntityMapDeserializer<'a> {
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for EntityMapDeserializer<'a> {
@@ -519,7 +491,7 @@ impl<'a, 'de> DeserializeSeed<'de> for EntityMapDeserializer<'a> {
 }
 
 struct EntityMapVisitor<'a> {
-    pub registry: &'a TypeRegistry,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for EntityMapVisitor<'a> {
@@ -546,12 +518,9 @@ impl<'a, 'de> Visitor<'de> for EntityMapVisitor<'a> {
     }
 }
 
-/// Handle deserialization of an entity and its components.
-pub struct EntityDeserializer<'a> {
-    /// Id of the deserialized entity.
-    pub entity: Entity,
-    /// Type registry in which the component types used by the entity to deserialize are registered.
-    pub registry: &'a TypeRegistry,
+struct EntityDeserializer<'a> {
+    entity: Entity,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
@@ -569,8 +538,8 @@ impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
 }
 
 struct EntityVisitor<'a> {
-    pub entity: Entity,
-    pub registry: &'a TypeRegistry,
+    entity: Entity,
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
@@ -625,10 +594,8 @@ impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
     }
 }
 
-/// Handles deserialization of a sequence of values with unique types.
-pub struct ReflectMapDeserializer<'a> {
-    /// Type registry in which the types of the values to deserialize are registered.
-    pub registry: &'a TypeRegistry,
+struct ReflectMapDeserializer<'a> {
+    registry: &'a TypeRegistry,
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for ReflectMapDeserializer<'a> {
