@@ -43,7 +43,7 @@ impl WorldSaveableExt for World {
 
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
-        backend.save::<P::Format, _>(pipeline.key(), ser)
+        backend.save::<P::Format, _>(pipeline.key(), &ser)
     }
 
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
@@ -53,7 +53,7 @@ impl WorldSaveableExt for World {
 
         let de = SnapshotDeserializer { registry: &reg };
 
-        let snapshot = backend.load::<P::Format, _>(pipeline.key(), de)?;
+        let snapshot = backend.load::<P::Format, _, _>(pipeline.key(), de)?;
 
         pipeline.apply_seed(self, &snapshot)
     }

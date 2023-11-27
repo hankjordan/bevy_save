@@ -16,7 +16,7 @@ pub trait Backend<K> {
     /// - [`Error::Saving`] if serialization of the type fails
     /// - [`Error::IO`] if there is an IO or filesystem failure
     /// - See [`Error`]
-    fn save<F: Format, T: Serialize>(&self, key: K, value: T) -> Result<(), Error>;
+    fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error>;
 
     /// Attempts to deserialize a value with the given [`Format`].
     ///
@@ -24,11 +24,11 @@ pub trait Backend<K> {
     /// - [`Error::Loading`] if deserialization of the type fails
     /// - [`Error::IO`] if there is an IO or filesystem failure
     /// - See [`Error`]
-    fn load<'de, F: Format, T: DeserializeSeed<'de>>(
+    fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
         &self,
         key: K,
-        seed: T,
-    ) -> Result<T::Value, Error>;
+        seed: S,
+    ) -> Result<T, Error>;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -45,11 +45,7 @@ mod desktop {
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
-    use crate::{
-        get_save_file,
-        AsDeserializer,
-        AsSerializer,
-    };
+    use crate::get_save_file;
 
     /// Simple filesystem backend.
     ///
@@ -60,7 +56,7 @@ mod desktop {
     pub struct FileIO;
 
     impl<K: std::fmt::Display> Backend<K> for FileIO {
-        fn save<F: Format, T: Serialize>(&self, key: K, value: T) -> Result<(), Error> {
+        fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error> {
             let path = get_save_file(format!("{key}{}", F::extension()));
             let dir = path.parent().expect("Invalid save directory");
 
@@ -69,27 +65,19 @@ mod desktop {
             let file = File::create(path)?;
             let writer = BufWriter::new(file);
 
-            let mut ser = F::serializer(writer);
-            let ser = ser.as_serializer();
-
-            value.serialize(ser).map_err(Error::saving)?;
-
-            Ok(())
+            F::serialize(writer, value)
         }
 
-        fn load<'de, F: Format, T: DeserializeSeed<'de>>(
+        fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
             &self,
             key: K,
-            seed: T,
-        ) -> Result<T::Value, Error> {
+            seed: S,
+        ) -> Result<T, Error> {
             let path = get_save_file(format!("{key}{}", F::extension()));
             let file = File::open(path)?;
             let reader = BufReader::new(file);
 
-            let mut de = F::deserializer(reader);
-            let de = de.as_deserializer();
-
-            seed.deserialize(de).map_err(Error::loading)
+            F::deserialize(reader, seed)
         }
     }
 
@@ -102,30 +90,22 @@ mod desktop {
     pub struct DebugFileIO;
 
     impl<K: std::fmt::Display> Backend<K> for DebugFileIO {
-        fn save<F: Format, T: Serialize>(&self, key: K, value: T) -> Result<(), Error> {
+        fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error> {
             let file = File::create(format!("{key}{}", F::extension()))?;
             let writer = BufWriter::new(file);
 
-            let mut ser = F::serializer(writer);
-            let ser = ser.as_serializer();
-
-            value.serialize(ser).map_err(Error::saving)?;
-
-            Ok(())
+            F::serialize(writer, value)
         }
 
-        fn load<'de, F: Format, T: DeserializeSeed<'de>>(
+        fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
             &self,
             key: K,
-            seed: T,
-        ) -> Result<T::Value, Error> {
+            seed: S,
+        ) -> Result<T, Error> {
             let file = File::open(format!("{key}{}", F::extension()))?;
             let reader = BufReader::new(file);
 
-            let mut de = F::deserializer(reader);
-            let de = de.as_deserializer();
-
-            seed.deserialize(de).map_err(Error::loading)
+            F::deserialize(reader, seed)
         }
     }
 }
@@ -152,7 +132,7 @@ mod wasm {
     pub struct WebStorage;
 
     impl<'a> Backend<&'a str> for WebStorage {
-        fn save<F: Format, T: Serialize>(&self, key: &str, value: T) -> Result<(), Error> {
+        fn save<F: Format, T: Serialize>(&self, key: &str, value: &T) -> Result<(), Error> {
             let storage = web_sys::window()
                 .expect("No window")
                 .local_storage()
@@ -162,18 +142,18 @@ mod wasm {
             storage
                 .set_item(
                     &format!("{WORKSPACE}.{key}"),
-                    &serde_json::to_string(&value).map_err(Error::saving)?,
+                    &serde_json::to_string(value).map_err(Error::saving)?,
                 )
                 .expect("Failed to save");
 
             Ok(())
         }
 
-        fn load<'de, F: Format, T: DeserializeSeed<'de>>(
+        fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
             &self,
             key: &str,
-            seed: T,
-        ) -> Result<T::Value, Error> {
+            seed: S,
+        ) -> Result<T, Error> {
             let storage = web_sys::window()
                 .expect("No window")
                 .local_storage()
