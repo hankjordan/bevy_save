@@ -139,10 +139,14 @@ mod wasm {
                 .expect("Failed to get local storage")
                 .expect("No local storage");
 
+            let mut buf: Vec<u8> = Vec::new();
+
+            F::serialize(&mut buf, value)?;
+
             storage
                 .set_item(
                     &format!("{WORKSPACE}.{key}"),
-                    &serde_json::to_string(value).map_err(Error::saving)?,
+                    &serde_json::to_string(&buf).map_err(Error::saving)?,
                 )
                 .expect("Failed to save");
 
@@ -165,11 +169,9 @@ mod wasm {
                 .expect("Failed to load")
                 .ok_or(Error::custom("Invalid key"))?;
 
-            let bytes = value.into_bytes();
+            let buf: Vec<u8> = serde_json::from_str(&value).map_err(Error::loading)?;
 
-            let mut de = serde_json::Deserializer::from_reader(bytes.as_slice());
-
-            seed.deserialize(&mut de).map_err(Error::loading)
+            F::deserialize(&*buf, seed)
         }
     }
 }
