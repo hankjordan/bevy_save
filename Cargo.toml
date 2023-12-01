@@ -28,6 +28,7 @@ web-sys = { version = "0.3", default-features = false, features = [
     "Window",
 ] }
 wasm-bindgen = { version = "0.2", default-features = false }
+fragile = "2.0"
 
 [dependencies]
 bevy = { version = "0.12", default-features = false, features = ["bevy_scene"] }
