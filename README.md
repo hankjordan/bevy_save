@@ -203,6 +203,15 @@ Pipelines also let you re-use `Snapshot` appliers and extractors.
 
 `bevy_save` is dual-licensed under MIT and Apache-2.0.
 
+## Feature Flags
+
+| Feature flag  | Description                             | Default? |
+| ------------- | --------------------------------------- | -------- |
+| `bevy_asset`  | Enables `bevy_asset` type registration  | Yes      |
+| `bevy_render` | Enables `bevy_render` type registration | Yes      |
+| `bevy_sprite` | Enables `bevy_sprite` type registration | Yes      |
+| `brotli`      | Enables `Brotli` compression middleware | No       |
+
 ## Compatibility
 
 ### Bevy

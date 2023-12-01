@@ -20,6 +20,7 @@ default = ["bevy_asset", "bevy_render", "bevy_sprite"]
 bevy_asset = ["bevy/bevy_asset"]
 bevy_render = ["bevy/bevy_render"]
 bevy_sprite = ["bevy/bevy_sprite"]
+brotli = ["dep:brotli"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 bevy = { version = "0.12", default-features = false, features = ["webgl2"] }
@@ -38,3 +39,4 @@ serde = { version = "1.0" }
 platform-dirs = "0.3"
 lazy_static = "1.4"
 thiserror = "1.0"
+brotli = { version = "3.4", optional = true }
