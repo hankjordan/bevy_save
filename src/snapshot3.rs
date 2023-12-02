@@ -125,7 +125,8 @@ impl<T: Component + Clone + Serialize + for<'de> Deserialize<'de>> ExtractCompon
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
         seq: &mut D,
     ) -> Result<Self::Output, D::Error> {
-        seq.next_element::<Option<UnitDe<T>>>().map(|e| e.flatten().map(|e| e.value))
+        seq.next_element::<Option<UnitDe<T>>>()
+            .map(|e| e.flatten().map(|e| e.value))
     }
 }
 
@@ -146,7 +147,8 @@ impl<T: Resource + Clone + Serialize + for<'de> Deserialize<'de>> ExtractResourc
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
         seq: &mut D,
     ) -> Result<Self::Output, D::Error> {
-        seq.next_element::<Option<UnitDe<T>>>().map(|e| e.flatten().map(|e| e.value))
+        seq.next_element::<Option<UnitDe<T>>>()
+            .map(|e| e.flatten().map(|e| e.value))
     }
 }
 
@@ -224,11 +226,11 @@ impl<T0: ExtractResource, T1: ExtractResource> ExtractResource for (T0, T1) {
     }
 }
 
-struct Registry<C, R> {
+struct SaveRegistry<C, R> {
     _marker: PhantomData<(C, R)>,
 }
 
-impl Registry<(), ()> {
+impl SaveRegistry<(), ()> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -236,21 +238,22 @@ impl Registry<(), ()> {
     }
 }
 
-impl<C, R> Registry<C, R> {
-    pub fn register_component<T: Component + Clone>(self) -> Registry<(C, Ext<T>), R> {
-        Registry {
+impl<C, R> SaveRegistry<C, R> {
+    pub fn register_component<T: Component + Clone>(self) -> SaveRegistry<(C, Ext<T>), R> {
+        SaveRegistry {
             _marker: PhantomData,
         }
     }
 
-    pub fn register_resource<T: Resource + Clone>(self) -> Registry<C, (R, Ext<T>)> {
-        Registry {
+    pub fn register_resource<T: Resource + Clone>(self) -> SaveRegistry<C, (R, Ext<T>)> {
+        SaveRegistry {
             _marker: PhantomData,
         }
     }
 }
 
-impl<C, R> Registry<C, R>
+#[allow(clippy::unused_self)]
+impl<C, R> SaveRegistry<C, R>
 where
     C: ExtractComponent,
     R: ExtractResource,
@@ -262,15 +265,81 @@ where
         Snapshot::<C, R>::deserialize(de)
     }
 
-    pub fn extract(&self, world: &World) -> Snapshot<C, R> {
+    pub fn builder<'w>(
+        &self,
+        world: &'w World,
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder {
+            world,
+            entities: [].into_iter(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+struct SnapshotBuilder<'w, I, C, R> {
+    world: &'w World,
+    entities: I,
+    _marker: PhantomData<(C, R)>,
+}
+
+impl<'w, I, C, R> SnapshotBuilder<'w, I, C, R>
+where
+    I: Iterator<Item = Entity> + 'w,
+{
+    pub fn extract_entity(
+        self,
+        entity: Entity,
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder {
+            world: self.world,
+            entities: self.entities.chain([entity]),
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn extract_entities<E>(
+        self,
+        entities: E,
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R>
+    where
+        E: Iterator<Item = Entity> + 'w,
+    {
+        SnapshotBuilder {
+            world: self.world,
+            entities: self.entities.chain(entities),
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn extract_all_entities(
+        self,
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        let entities = self.world.iter_entities().map(|e| e.id());
+
+        SnapshotBuilder {
+            world: self.world,
+            entities: self.entities.chain(entities),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'w, I, C, R> SnapshotBuilder<'w, I, C, R>
+where
+    I: Iterator<Item = Entity> + 'w,
+    C: ExtractComponent,
+    R: ExtractResource,
+{
+    /// This will extract all registered resources and all registered components on the given entities.
+    fn build(self) -> Snapshot<C, R> {
         Snapshot {
             entities: Entities(
-                world
-                    .iter_entities()
-                    .map(|e| (e.id(), Components(C::extract(&e))))
+                self.entities
+                    .map(|e| (e, Components(C::extract(&self.world.entity(e)))))
                     .collect(),
             ),
-            resources: Resources(R::extract(world)),
+            resources: Resources(R::extract(self.world)),
         }
     }
 }
@@ -307,12 +376,12 @@ fn test_snapshot() {
 
     world.insert_resource(SimpleResource { data: 42 });
 
-    let registry = Registry::new()
+    let registry = SaveRegistry::new()
         .register_component::<ExampleComponent>()
         .register_component::<OtherComponent>()
         .register_resource::<SimpleResource>();
 
-    let snapshot = registry.extract(world);
+    let snapshot = registry.builder(world).extract_all_entities().build();
 
     let mut buf = Vec::new();
 
