@@ -122,27 +122,44 @@ pub type DefaultDebugBackend = desktop::DebugFileIO;
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use bevy::prelude::*;
+    use fragile::Fragile;
+    use web_sys::Storage;
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
     use crate::WORKSPACE;
 
     /// Simple `WebStorage` backend.
-    #[derive(Default, Resource)]
-    pub struct WebStorage;
+    #[derive(Resource)]
+    pub struct WebStorage {
+        storage: Fragile<Storage>,
+    }
+
+    impl Default for WebStorage {
+        fn default() -> Self {
+            Self {
+                storage: Fragile::new(
+                    web_sys::window()
+                        .expect("No window")
+                        .local_storage()
+                        .expect("Failed to get local storage")
+                        .expect("No local storage"),
+                ),
+            }
+        }
+    }
 
     impl<'a> Backend<&'a str> for WebStorage {
         fn save<F: Format, T: Serialize>(&self, key: &str, value: &T) -> Result<(), Error> {
-            let storage = web_sys::window()
-                .expect("No window")
-                .local_storage()
-                .expect("Failed to get local storage")
-                .expect("No local storage");
+            let mut buf: Vec<u8> = Vec::new();
 
-            storage
+            F::serialize(&mut buf, value)?;
+
+            self.storage
+                .get()
                 .set_item(
                     &format!("{WORKSPACE}.{key}"),
-                    &serde_json::to_string(value).map_err(Error::saving)?,
+                    &serde_json::to_string(&buf).map_err(Error::saving)?,
                 )
                 .expect("Failed to save");
 
@@ -154,22 +171,16 @@ mod wasm {
             key: &str,
             seed: S,
         ) -> Result<T, Error> {
-            let storage = web_sys::window()
-                .expect("No window")
-                .local_storage()
-                .expect("Failed to get local storage")
-                .expect("No local storage");
-
-            let value = storage
+            let value = self
+                .storage
+                .get()
                 .get_item(&format!("{WORKSPACE}.{key}"))
                 .expect("Failed to load")
                 .ok_or(Error::custom("Invalid key"))?;
 
-            let bytes = value.into_bytes();
+            let buf: Vec<u8> = serde_json::from_str(&value).map_err(Error::loading)?;
 
-            let mut de = serde_json::Deserializer::from_reader(bytes.as_slice());
-
-            seed.deserialize(&mut de).map_err(Error::loading)
+            F::deserialize(&*buf, seed)
         }
     }
 }

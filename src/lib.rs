@@ -17,6 +17,7 @@ pub use crate::{
     dir::*,
     error::*,
     format::*,
+    middleware::*,
     pipeline::*,
     plugins::*,
     registry::*,
@@ -35,6 +36,7 @@ mod dir;
 mod error;
 mod extract;
 mod format;
+mod middleware;
 mod pipeline;
 mod plugins;
 mod registry;
@@ -53,6 +55,7 @@ pub mod prelude {
         clone::*,
         dir::*,
         format::*,
+        middleware::*,
         pipeline::*,
         plugins::*,
         registry::*,
