@@ -1,4 +1,7 @@
-use std::fmt::Formatter;
+use std::{
+    fmt::Formatter,
+    marker::PhantomData,
+};
 
 use bevy::{
     ecs::entity::Entity,
@@ -36,8 +39,16 @@ use serde::{
 };
 
 use crate::{
+    extract::{
+        ExtractComponent,
+        ExtractResource,
+    },
+    Components,
+    Entities,
+    Resources,
     Rollbacks,
     Snapshot,
+    Snapshot2,
 };
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
@@ -658,5 +669,282 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
         }
 
         Ok(dynamic_properties)
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+impl<C: ExtractComponent, R: ExtractResource> Serialize for Snapshot2<C, R> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser = serializer.serialize_struct("Snapshot", 2)?;
+        ser.serialize_field("entities", &self.entities)?;
+        ser.serialize_field("resources", &self.resources)?;
+        ser.end()
+    }
+}
+
+impl<'de, C: ExtractComponent, R: ExtractResource> Deserialize<'de> for Snapshot2<C, R> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "lowercase")]
+        enum Fields {
+            Entities,
+            Resources,
+        }
+
+        struct SnapshotVisitor<C, R>(PhantomData<(C, R)>);
+
+        impl<'de, C: ExtractComponent, R: ExtractResource> Visitor<'de> for SnapshotVisitor<C, R> {
+            type Value = Snapshot2<C, R>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("snapshot struct")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let entities = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+
+                let resources = seq
+                    .next_element()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
+
+                Ok(Snapshot2 {
+                    entities,
+                    resources,
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut entities = None;
+                let mut resources = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Fields::Entities => {
+                            if entities.is_some() {
+                                return Err(serde::de::Error::duplicate_field("entities"));
+                            }
+                            entities = Some(map.next_value()?);
+                        }
+                        Fields::Resources => {
+                            if resources.is_some() {
+                                return Err(serde::de::Error::duplicate_field("resources"));
+                            }
+                            resources = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let entities =
+                    entities.ok_or_else(|| serde::de::Error::missing_field("entities"))?;
+                let resources =
+                    resources.ok_or_else(|| serde::de::Error::missing_field("resources"))?;
+
+                Ok(Snapshot2 {
+                    entities,
+                    resources,
+                })
+            }
+        }
+
+        const FIELDS: &[&str] = &["entities", "resources"];
+        deserializer.deserialize_struct("Snapshot", FIELDS, SnapshotVisitor(PhantomData))
+    }
+}
+
+impl<C: ExtractComponent> Serialize for Entities<C> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+
+        for (entity, components) in &self.0 {
+            map.serialize_entry(entity, components)?;
+        }
+
+        map.end()
+    }
+}
+
+impl<'de, C: ExtractComponent> Deserialize<'de> for Entities<C> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct EntitiesVisitor<C>(PhantomData<C>);
+
+        impl<'de, C: ExtractComponent> Visitor<'de> for EntitiesVisitor<C> {
+            type Value = Entities<C>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of extracted entities")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut entities = Vec::new();
+
+                while let Some(entry) = map.next_entry()? {
+                    entities.push(entry);
+                }
+
+                Ok(Entities(entities))
+            }
+        }
+
+        deserializer.deserialize_map(EntitiesVisitor(PhantomData))
+    }
+}
+
+impl<C: ExtractComponent> Serialize for Components<C> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        C::serialize(&self.0, &mut seq)?;
+        seq.end()
+    }
+}
+
+impl<'de, C: ExtractComponent> Deserialize<'de> for Components<C> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct ComponentsVisitor<C>(PhantomData<C>);
+
+        impl<'de, C: ExtractComponent> Visitor<'de> for ComponentsVisitor<C> {
+            type Value = Components<C>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of extracted components")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                Ok(Components(C::deserialize(&mut seq)?))
+            }
+        }
+
+        deserializer.deserialize_seq(ComponentsVisitor(PhantomData))
+    }
+}
+
+impl<R: ExtractResource> Serialize for Resources<R> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        R::serialize(&self.0, &mut seq)?;
+        seq.end()
+    }
+}
+
+impl<'de, R: ExtractResource> Deserialize<'de> for Resources<R> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct ResourcesVisitor<R>(PhantomData<R>);
+
+        impl<'de, R: ExtractResource> Visitor<'de> for ResourcesVisitor<R> {
+            type Value = Resources<R>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of extracted resources")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                Ok(Resources(R::deserialize(&mut seq)?))
+            }
+        }
+
+        deserializer.deserialize_seq(ResourcesVisitor(PhantomData))
+    }
+}
+
+// Unit types ---------------------------------------------------------------------------------------------------------
+
+pub(crate) struct UnitSer<'a, T> {
+    pub(crate) value: &'a T,
+}
+
+impl<'a, T> UnitSer<'a, T> {
+    pub fn new(value: &'a T) -> Self {
+        Self { value }
+    }
+}
+
+impl<'a, T: Serialize> Serialize for UnitSer<'a, T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if std::mem::size_of::<T>() == 0 {
+            let seq = serializer.serialize_map(Some(0))?;
+            seq.end()
+        } else {
+            self.value.serialize(serializer)
+        }
+    }
+}
+
+pub(crate) struct UnitDe<T> {
+    pub(crate) value: T,
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for UnitDe<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        if std::mem::size_of::<T>() == 0 {
+            struct UnitDeVisitor<T>(PhantomData<T>);
+
+            impl<'de, T: Deserialize<'de>> Visitor<'de> for UnitDeVisitor<T> {
+                type Value = T;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("an empty map")
+                }
+
+                fn visit_map<A>(self, _: A) -> Result<Self::Value, A::Error>
+                where
+                    A: serde::de::MapAccess<'de>,
+                {
+                    // SAFETY: T is Unit value
+                    #[allow(clippy::uninit_assumed_init)]
+                    Ok(unsafe { std::mem::MaybeUninit::<T>::uninit().assume_init() })
+                }
+            }
+
+            deserializer.deserialize_map(UnitDeVisitor(PhantomData))
+        } else {
+            T::deserialize(deserializer).map(|value| UnitDe { value })
+        }
     }
 }

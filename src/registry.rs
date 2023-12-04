@@ -1,9 +1,23 @@
-use std::any::{
-    Any,
-    TypeId,
+use std::{
+    any::{
+        Any,
+        TypeId,
+    },
+    marker::PhantomData,
 };
 
 use bevy::prelude::*;
+use serde::Deserialize;
+
+use crate::{
+    extract::{
+        Extract,
+        ExtractComponent,
+        ExtractResource,
+    },
+    Snapshot2,
+    SnapshotBuilder2,
+};
 
 fn take<T, F>(mut_ref: &mut T, closure: F)
 where
@@ -66,5 +80,58 @@ impl RollbackRegistry {
     /// Check if a type is denied from rolling back by id.
     pub fn is_denied_by_id(&self, type_id: TypeId) -> bool {
         self.types.is_denied_by_id(type_id)
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub struct SaveRegistry<C, R> {
+    _marker: PhantomData<(C, R)>,
+}
+
+impl SaveRegistry<(), ()> {
+    pub fn new() -> Self {
+        Self {
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<C, R> SaveRegistry<C, R> {
+    pub fn register_component<T: Component + Clone>(self) -> SaveRegistry<(C, Extract<T>), R> {
+        SaveRegistry {
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn register_resource<T: Resource + Clone>(self) -> SaveRegistry<C, (R, Extract<T>)> {
+        SaveRegistry {
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[allow(clippy::unused_self)]
+impl<C, R> SaveRegistry<C, R>
+where
+    C: ExtractComponent,
+    R: ExtractResource,
+{
+    pub fn deserialize<'de, D: serde::de::Deserializer<'de>>(
+        &self,
+        de: D,
+    ) -> Result<Snapshot2<C, R>, D::Error> {
+        Snapshot2::<C, R>::deserialize(de)
+    }
+
+    pub fn builder<'w>(
+        &self,
+        world: &'w World,
+    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder2 {
+            world,
+            entities: [].into_iter(),
+            _marker: PhantomData,
+        }
     }
 }

@@ -4,6 +4,10 @@ use bevy::{
 };
 
 use crate::{
+    extract::{
+        ExtractComponent,
+        ExtractResource,
+    },
     CloneReflect,
     Error,
     Rollbacks,
@@ -115,3 +119,14 @@ impl CloneReflect for Snapshot {
         }
     }
 }
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub struct Snapshot2<C: ExtractComponent, R: ExtractResource> {
+    pub entities: Entities<C>,
+    pub resources: Resources<R>,
+}
+
+pub struct Entities<C: ExtractComponent>(pub Vec<(Entity, Components<C>)>);
+pub struct Components<C: ExtractComponent>(pub C::Output);
+pub struct Resources<R: ExtractResource>(pub R::Output);

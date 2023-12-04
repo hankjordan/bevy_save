@@ -33,6 +33,7 @@ mod builder;
 mod clone;
 mod dir;
 mod error;
+mod extract;
 mod format;
 mod pipeline;
 mod plugins;

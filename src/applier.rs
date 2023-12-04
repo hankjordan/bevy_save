@@ -19,8 +19,13 @@ use bevy::{
 };
 
 use crate::{
+    extract::{
+        ExtractComponent,
+        ExtractResource, ExtractMapEntities,
+    },
     Error,
     Snapshot,
+    Snapshot2,
 };
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
@@ -243,5 +248,111 @@ impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
         }
 
         Ok(())
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+/// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
+pub struct SnapshotApplier2<'w, C: ExtractComponent, R: ExtractResource, F = ()> {
+    snapshot: &'w Snapshot2<C, R>,
+    world: &'w mut World,
+    entity_map: Option<&'w mut HashMap<Entity, Entity>>,
+    type_registry: Option<&'w AppTypeRegistry>,
+    despawn: Option<PhantomData<F>>,
+    hook: Option<BoxedHook>,
+}
+
+impl<'w, C, R> SnapshotApplier2<'w, C, R>
+where
+    C: ExtractComponent,
+    R: ExtractResource,
+{
+    /// Create a new [`SnapshotApplier`] with from the world and snapshot.
+    pub fn new(snapshot: &'w Snapshot2<C, R>, world: &'w mut World) -> Self {
+        Self {
+            snapshot,
+            world,
+            entity_map: None,
+            type_registry: None,
+            despawn: None,
+            hook: None,
+        }
+    }
+}
+
+impl<'w, C, R, D> SnapshotApplier2<'w, C, R, D>
+where
+    C: ExtractComponent,
+    R: ExtractResource,
+{
+    /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
+    pub fn entity_map(mut self, entity_map: &'w mut HashMap<Entity, Entity>) -> Self {
+        self.entity_map = Some(entity_map);
+        self
+    }
+
+    /// The [`AppTypeRegistry`] used for reflection information.
+    ///
+    /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
+    pub fn type_registry(mut self, type_registry: &'w AppTypeRegistry) -> Self {
+        self.type_registry = Some(type_registry);
+        self
+    }
+
+    /// Change how the snapshot affects existing entities while applying.
+    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier2<'w, C, R, F> {
+        SnapshotApplier2 {
+            snapshot: self.snapshot,
+            world: self.world,
+            entity_map: self.entity_map,
+            type_registry: self.type_registry,
+            despawn: Some(PhantomData),
+            hook: self.hook,
+        }
+    }
+
+    /// Add a [`Hook`] that will run for each entity after applying.
+    pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
+        self.hook = Some(Box::new(hook));
+        self
+    }
+}
+
+impl<'w, C, R, F> SnapshotApplier2<'w, C, R, F>
+where
+    C: ExtractComponent,
+    R: ExtractResource,
+    F: ReadOnlyWorldQuery,
+{
+    /// Apply the [`Snapshot`] to the [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
+    ///
+    /// # Errors
+    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
+    pub fn apply(self) -> Result<(), Error> {
+        R::apply(&self.snapshot.resources.0, self.world);
+        todo!()
+    }
+}
+
+impl<'w, C, R, F> SnapshotApplier2<'w, C, R, F>
+where
+    C: ExtractComponent + ExtractMapEntities,
+    R: ExtractResource ,
+    F: ReadOnlyWorldQuery,
+{
+    /// Apply the [`Snapshot`] to the [`World`], mapping entities with `MapEntities`.
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
+    ///
+    /// # Errors
+    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
+    pub fn apply_map_entities(self) -> Result<(), Error> {
+        R::apply(&self.snapshot.resources.0, self.world);
+        todo!()
     }
 }
