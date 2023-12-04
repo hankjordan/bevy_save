@@ -27,7 +27,7 @@ impl Plugin for SavePlugin {
     fn build(&self, app: &mut App) {
         app
             .init_pipeline::<&str>()
-            .init_pipeline::<DebugPipeline>()
+            .init_pipeline::<DebugDynamicPipeline>()
             
             .init_resource::<RollbackRegistry>()
             .init_resource::<Rollbacks>();

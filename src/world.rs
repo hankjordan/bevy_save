@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
-pub trait WorldSaveableExt: Sized {
+pub trait WorldSaveableExt {
     /// Captures a [`DynamicSnapshot`] from the current [`World`] state.
     fn snapshot<P: DynamicPipeline>(&self) -> DynamicSnapshot;
 

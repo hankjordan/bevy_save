@@ -10,6 +10,10 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/hankjordan/bevy_save"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dev-dependencies]
 bevy = { version = "0.12" }
 bevy-inspector-egui = "0.21"

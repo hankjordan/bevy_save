@@ -4,16 +4,16 @@ mod brotli {
 
     use brotli::enc::BrotliEncoderParams;
 
-    use crate::Format;
+    use crate::prelude::*;
 
-    /// Brotli middleware for compressing your data after serializing
+    /// Brotli compression middleware
     ///
     /// # Example
     /// ```rust
     /// # use bevy_save::prelude::*;
     /// struct MyPipeline;
     ///
-    /// impl Pipeline for MyPipeline {
+    /// impl DynamicPipeline for MyPipeline {
     ///     type Backend = DefaultBackend;
     ///     /// This will emit brotli-compressed MessagePack
     ///     type Format = Brotli<DefaultFormat>;

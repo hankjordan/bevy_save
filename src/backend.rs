@@ -111,7 +111,7 @@ mod desktop {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use desktop::FileIO;
+pub use desktop::*;
 #[cfg(not(target_arch = "wasm32"))]
 /// The [`Backend`] the default [`DynamicPipeline`](crate::DynamicPipeline) will use.
 pub type DefaultBackend = desktop::FileIO;
@@ -186,7 +186,7 @@ mod wasm {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use wasm::WebStorage;
+pub use wasm::*;
 #[cfg(target_arch = "wasm32")]
 /// The [`Backend`] the default [`Pipeline`](crate::Pipeline) will use.
 pub type DefaultBackend = wasm::WebStorage;

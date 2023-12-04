@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Trait that defines how exactly your app saves and loads.
-pub trait DynamicPipeline: Sized {
+pub trait DynamicPipeline {
     /// The interface between the saver / loader and data storage.
     type Backend: for<'a> Backend<Self::Key<'a>> + Resource + Default;
     /// The format used for serializing and deserializing data.
@@ -78,9 +78,9 @@ impl<'a> DynamicPipeline for &'a str {
 }
 
 /// Uses `JSON` and saves to the given local path.
-pub struct DebugPipeline<'a>(pub &'a str);
+pub struct DebugDynamicPipeline<'a>(pub &'a str);
 
-impl<'a> DynamicPipeline for DebugPipeline<'a> {
+impl<'a> DynamicPipeline for DebugDynamicPipeline<'a> {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 

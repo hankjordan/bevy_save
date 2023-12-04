@@ -9,21 +9,27 @@
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
+// Document optional features
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 mod app;
-mod backend;
 mod error;
-mod format;
 mod hook;
-mod middleware;
 mod pipeline;
-mod plugins;
 mod world;
 
+/// Interface between your app and storage, like disk or database
+pub mod backend;
 /// Save directory management, workspace information
 pub mod dir;
 /// Reflection-based snapshots and rollbacks
 pub mod dynamic;
+/// Save file formats, like `JSON` or `MessagePack`
+pub mod format;
+/// Middleware allows you to modify save files as they are saved/loaded
+pub mod middleware;
+/// Plugins necessary for functionality
+pub mod plugins;
 /// Statically typed snapshots
 pub mod typed;
 
@@ -53,14 +59,10 @@ pub mod prelude {
             Format,
         },
         pipeline::{
-            DebugPipeline,
+            DebugDynamicPipeline,
             DynamicPipeline,
         },
-        plugins::{
-            SavePlugin,
-            SavePlugins,
-            SaveablesPlugin,
-        },
+        plugins::SavePlugins,
         typed::{
             Snapshot,
             SnapshotApplier,
