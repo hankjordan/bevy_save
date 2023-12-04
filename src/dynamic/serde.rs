@@ -1,7 +1,4 @@
-use std::{
-    fmt::Formatter,
-    marker::PhantomData,
-};
+use std::fmt::Formatter;
 
 use bevy::{
     ecs::entity::Entity,
@@ -38,16 +35,7 @@ use serde::{
     Serializer,
 };
 
-use crate::{
-    extract::{
-        ExtractDeserialize,
-        ExtractSerialize,
-    },
-    DynamicSnapshot,
-    Entities,
-    Extracted,
-    Rollbacks,
-};
+use crate::prelude::*;
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
 const SNAPSHOT_ENTITIES: &str = "entities";
@@ -62,21 +50,21 @@ const ENTITY_STRUCT: &str = "Entity";
 const ENTITY_COMPONENTS: &str = "components";
 
 /// Handles serialization of a snapshot as a struct containing its entities and resources.
-pub struct SnapshotSerializer<'a> {
+pub struct DynamicSnapshotSerializer<'a> {
     /// The snapshot to serialize.
     pub snapshot: &'a DynamicSnapshot,
     /// Type registry in which the components and resources types used in the snapshot are registered.
     pub registry: &'a TypeRegistryArc,
 }
 
-impl<'a> SnapshotSerializer<'a> {
+impl<'a> DynamicSnapshotSerializer<'a> {
     /// Creates a snapshot serializer.
     pub fn new(snapshot: &'a DynamicSnapshot, registry: &'a TypeRegistryArc) -> Self {
-        SnapshotSerializer { snapshot, registry }
+        DynamicSnapshotSerializer { snapshot, registry }
     }
 }
 
-impl<'a> Serialize for SnapshotSerializer<'a> {
+impl<'a> Serialize for DynamicSnapshotSerializer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -122,7 +110,7 @@ impl<'a> Serialize for SnapshotListSerializer<'a> {
         let mut seq = serializer.serialize_seq(Some(self.snapshots.len()))?;
 
         for snapshot in self.snapshots {
-            seq.serialize_element(&SnapshotSerializer {
+            seq.serialize_element(&DynamicSnapshotSerializer {
                 snapshot,
                 registry: self.registry,
             })?;
@@ -240,12 +228,12 @@ enum EntityField {
 }
 
 /// Handles snapshot deserialization.
-pub struct SnapshotDeserializer<'a> {
+pub struct DynamicSnapshotDeserializer<'a> {
     /// Type registry in which the components and resources types used in the snapshot to deserialize are registered.
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
+impl<'a, 'de> DeserializeSeed<'de> for DynamicSnapshotDeserializer<'a> {
     type Value = DynamicSnapshot;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -472,7 +460,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotListVisitor<'a> {
     {
         let mut result = Vec::new();
 
-        while let Some(next) = seq.next_element_seed(SnapshotDeserializer {
+        while let Some(next) = seq.next_element_seed(DynamicSnapshotDeserializer {
             registry: self.registry,
         })? {
             result.push(next);
@@ -667,171 +655,5 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
         }
 
         Ok(dynamic_properties)
-    }
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-
-impl<C> Serialize for Entities<C>
-where
-    C: ExtractSerialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.0.len()))?;
-
-        for (entity, components) in &self.0 {
-            map.serialize_entry(entity, components)?;
-        }
-
-        map.end()
-    }
-}
-
-impl<'de, C> Deserialize<'de> for Entities<C>
-where
-    C: ExtractDeserialize,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct EntitiesVisitor<C>(PhantomData<C>);
-
-        impl<'de, C> Visitor<'de> for EntitiesVisitor<C>
-        where
-            C: ExtractDeserialize,
-        {
-            type Value = Entities<C>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence of extracted entities")
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::MapAccess<'de>,
-            {
-                let mut entities = Vec::new();
-
-                while let Some(entry) = map.next_entry()? {
-                    entities.push(entry);
-                }
-
-                Ok(Entities(entities))
-            }
-        }
-
-        deserializer.deserialize_map(EntitiesVisitor(PhantomData))
-    }
-}
-
-impl<E> Serialize for Extracted<E>
-where
-    E: ExtractSerialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        E::serialize(&self.0, &mut seq)?;
-        seq.end()
-    }
-}
-
-impl<'de, E> Deserialize<'de> for Extracted<E>
-where
-    E: ExtractDeserialize,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct ExtractedVisitor<C>(PhantomData<C>);
-
-        impl<'de, E> Visitor<'de> for ExtractedVisitor<E>
-        where
-            E: ExtractDeserialize,
-        {
-            type Value = Extracted<E>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence of extracted values")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                Ok(Extracted(E::deserialize(&mut seq)?))
-            }
-        }
-
-        deserializer.deserialize_seq(ExtractedVisitor(PhantomData))
-    }
-}
-
-// Unit types ---------------------------------------------------------------------------------------------------------
-
-pub(crate) struct UnitSer<'a, T> {
-    pub(crate) value: &'a T,
-}
-
-impl<'a, T> UnitSer<'a, T> {
-    pub fn new(value: &'a T) -> Self {
-        Self { value }
-    }
-}
-
-impl<'a, T: Serialize> Serialize for UnitSer<'a, T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if std::mem::size_of::<T>() == 0 {
-            let seq = serializer.serialize_map(Some(0))?;
-            seq.end()
-        } else {
-            self.value.serialize(serializer)
-        }
-    }
-}
-
-pub(crate) struct UnitDe<T> {
-    pub(crate) value: T,
-}
-
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for UnitDe<T> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        if std::mem::size_of::<T>() == 0 {
-            struct UnitDeVisitor<T>(PhantomData<T>);
-
-            impl<'de, T: Deserialize<'de>> Visitor<'de> for UnitDeVisitor<T> {
-                type Value = T;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("an empty map")
-                }
-
-                fn visit_map<A>(self, _: A) -> Result<Self::Value, A::Error>
-                where
-                    A: serde::de::MapAccess<'de>,
-                {
-                    // SAFETY: T is Unit value
-                    #[allow(clippy::uninit_assumed_init)]
-                    Ok(unsafe { std::mem::MaybeUninit::<T>::uninit().assume_init() })
-                }
-            }
-
-            deserializer.deserialize_map(UnitDeVisitor(PhantomData))
-        } else {
-            T::deserialize(deserializer).map(|value| UnitDe { value })
-        }
     }
 }

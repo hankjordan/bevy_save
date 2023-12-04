@@ -2,7 +2,10 @@ use std::any::Any;
 
 use bevy::prelude::*;
 
-use crate::prelude::*;
+use crate::{
+    dynamic::RollbackRegistry,
+    prelude::*,
+};
 
 /// Extension trait that adds save-related methods to Bevy's [`App`].
 pub trait AppSaveableExt {

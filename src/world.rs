@@ -1,29 +1,27 @@
 use bevy::prelude::*;
 
 use crate::{
-    Backend,
-    CloneReflect,
-    DynamicPipeline,
-    DynamicSnapshot,
-    DynamicSnapshotBuilder,
+    dynamic::{
+        CloneReflect,
+        DynamicSnapshotDeserializer,
+        DynamicSnapshotSerializer,
+    },
+    prelude::*,
     Error,
-    Rollbacks,
-    SnapshotDeserializer,
-    SnapshotSerializer,
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
-    /// Captures a [`Snapshot`] from the current [`World`] state.
+    /// Captures a [`DynamicSnapshot`] from the current [`World`] state.
     fn snapshot<P: DynamicPipeline>(&self) -> DynamicSnapshot;
 
-    /// Saves the game state with the given [`Pipeline`].
+    /// Saves the game state with the given [`DynamicPipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
     fn save<P: DynamicPipeline>(&self, pipeline: P) -> Result<(), Error>;
 
-    /// Loads the game state with the given [`Pipeline`].
+    /// Loads the game state with the given [`DynamicPipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
@@ -41,7 +39,7 @@ impl WorldSaveableExt for World {
 
         let snapshot = pipeline.capture_seed(DynamicSnapshot::builder(self));
 
-        let ser = SnapshotSerializer::new(&snapshot, registry);
+        let ser = DynamicSnapshotSerializer::new(&snapshot, registry);
 
         backend.save::<P::Format, _>(pipeline.key(), &ser)
     }
@@ -51,7 +49,7 @@ impl WorldSaveableExt for World {
         let reg = registry.read();
         let backend = self.resource::<P::Backend>();
 
-        let de = SnapshotDeserializer { registry: &reg };
+        let de = DynamicSnapshotDeserializer { registry: &reg };
 
         let snapshot = backend.load::<P::Format, _, _>(pipeline.key(), de)?;
 

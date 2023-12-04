@@ -3,7 +3,10 @@ use bevy::{
     prelude::*,
 };
 
-use crate::prelude::*;
+use crate::{
+    dynamic::RollbackRegistry,
+    prelude::*,
+};
 
 /// Default plugins for `bevy_save`.
 pub struct SavePlugins;

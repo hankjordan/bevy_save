@@ -18,42 +18,42 @@ use serde::{
     Serialize,
 };
 
-use crate::{
+use crate::typed::serde::{
     UnitDe,
     UnitSer,
 };
 
-pub trait Extractable {
+pub(crate) trait Extractable {
     type Value;
 }
 
-pub trait ExtractComponent: Extractable {
+pub(crate) trait ExtractComponent: Extractable {
     fn extract(entity: &EntityRef) -> Self::Value;
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut);
 }
 
-pub trait ExtractResource: Extractable {
+pub(crate) trait ExtractResource: Extractable {
     fn extract(world: &World) -> Self::Value;
     fn apply(value: &Self::Value, world: &mut World);
 }
 
-pub trait ExtractSerialize: Extractable {
+pub(crate) trait ExtractSerialize: Extractable {
     fn serialize<S: serde::ser::SerializeSeq>(
         value: &Self::Value,
         seq: &mut S,
     ) -> Result<(), S::Error>;
 }
 
-pub trait ExtractDeserialize: Extractable {
+pub(crate) trait ExtractDeserialize: Extractable {
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(seq: &mut D)
         -> Result<Self::Value, D::Error>;
 }
 
-pub trait ExtractMapEntities: Extractable {
+pub(crate) trait ExtractMapEntities: Extractable {
     fn map_entities(value: &mut Self::Value, entity_mapper: &mut EntityMapper);
 }
 
-pub struct Extract<T>(PhantomData<T>);
+pub(crate) struct Extract<T>(PhantomData<T>);
 
 impl<T> Extractable for Extract<T> {
     type Value = Option<T>;
@@ -105,7 +105,7 @@ impl<T> ExtractMapEntities for Extract<T> {
     fn map_entities(_: &mut Self::Value, _: &mut EntityMapper) {}
 }
 
-pub struct ExtractMap<T>(PhantomData<T>);
+pub(crate) struct ExtractMap<T>(PhantomData<T>);
 
 impl<T> Extractable for ExtractMap<T> {
     type Value = Option<T>;

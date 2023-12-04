@@ -1,19 +1,13 @@
 use bevy::{
-    prelude::*,
+    ecs::world::World,
+    reflect::Reflect,
     scene::DynamicEntity,
 };
 
 use crate::{
-    extract::{
-        ExtractDeserialize,
-        ExtractSerialize,
-        Extractable,
-    },
-    CloneReflect,
-    DynamicSnapshotApplier,
-    DynamicSnapshotBuilder,
+    dynamic::CloneReflect,
+    prelude::*,
     Error,
-    Rollbacks,
 };
 
 /// A dynamic collection of serializable entities and resources.
@@ -49,7 +43,7 @@ impl DynamicSnapshot {
         Self::builder(world).extract_all_with_rollbacks().build()
     }
 
-    /// Create a [`SnapshotBuilder`] from the [`World`], allowing you to create partial or filtered snapshots.
+    /// Create a [`DynamicSnapshotBuilder`] from the [`World`], allowing you to create partial or filtered snapshots.
     ///
     /// # Example
     /// ```
@@ -73,7 +67,7 @@ impl DynamicSnapshot {
         DynamicSnapshotBuilder::snapshot(world)
     }
 
-    /// Apply the [`Snapshot`] to the [`World`], using default applier settings.
+    /// Apply the [`DynamicSnapshot`] to the [`World`], using default applier settings.
     ///
     /// # Errors
     /// If a type included in the [`DynamicSnapshot`] has not been registered with the type registry.
@@ -120,25 +114,3 @@ impl CloneReflect for DynamicSnapshot {
         }
     }
 }
-
-// --------------------------------------------------------------------------------------------------------------------
-
-/// A collection of entities and resources.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(bound(
-    serialize = "C: ExtractSerialize, R: ExtractSerialize",
-    deserialize = "C: ExtractDeserialize, R: ExtractDeserialize"
-))]
-pub struct Snapshot<C: Extractable, R: Extractable> {
-    /// Entities contained in the snapshot.
-    pub entities: Entities<C>,
-
-    /// Resources contained in the snapshot.
-    pub resources: Extracted<R>,
-}
-
-/// Wrapper type allowing serialization and deserialization of extracted entities
-pub struct Entities<C: Extractable>(pub Vec<(Entity, Extracted<C>)>);
-
-/// Wrapper type allowing serialization and deserialization of extracted types
-pub struct Extracted<E: Extractable>(pub E::Value);

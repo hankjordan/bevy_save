@@ -1,5 +1,11 @@
 use bevy::prelude::*;
-use bevy_save::prelude::*;
+use bevy_save::{
+    dynamic::{
+        DynamicSnapshotDeserializer,
+        DynamicSnapshotSerializer,
+    },
+    prelude::*,
+};
 use serde::{
     de::DeserializeSeed,
     Serialize,
@@ -89,7 +95,7 @@ fn extract(world: &World) -> DynamicSnapshot {
 #[test]
 fn test_json() {
     fn serialize(snapshot: &DynamicSnapshot, registry: &AppTypeRegistry) -> String {
-        let serializer = SnapshotSerializer { snapshot, registry };
+        let serializer = DynamicSnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();
         let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
@@ -163,7 +169,7 @@ fn test_json() {
 
     assert_eq!(output, expected);
 
-    let deserializer = SnapshotDeserializer {
+    let deserializer = DynamicSnapshotDeserializer {
         registry: &registry.read(),
     };
 
@@ -179,7 +185,7 @@ fn test_json() {
 #[test]
 fn test_mp() {
     fn serialize(snapshot: &DynamicSnapshot, registry: &AppTypeRegistry) -> Vec<u8> {
-        let serializer = SnapshotSerializer { snapshot, registry };
+        let serializer = DynamicSnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();
         let mut ser = rmp_serde::Serializer::new(&mut buf);
@@ -212,7 +218,7 @@ fn test_mp() {
 
     assert_eq!(output, expected);
 
-    let deserializer = SnapshotDeserializer {
+    let deserializer = DynamicSnapshotDeserializer {
         registry: &registry.read(),
     };
 

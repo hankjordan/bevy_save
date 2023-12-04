@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::prelude::*;
+use crate::{
+    dynamic::CloneReflect,
+    prelude::*,
+};
 
 /// The global registry of snapshots used for rollback / rollforward.
 #[derive(Resource, Default)]

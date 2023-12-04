@@ -4,8 +4,8 @@ use serde::{
 };
 
 use crate::{
+    prelude::*,
     Error,
-    Format,
 };
 
 /// Interface between the [`Format`] and the disk or other storage.
@@ -45,7 +45,7 @@ mod desktop {
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
-    use crate::get_save_file;
+    use crate::dir::get_save_file;
 
     /// Simple filesystem backend.
     ///
