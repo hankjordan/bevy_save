@@ -259,7 +259,6 @@ pub struct SnapshotApplier2<'w, C: ExtractComponent, R: ExtractResource, F = ()>
     snapshot: &'w Snapshot2<C, R>,
     world: &'w mut World,
     entity_map: Option<&'w mut HashMap<Entity, Entity>>,
-    type_registry: Option<&'w AppTypeRegistry>,
     despawn: Option<PhantomData<F>>,
     hook: Option<BoxedHook>,
 }
@@ -275,7 +274,6 @@ where
             snapshot,
             world,
             entity_map: None,
-            type_registry: None,
             despawn: None,
             hook: None,
         }
@@ -293,21 +291,12 @@ where
         self
     }
 
-    /// The [`AppTypeRegistry`] used for reflection information.
-    ///
-    /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
-    pub fn type_registry(mut self, type_registry: &'w AppTypeRegistry) -> Self {
-        self.type_registry = Some(type_registry);
-        self
-    }
-
     /// Change how the snapshot affects existing entities while applying.
     pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier2<'w, C, R, F> {
         SnapshotApplier2 {
             snapshot: self.snapshot,
             world: self.world,
             entity_map: self.entity_map,
-            type_registry: self.type_registry,
             despawn: Some(PhantomData),
             hook: self.hook,
         }
@@ -334,7 +323,43 @@ where
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     pub fn apply(self) -> Result<(), Error> {
+        let mut default_entity_map = HashMap::new();
+        let entity_map = self.entity_map.unwrap_or(&mut default_entity_map);
+
+        // Despawn entities
+        if self.despawn.is_some() {
+            let invalid = self
+                .world
+                .query_filtered::<Entity, F>()
+                .iter(self.world)
+                .collect::<Vec<_>>();
+
+            for entity in invalid {
+                self.world.despawn(entity);
+            }
+        }
+
+        // Resources
         R::apply(&self.snapshot.resources.0, self.world);
-        todo!()
+
+        // Apply entities
+        // TODO
+
+        // Entity hook
+        if let Some(hook) = &self.hook {
+            let mut queue = CommandQueue::default();
+            let mut commands = Commands::new(&mut queue, self.world);
+
+            for (_, entity) in entity_map {
+                let entity_ref = self.world.entity(*entity);
+                let mut entity_mut = commands.entity(*entity);
+
+                hook(&entity_ref, &mut entity_mut);
+            }
+
+            queue.apply(self.world);
+        }
+
+        Ok(())
     }
 }

@@ -16,9 +16,8 @@ use crate::{
         ExtractResource,
     },
     CloneReflect,
-    Components,
     Entities,
-    Resources,
+    Extracted,
     RollbackRegistry,
     Rollbacks,
     Snapshot,
@@ -447,10 +446,10 @@ where
         Snapshot2 {
             entities: Entities(
                 self.entities
-                    .map(|e| (e, Components(C::extract(&self.world.entity(e)))))
+                    .map(|e| (e, Extracted(C::extract(&self.world.entity(e)))))
                     .collect(),
             ),
-            resources: Resources(R::extract(self.world)),
+            resources: Extracted(R::extract(self.world)),
         }
     }
 }

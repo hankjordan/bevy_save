@@ -40,14 +40,11 @@ use serde::{
 
 use crate::{
     extract::{
-        ExtractComponent,
         ExtractDeserialize,
-        ExtractResource,
         ExtractSerialize,
     },
-    Components,
     Entities,
-    Resources,
+    Extracted,
     Rollbacks,
     Snapshot,
     Snapshot2,
@@ -678,8 +675,8 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
 
 impl<C, R> Serialize for Snapshot2<C, R>
 where
-    C: ExtractComponent + ExtractSerialize,
-    R: ExtractResource + ExtractSerialize,
+    C: ExtractSerialize,
+    R: ExtractSerialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -694,8 +691,8 @@ where
 
 impl<'de, C, R> Deserialize<'de> for Snapshot2<C, R>
 where
-    C: ExtractComponent + ExtractDeserialize,
-    R: ExtractResource + ExtractDeserialize,
+    C: ExtractDeserialize,
+    R: ExtractDeserialize,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -712,8 +709,8 @@ where
 
         impl<'de, C, R> Visitor<'de> for SnapshotVisitor<C, R>
         where
-            C: ExtractComponent + ExtractDeserialize,
-            R: ExtractResource + ExtractDeserialize,
+            C: ExtractDeserialize,
+            R: ExtractDeserialize,
         {
             type Value = Snapshot2<C, R>;
 
@@ -782,7 +779,7 @@ where
 
 impl<C> Serialize for Entities<C>
 where
-    C: ExtractComponent + ExtractSerialize,
+    C: ExtractSerialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -800,7 +797,7 @@ where
 
 impl<'de, C> Deserialize<'de> for Entities<C>
 where
-    C: ExtractComponent + ExtractDeserialize,
+    C: ExtractDeserialize,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -810,7 +807,7 @@ where
 
         impl<'de, C> Visitor<'de> for EntitiesVisitor<C>
         where
-            C: ExtractComponent + ExtractDeserialize,
+            C: ExtractDeserialize,
         {
             type Value = Entities<C>;
 
@@ -836,95 +833,49 @@ where
     }
 }
 
-impl<C> Serialize for Components<C>
+impl<E> Serialize for Extracted<E>
 where
-    C: ExtractComponent + ExtractSerialize,
+    E: ExtractSerialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         let mut seq = serializer.serialize_seq(None)?;
-        C::serialize(&self.0, &mut seq)?;
+        E::serialize(&self.0, &mut seq)?;
         seq.end()
     }
 }
 
-impl<'de, C> Deserialize<'de> for Components<C>
+impl<'de, E> Deserialize<'de> for Extracted<E>
 where
-    C: ExtractComponent + ExtractDeserialize,
+    E: ExtractDeserialize,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        struct ComponentsVisitor<C>(PhantomData<C>);
+        struct ExtractedVisitor<C>(PhantomData<C>);
 
-        impl<'de, C> Visitor<'de> for ComponentsVisitor<C>
+        impl<'de, E> Visitor<'de> for ExtractedVisitor<E>
         where
-            C: ExtractComponent + ExtractDeserialize,
+            E: ExtractDeserialize,
         {
-            type Value = Components<C>;
+            type Value = Extracted<E>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence of extracted components")
+                formatter.write_str("a sequence of extracted values")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                Ok(Components(C::deserialize(&mut seq)?))
+                Ok(Extracted(E::deserialize(&mut seq)?))
             }
         }
 
-        deserializer.deserialize_seq(ComponentsVisitor(PhantomData))
-    }
-}
-
-impl<R> Serialize for Resources<R>
-where
-    R: ExtractResource + ExtractSerialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        R::serialize(&self.0, &mut seq)?;
-        seq.end()
-    }
-}
-
-impl<'de, R> Deserialize<'de> for Resources<R>
-where
-    R: ExtractResource + ExtractDeserialize,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct ResourcesVisitor<R>(PhantomData<R>);
-
-        impl<'de, R> Visitor<'de> for ResourcesVisitor<R>
-        where
-            R: ExtractResource + ExtractDeserialize,
-        {
-            type Value = Resources<R>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence of extracted resources")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                Ok(Resources(R::deserialize(&mut seq)?))
-            }
-        }
-
-        deserializer.deserialize_seq(ResourcesVisitor(PhantomData))
+        deserializer.deserialize_seq(ExtractedVisitor(PhantomData))
     }
 }
 
