@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// The global registry of snapshots used for rollback / rollforward.
 #[derive(Resource, Default)]
 pub struct Rollbacks {
-    pub(crate) checkpoints: Vec<Snapshot>,
+    pub(crate) checkpoints: Vec<DynamicSnapshot>,
     pub(crate) active: Option<usize>,
 }
 
@@ -18,7 +18,7 @@ impl Rollbacks {
     /// Given a new rollback [`Snapshot`], insert it and set it as the currently active rollback.
     ///
     /// If you rollback and then insert a checkpoint, it will erase all rollforward snapshots.
-    pub fn checkpoint(&mut self, mut rollback: Snapshot) {
+    pub fn checkpoint(&mut self, mut rollback: DynamicSnapshot) {
         let active = self.active.unwrap_or(0);
 
         // Force conversion into rollback snapshot
@@ -38,7 +38,7 @@ impl Rollbacks {
     /// Rolling back or further farther than what is valid will just return the oldest / newest snapshot.
     #[allow(clippy::cast_possible_wrap)]
     #[allow(clippy::cast_sign_loss)]
-    pub fn rollback(&mut self, checkpoints: isize) -> Option<&Snapshot> {
+    pub fn rollback(&mut self, checkpoints: isize) -> Option<&DynamicSnapshot> {
         if let Some(active) = self.active {
             let raw = active as isize - checkpoints;
             let new = raw.clamp(0, self.checkpoints.len() as isize - 1) as usize;

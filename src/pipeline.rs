@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Trait that defines how exactly your app saves and loads.
-pub trait Pipeline: Sized {
+pub trait DynamicPipeline: Sized {
     /// The interface between the saver / loader and data storage.
     type Backend: for<'a> Backend<Self::Key<'a>> + Resource + Default;
     /// The format used for serializing and deserializing data.
@@ -28,7 +28,7 @@ pub trait Pipeline: Sized {
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
-    fn capture(builder: SnapshotBuilder) -> Snapshot {
+    fn capture(builder: DynamicSnapshotBuilder) -> DynamicSnapshot {
         builder.build()
     }
 
@@ -39,7 +39,7 @@ pub trait Pipeline: Sized {
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
-    fn capture_seed(&self, builder: SnapshotBuilder) -> Snapshot {
+    fn capture_seed(&self, builder: DynamicSnapshotBuilder) -> DynamicSnapshot {
         Self::capture(builder)
     }
 
@@ -49,7 +49,7 @@ pub trait Pipeline: Sized {
     ///
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
+    fn apply(world: &mut World, snapshot: &DynamicSnapshot) -> Result<(), Error> {
         snapshot.apply(world)
     }
 
@@ -61,12 +61,12 @@ pub trait Pipeline: Sized {
     ///
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    fn apply_seed(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
+    fn apply_seed(&self, world: &mut World, snapshot: &DynamicSnapshot) -> Result<(), Error> {
         Self::apply(world, snapshot)
     }
 }
 
-impl<'a> Pipeline for &'a str {
+impl<'a> DynamicPipeline for &'a str {
     type Backend = DefaultBackend;
     type Format = DefaultFormat;
 
@@ -80,7 +80,7 @@ impl<'a> Pipeline for &'a str {
 /// Uses `JSON` and saves to the given local path.
 pub struct DebugPipeline<'a>(pub &'a str);
 
-impl<'a> Pipeline for DebugPipeline<'a> {
+impl<'a> DynamicPipeline for DebugPipeline<'a> {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 

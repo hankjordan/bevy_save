@@ -9,6 +9,7 @@ use bevy::ecs::{
     system::Resource,
     world::{
         EntityRef,
+        EntityWorldMut,
         World,
     },
 };
@@ -28,6 +29,7 @@ pub trait Extractable {
 
 pub trait ExtractComponent: Extractable {
     fn extract(entity: &EntityRef) -> Self::Value;
+    fn apply(value: &Self::Value, entity: &mut EntityWorldMut);
 }
 
 pub trait ExtractResource: Extractable {
@@ -60,6 +62,12 @@ impl<T> Extractable for Extract<T> {
 impl<T: Component + Clone> ExtractComponent for Extract<T> {
     fn extract(entity: &EntityRef) -> Self::Value {
         entity.get::<T>().cloned()
+    }
+
+    fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
+        if let Some(value) = value {
+            entity.insert(value.clone());
+        }
     }
 }
 
@@ -107,6 +115,12 @@ impl<T: Component + Clone> ExtractComponent for ExtractMap<T> {
     fn extract(entity: &EntityRef) -> Self::Value {
         entity.get::<T>().cloned()
     }
+
+    fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
+        if let Some(value) = value {
+            entity.insert(value.clone());
+        }
+    }
 }
 
 impl<T: Resource + Clone> ExtractResource for ExtractMap<T> {
@@ -153,6 +167,7 @@ impl Extractable for () {
 
 impl ExtractComponent for () {
     fn extract(_: &EntityRef) -> Self::Value {}
+    fn apply(_: &Self::Value, _: &mut EntityWorldMut) {}
 }
 
 impl ExtractResource for () {
@@ -183,6 +198,11 @@ impl<T0: Extractable, T1: Extractable> Extractable for (T0, T1) {
 impl<T0: ExtractComponent, T1: ExtractComponent> ExtractComponent for (T0, T1) {
     fn extract(entity: &EntityRef) -> Self::Value {
         (T0::extract(entity), T1::extract(entity))
+    }
+
+    fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
+        T0::apply(&value.0, entity);
+        T1::apply(&value.1, entity);
     }
 }
 

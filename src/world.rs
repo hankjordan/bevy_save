@@ -3,11 +3,11 @@ use bevy::prelude::*;
 use crate::{
     Backend,
     CloneReflect,
+    DynamicPipeline,
+    DynamicSnapshot,
+    DynamicSnapshotBuilder,
     Error,
-    Pipeline,
     Rollbacks,
-    Snapshot,
-    SnapshotBuilder,
     SnapshotDeserializer,
     SnapshotSerializer,
 };
@@ -15,38 +15,38 @@ use crate::{
 /// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
     /// Captures a [`Snapshot`] from the current [`World`] state.
-    fn snapshot<P: Pipeline>(&self) -> Snapshot;
+    fn snapshot<P: DynamicPipeline>(&self) -> DynamicSnapshot;
 
     /// Saves the game state with the given [`Pipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
-    fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error>;
+    fn save<P: DynamicPipeline>(&self, pipeline: P) -> Result<(), Error>;
 
     /// Loads the game state with the given [`Pipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
-    fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error>;
+    fn load<P: DynamicPipeline>(&mut self, pipeline: P) -> Result<(), Error>;
 }
 
 impl WorldSaveableExt for World {
-    fn snapshot<P: Pipeline>(&self) -> Snapshot {
-        P::capture(Snapshot::builder(self))
+    fn snapshot<P: DynamicPipeline>(&self) -> DynamicSnapshot {
+        P::capture(DynamicSnapshot::builder(self))
     }
 
-    fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
+    fn save<P: DynamicPipeline>(&self, pipeline: P) -> Result<(), Error> {
         let registry = self.resource::<AppTypeRegistry>();
         let backend = self.resource::<P::Backend>();
 
-        let snapshot = pipeline.capture_seed(Snapshot::builder(self));
+        let snapshot = pipeline.capture_seed(DynamicSnapshot::builder(self));
 
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
         backend.save::<P::Format, _>(pipeline.key(), &ser)
     }
 
-    fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
+    fn load<P: DynamicPipeline>(&mut self, pipeline: P) -> Result<(), Error> {
         let registry = self.resource::<AppTypeRegistry>().clone();
         let reg = registry.read();
         let backend = self.resource::<P::Backend>();
@@ -62,22 +62,22 @@ impl WorldSaveableExt for World {
 /// Extension trait that adds rollback-related methods to Bevy's [`World`].
 pub trait WorldRollbackExt {
     /// Creates a checkpoint for rollback.
-    fn checkpoint<P: Pipeline>(&mut self);
+    fn checkpoint<P: DynamicPipeline>(&mut self);
 
     /// Rolls back / forward the [`World`] state.
     ///
     /// # Errors
     /// - See [`Error`]
-    fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error>;
+    fn rollback<P: DynamicPipeline>(&mut self, checkpoints: isize) -> Result<(), Error>;
 }
 
 impl WorldRollbackExt for World {
-    fn checkpoint<P: Pipeline>(&mut self) {
-        let rollback = P::capture(SnapshotBuilder::rollback(self));
+    fn checkpoint<P: DynamicPipeline>(&mut self) {
+        let rollback = P::capture(DynamicSnapshotBuilder::rollback(self));
         self.resource_mut::<Rollbacks>().checkpoint(rollback);
     }
 
-    fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error> {
+    fn rollback<P: DynamicPipeline>(&mut self, checkpoints: isize) -> Result<(), Error> {
         if let Some(rollback) = self
             .resource_mut::<Rollbacks>()
             .rollback(checkpoints)

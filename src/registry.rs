@@ -20,8 +20,8 @@ use crate::{
         ExtractMap,
         ExtractResource,
     },
-    Snapshot2,
-    SnapshotBuilder2,
+    Snapshot,
+    SnapshotBuilder,
 };
 
 fn take<T, F>(mut_ref: &mut T, closure: F)
@@ -169,8 +169,8 @@ where
     pub fn deserialize<'de, D: serde::de::Deserializer<'de>>(
         &self,
         de: D,
-    ) -> Result<Snapshot2<C, R>, D::Error> {
-        Snapshot2::<C, R>::deserialize(de)
+    ) -> Result<Snapshot<C, R>, D::Error> {
+        Snapshot::<C, R>::deserialize(de)
     }
 }
 
@@ -184,8 +184,8 @@ where
     pub fn builder<'w>(
         &self,
         world: &'w World,
-    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
-        SnapshotBuilder2 {
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder {
             world,
             entities: [].into_iter(),
             _marker: PhantomData,

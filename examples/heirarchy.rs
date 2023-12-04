@@ -32,7 +32,7 @@ fn setup(mut commands: Commands) {
 
 struct HeirarchyPipeline;
 
-impl Pipeline for HeirarchyPipeline {
+impl DynamicPipeline for HeirarchyPipeline {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 
@@ -42,13 +42,13 @@ impl Pipeline for HeirarchyPipeline {
         "examples/saves/heirarchy"
     }
 
-    fn capture(builder: SnapshotBuilder) -> Snapshot {
+    fn capture(builder: DynamicSnapshotBuilder) -> DynamicSnapshot {
         builder
             .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
             .build()
     }
 
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    fn apply(world: &mut World, snapshot: &DynamicSnapshot) -> Result<(), bevy_save::Error> {
         snapshot
             .applier(world)
             .despawn::<Or<(With<Player>, With<Head>)>>()

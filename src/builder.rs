@@ -16,16 +16,16 @@ use crate::{
         ExtractResource,
     },
     CloneReflect,
+    DynamicSnapshot,
     Entities,
     Extracted,
     RollbackRegistry,
     Rollbacks,
     Snapshot,
-    Snapshot2,
 };
 
 /// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
-pub struct SnapshotBuilder<'a> {
+pub struct DynamicSnapshotBuilder<'a> {
     world: &'a World,
     entities: BTreeMap<Entity, DynamicEntity>,
     resources: BTreeMap<ComponentId, Box<dyn Reflect>>,
@@ -34,8 +34,8 @@ pub struct SnapshotBuilder<'a> {
     is_rollback: bool,
 }
 
-impl<'a> SnapshotBuilder<'a> {
-    /// Create a new [`SnapshotBuilder`] from the [`World`].
+impl<'a> DynamicSnapshotBuilder<'a> {
+    /// Create a new [`DynamicSnapshotBuilder`] from the [`World`].
     ///
     /// You must call at least one of the `extract` methods or the built snapshot will be empty.
     ///
@@ -47,7 +47,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// SnapshotBuilder::snapshot(world)
+    /// DynamicSnapshotBuilder::snapshot(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///     
@@ -68,7 +68,7 @@ impl<'a> SnapshotBuilder<'a> {
         }
     }
 
-    /// Create a new [`SnapshotBuilder`] from the [`World`].
+    /// Create a new [`DynamicSnapshotBuilder`] from the [`World`].
     ///
     /// Types extracted by this builder will respect the [`RollbackRegistry`](crate::RollbackRegistry).
     ///
@@ -82,7 +82,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// SnapshotBuilder::rollback(world)
+    /// DynamicSnapshotBuilder::rollback(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///     
@@ -104,7 +104,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl<'a> DynamicSnapshotBuilder<'a> {
     /// Retrieve the builder's reference to the [`World`].
     pub fn world<'w>(&self) -> &'w World
     where
@@ -114,7 +114,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl<'a> DynamicSnapshotBuilder<'a> {
     /// Specify a custom [`SceneFilter`] to be used with this builder.
     ///
     /// This filter is applied to both components and resources.
@@ -166,7 +166,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl<'a> DynamicSnapshotBuilder<'a> {
     /// Extract a single entity from the builder’s [`World`].
     pub fn extract_entity(self, entity: Entity) -> Self {
         self.extract_entities([entity].into_iter())
@@ -319,7 +319,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl<'a> DynamicSnapshotBuilder<'a> {
     /// Clear all extracted entities.
     pub fn clear_entities(mut self) -> Self {
         self.entities.clear();
@@ -350,10 +350,10 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl<'a> DynamicSnapshotBuilder<'a> {
     /// Build the extracted entities and resources into a [`Snapshot`].
-    pub fn build(self) -> Snapshot {
-        Snapshot {
+    pub fn build(self) -> DynamicSnapshot {
+        DynamicSnapshot {
             entities: self.entities.into_values().collect(),
             resources: self.resources.into_values().collect(),
             rollbacks: self.rollbacks,
@@ -364,13 +364,13 @@ impl<'a> SnapshotBuilder<'a> {
 // --------------------------------------------------------------------------------------------------------------------
 
 /// A snapshot builder that can extract entities and resources from a [`World`].
-pub struct SnapshotBuilder2<'w, I, C, R> {
+pub struct SnapshotBuilder<'w, I, C, R> {
     pub(crate) world: &'w World,
     pub(crate) entities: I,
     pub(crate) _marker: PhantomData<(C, R)>,
 }
 
-impl<'w, I, C, R> SnapshotBuilder2<'w, I, C, R>
+impl<'w, I, C, R> SnapshotBuilder<'w, I, C, R>
 where
     I: Iterator<Item = Entity> + 'w,
 {
@@ -378,8 +378,8 @@ where
     pub fn extract_entity(
         self,
         entity: Entity,
-    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
-        SnapshotBuilder2 {
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder {
             world: self.world,
             entities: self.entities.chain([entity]),
             _marker: PhantomData,
@@ -390,11 +390,11 @@ where
     pub fn extract_entities<E>(
         self,
         entities: E,
-    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R>
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R>
     where
         E: Iterator<Item = Entity> + 'w,
     {
-        SnapshotBuilder2 {
+        SnapshotBuilder {
             world: self.world,
             entities: self.entities.chain(entities),
             _marker: PhantomData,
@@ -405,7 +405,7 @@ where
     pub fn extract_entities_matching<F: Fn(&EntityRef) -> bool + 'w>(
         self,
         filter: F,
-    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
         let entities = self.world.iter_entities().filter(filter).map(|e| e.id());
         self.extract_entities(entities)
     }
@@ -413,10 +413,10 @@ where
     /// Extract all entities from the builder’s [`World`].
     pub fn extract_all_entities(
         self,
-    ) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+    ) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
         let entities = self.world.iter_entities().map(|e| e.id());
 
-        SnapshotBuilder2 {
+        SnapshotBuilder {
             world: self.world,
             entities: self.entities.chain(entities),
             _marker: PhantomData,
@@ -424,10 +424,10 @@ where
     }
 }
 
-impl<'w, I, C, R> SnapshotBuilder2<'w, I, C, R> {
+impl<'w, I, C, R> SnapshotBuilder<'w, I, C, R> {
     /// Clear all extracted entities.
-    pub fn clear_entities(self) -> SnapshotBuilder2<'w, impl Iterator<Item = Entity> + 'w, C, R> {
-        SnapshotBuilder2 {
+    pub fn clear_entities(self) -> SnapshotBuilder<'w, impl Iterator<Item = Entity> + 'w, C, R> {
+        SnapshotBuilder {
             world: self.world,
             entities: [].into_iter(),
             _marker: PhantomData,
@@ -435,15 +435,15 @@ impl<'w, I, C, R> SnapshotBuilder2<'w, I, C, R> {
     }
 }
 
-impl<'w, I, C, R> SnapshotBuilder2<'w, I, C, R>
+impl<'w, I, C, R> SnapshotBuilder<'w, I, C, R>
 where
     I: Iterator<Item = Entity> + 'w,
     C: ExtractComponent,
     R: ExtractResource,
 {
     /// This will extract all registered resources and all registered components on the given entities.
-    pub fn build(self) -> Snapshot2<C, R> {
-        Snapshot2 {
+    pub fn build(self) -> Snapshot<C, R> {
+        Snapshot {
             entities: Entities(
                 self.entities
                     .map(|e| (e, Extracted(C::extract(&self.world.entity(e)))))

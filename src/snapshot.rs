@@ -4,18 +4,22 @@ use bevy::{
 };
 
 use crate::{
-    extract::Extractable,
+    extract::{
+        ExtractDeserialize,
+        ExtractSerialize,
+        Extractable,
+    },
     CloneReflect,
+    DynamicSnapshotApplier,
+    DynamicSnapshotBuilder,
     Error,
     Rollbacks,
-    SnapshotApplier,
-    SnapshotBuilder,
 };
 
-/// A collection of serializable entities and resources.
+/// A dynamic collection of serializable entities and resources.
 ///
 /// Can be serialized via [`SnapshotSerializer`](crate::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::SnapshotDeserializer).
-pub struct Snapshot {
+pub struct DynamicSnapshot {
     /// Entities contained in the snapshot.
     pub entities: Vec<DynamicEntity>,
 
@@ -25,8 +29,8 @@ pub struct Snapshot {
     pub(crate) rollbacks: Option<Rollbacks>,
 }
 
-impl Snapshot {
-    /// Returns a complete [`Snapshot`] of the current [`World`] state.
+impl DynamicSnapshot {
+    /// Returns a complete [`DynamicSnapshot`] of the current [`World`] state.
     ///
     /// Contains all saveable entities and resources, including [`Rollbacks`].
     ///
@@ -38,7 +42,7 @@ impl Snapshot {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// Snapshot::builder(world)
+    /// DynamicSnapshot::builder(world)
     ///     .extract_all_with_rollbacks()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
@@ -55,7 +59,7 @@ impl Snapshot {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = &mut app.world;
-    /// Snapshot::builder(world)
+    /// DynamicSnapshot::builder(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///
@@ -65,19 +69,19 @@ impl Snapshot {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn builder(world: &World) -> SnapshotBuilder {
-        SnapshotBuilder::snapshot(world)
+    pub fn builder(world: &World) -> DynamicSnapshotBuilder {
+        DynamicSnapshotBuilder::snapshot(world)
     }
 
     /// Apply the [`Snapshot`] to the [`World`], using default applier settings.
     ///
     /// # Errors
-    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
+    /// If a type included in the [`DynamicSnapshot`] has not been registered with the type registry.
     pub fn apply(&self, world: &mut World) -> Result<(), Error> {
         self.applier(world).apply()
     }
 
-    /// Create a [`SnapshotApplier`] from the [`Snapshot`] and the [`World`].
+    /// Create a [`DynamicSnapshotApplier`] from the [`DynamicSnapshot`] and the [`World`].
     ///
     /// This allows you to specify an entity map, hook, etc.
     ///
@@ -102,12 +106,12 @@ impl Snapshot {
     ///     })
     ///     .apply();
     /// ```
-    pub fn applier<'a>(&'a self, world: &'a mut World) -> SnapshotApplier<'_> {
-        SnapshotApplier::new(self, world)
+    pub fn applier<'a>(&'a self, world: &'a mut World) -> DynamicSnapshotApplier<'_> {
+        DynamicSnapshotApplier::new(self, world)
     }
 }
 
-impl CloneReflect for Snapshot {
+impl CloneReflect for DynamicSnapshot {
     fn clone_value(&self) -> Self {
         Self {
             entities: self.entities.iter().map(|e| e.clone_value()).collect(),
@@ -119,11 +123,22 @@ impl CloneReflect for Snapshot {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub struct Snapshot2<C: Extractable, R: Extractable> {
+/// A collection of entities and resources.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(bound(
+    serialize = "C: ExtractSerialize, R: ExtractSerialize",
+    deserialize = "C: ExtractDeserialize, R: ExtractDeserialize"
+))]
+pub struct Snapshot<C: Extractable, R: Extractable> {
+    /// Entities contained in the snapshot.
     pub entities: Entities<C>,
+
+    /// Resources contained in the snapshot.
     pub resources: Extracted<R>,
 }
 
+/// Wrapper type allowing serialization and deserialization of extracted entities
 pub struct Entities<C: Extractable>(pub Vec<(Entity, Extracted<C>)>);
 
+/// Wrapper type allowing serialization and deserialization of extracted types
 pub struct Extracted<E: Extractable>(pub E::Value);

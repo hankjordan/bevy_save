@@ -41,7 +41,6 @@ mod registry;
 mod rollbacks;
 mod serde;
 mod snapshot;
-mod snapshot3;
 mod world;
 
 /// Prelude: convenient import for all the user-facing APIs provided by the crate

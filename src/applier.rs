@@ -23,10 +23,12 @@ use crate::{
         ExtractComponent,
         ExtractMapEntities,
         ExtractResource,
+        Extractable,
     },
+    DynamicSnapshot,
     Error,
+    Extracted,
     Snapshot,
-    Snapshot2,
 };
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
@@ -55,22 +57,19 @@ pub trait Hook: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + Send + Sync 
 
 impl<T> Hook for T where T: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + Send + Sync {}
 
-/// A boxed [`Hook`].
-pub type BoxedHook = Box<dyn Hook>;
-
 /// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct SnapshotApplier<'a, F = ()> {
-    snapshot: &'a Snapshot,
+pub struct DynamicSnapshotApplier<'a, D = (), H = fn(&EntityRef, &mut EntityCommands)> {
+    snapshot: &'a DynamicSnapshot,
     world: &'a mut World,
     entity_map: Option<&'a mut HashMap<Entity, Entity>>,
     type_registry: Option<&'a AppTypeRegistry>,
-    despawn: Option<PhantomData<F>>,
-    hook: Option<BoxedHook>,
+    despawn: Option<PhantomData<D>>,
+    hook: Option<H>,
 }
 
-impl<'a> SnapshotApplier<'a> {
+impl<'a> DynamicSnapshotApplier<'a> {
     /// Create a new [`SnapshotApplier`] with from the world and snapshot.
-    pub fn new(snapshot: &'a Snapshot, world: &'a mut World) -> Self {
+    pub fn new(snapshot: &'a DynamicSnapshot, world: &'a mut World) -> Self {
         Self {
             snapshot,
             world,
@@ -82,7 +81,7 @@ impl<'a> SnapshotApplier<'a> {
     }
 }
 
-impl<'a, A> SnapshotApplier<'a, A> {
+impl<'a, D, H> DynamicSnapshotApplier<'a, D, H> {
     /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
     pub fn entity_map(mut self, entity_map: &'a mut HashMap<Entity, Entity>) -> Self {
         self.entity_map = Some(entity_map);
@@ -98,8 +97,8 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 
     /// Change how the snapshot affects existing entities while applying.
-    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier<'a, F> {
-        SnapshotApplier {
+    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> DynamicSnapshotApplier<'a, F, H> {
+        DynamicSnapshotApplier {
             snapshot: self.snapshot,
             world: self.world,
             entity_map: self.entity_map,
@@ -110,13 +109,23 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 
     /// Add a [`Hook`] that will run for each entity after applying.
-    pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
-        self.hook = Some(Box::new(hook));
-        self
+    pub fn hook<F: Hook>(self, hook: F) -> DynamicSnapshotApplier<'a, D, F> {
+        DynamicSnapshotApplier {
+            snapshot: self.snapshot,
+            world: self.world,
+            entity_map: self.entity_map,
+            type_registry: self.type_registry,
+            despawn: self.despawn,
+            hook: Some(hook),
+        }
     }
 }
 
-impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
+impl<'a, D, H> DynamicSnapshotApplier<'a, D, H>
+where
+    D: ReadOnlyWorldQuery,
+    H: Hook,
+{
     /// Apply the [`Snapshot`] to the [`World`].
     ///
     /// # Panics
@@ -163,7 +172,7 @@ impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
         if self.despawn.is_some() {
             let invalid = self
                 .world
-                .query_filtered::<Entity, F>()
+                .query_filtered::<Entity, D>()
                 .iter(self.world)
                 .collect::<Vec<_>>();
 
@@ -255,21 +264,21 @@ impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
 // --------------------------------------------------------------------------------------------------------------------
 
 /// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct SnapshotApplier2<'w, C: ExtractComponent, R: ExtractResource, F = ()> {
-    snapshot: &'w Snapshot2<C, R>,
+pub struct SnapshotApplier2<'w, C: Extractable, R: Extractable, D = (), H = ()> {
+    snapshot: &'w Snapshot<C, R>,
     world: &'w mut World,
     entity_map: Option<&'w mut HashMap<Entity, Entity>>,
-    despawn: Option<PhantomData<F>>,
-    hook: Option<BoxedHook>,
+    despawn: Option<PhantomData<D>>,
+    hook: Option<H>,
 }
 
 impl<'w, C, R> SnapshotApplier2<'w, C, R>
 where
-    C: ExtractComponent,
-    R: ExtractResource,
+    C: Extractable,
+    R: Extractable,
 {
     /// Create a new [`SnapshotApplier`] with from the world and snapshot.
-    pub fn new(snapshot: &'w Snapshot2<C, R>, world: &'w mut World) -> Self {
+    pub fn new(snapshot: &'w Snapshot<C, R>, world: &'w mut World) -> Self {
         Self {
             snapshot,
             world,
@@ -280,10 +289,10 @@ where
     }
 }
 
-impl<'w, C, R, D> SnapshotApplier2<'w, C, R, D>
+impl<'w, C, R, D, H> SnapshotApplier2<'w, C, R, D, H>
 where
-    C: ExtractComponent,
-    R: ExtractResource,
+    C: Extractable,
+    R: Extractable,
 {
     /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
     pub fn entity_map(mut self, entity_map: &'w mut HashMap<Entity, Entity>) -> Self {
@@ -292,7 +301,7 @@ where
     }
 
     /// Change how the snapshot affects existing entities while applying.
-    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier2<'w, C, R, F> {
+    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier2<'w, C, R, F, H> {
         SnapshotApplier2 {
             snapshot: self.snapshot,
             world: self.world,
@@ -303,17 +312,23 @@ where
     }
 
     /// Add a [`Hook`] that will run for each entity after applying.
-    pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
-        self.hook = Some(Box::new(hook));
-        self
+    pub fn hook<F: Hook + 'static>(self, hook: F) -> SnapshotApplier2<'w, C, R, D, F> {
+        SnapshotApplier2 {
+            snapshot: self.snapshot,
+            world: self.world,
+            entity_map: self.entity_map,
+            despawn: self.despawn,
+            hook: Some(hook),
+        }
     }
 }
 
-impl<'w, C, R, F> SnapshotApplier2<'w, C, R, F>
+impl<'w, C, R, D, H> SnapshotApplier2<'w, C, R, D, H>
 where
     C: ExtractComponent + ExtractMapEntities,
     R: ExtractResource + ExtractMapEntities,
-    F: ReadOnlyWorldQuery,
+    D: ReadOnlyWorldQuery,
+    H: Hook,
 {
     /// Apply the [`Snapshot`] to the [`World`].
     ///
@@ -330,7 +345,7 @@ where
         if self.despawn.is_some() {
             let invalid = self
                 .world
-                .query_filtered::<Entity, F>()
+                .query_filtered::<Entity, D>()
                 .iter(self.world)
                 .collect::<Vec<_>>();
 
@@ -342,8 +357,18 @@ where
         // Resources
         R::apply(&self.snapshot.resources.0, self.world);
 
-        // Apply entities
-        // TODO
+        // Entities
+        for (saved, Extracted(components)) in &self.snapshot.entities.0 {
+            let entity = *entity_map
+                .entry(*saved)
+                .or_insert_with(|| self.world.spawn_empty().id());
+
+            C::apply(components, &mut self.world.entity_mut(entity));
+
+            // TODO: Map entities
+        }
+
+        // TODO: Map entities
 
         // Entity hook
         if let Some(hook) = &self.hook {

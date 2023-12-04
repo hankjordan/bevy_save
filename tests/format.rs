@@ -80,13 +80,15 @@ fn init_app() -> App {
     app
 }
 
-fn extract(world: &World) -> Snapshot {
-    Snapshot::builder(world).extract_all_entities().build()
+fn extract(world: &World) -> DynamicSnapshot {
+    DynamicSnapshot::builder(world)
+        .extract_all_entities()
+        .build()
 }
 
 #[test]
 fn test_json() {
-    fn serialize(snapshot: &Snapshot, registry: &AppTypeRegistry) -> String {
+    fn serialize(snapshot: &DynamicSnapshot, registry: &AppTypeRegistry) -> String {
         let serializer = SnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();
@@ -176,7 +178,7 @@ fn test_json() {
 
 #[test]
 fn test_mp() {
-    fn serialize(snapshot: &Snapshot, registry: &AppTypeRegistry) -> Vec<u8> {
+    fn serialize(snapshot: &DynamicSnapshot, registry: &AppTypeRegistry) -> Vec<u8> {
         let serializer = SnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();

@@ -580,7 +580,7 @@ impl<'w, 's> Toaster<'w, 's> {
 
 struct BreakoutPipeline;
 
-impl Pipeline for BreakoutPipeline {
+impl DynamicPipeline for BreakoutPipeline {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 
@@ -590,7 +590,7 @@ impl Pipeline for BreakoutPipeline {
         "examples/saves/breakout"
     }
 
-    fn capture(builder: SnapshotBuilder) -> Snapshot {
+    fn capture(builder: DynamicSnapshotBuilder) -> DynamicSnapshot {
         builder
             .deny::<Mesh2dHandle>()
             .deny::<Handle<ColorMaterial>>()
@@ -602,7 +602,7 @@ impl Pipeline for BreakoutPipeline {
             .build()
     }
 
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    fn apply(world: &mut World, snapshot: &DynamicSnapshot) -> Result<(), bevy_save::Error> {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
         let mesh = Mesh2dHandle(meshes.add(shape::Circle::default().into()));
         let mut materials = world.resource_mut::<Assets<ColorMaterial>>();

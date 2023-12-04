@@ -51,7 +51,7 @@ mod desktop {
     ///
     /// Each name corresponds to an individual file on the disk.
     ///
-    /// Files are stored in `SAVE_DIR`.
+    /// Files are stored in [`SAVE_DIR`](crate::SAVE_DIR).
     #[derive(Default, Resource)]
     pub struct FileIO;
 
@@ -113,10 +113,10 @@ mod desktop {
 #[cfg(not(target_arch = "wasm32"))]
 pub use desktop::FileIO;
 #[cfg(not(target_arch = "wasm32"))]
-/// The [`Backend`] the default [`Pipeline`](crate::Pipeline) will use.
+/// The [`Backend`] the default [`DynamicPipeline`](crate::DynamicPipeline) will use.
 pub type DefaultBackend = desktop::FileIO;
 #[cfg(not(target_arch = "wasm32"))]
-/// The [`Backend`] the default debug [`Pipeline`](crate::Pipeline) will use.
+/// The [`Backend`] the default debug [`DynamicPipeline`](crate::DynamicPipeline) will use.
 pub type DefaultDebugBackend = desktop::DebugFileIO;
 
 #[cfg(target_arch = "wasm32")]

@@ -43,11 +43,10 @@ use crate::{
         ExtractDeserialize,
         ExtractSerialize,
     },
+    DynamicSnapshot,
     Entities,
     Extracted,
     Rollbacks,
-    Snapshot,
-    Snapshot2,
 };
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
@@ -65,14 +64,14 @@ const ENTITY_COMPONENTS: &str = "components";
 /// Handles serialization of a snapshot as a struct containing its entities and resources.
 pub struct SnapshotSerializer<'a> {
     /// The snapshot to serialize.
-    pub snapshot: &'a Snapshot,
+    pub snapshot: &'a DynamicSnapshot,
     /// Type registry in which the components and resources types used in the snapshot are registered.
     pub registry: &'a TypeRegistryArc,
 }
 
 impl<'a> SnapshotSerializer<'a> {
     /// Creates a snapshot serializer.
-    pub fn new(snapshot: &'a Snapshot, registry: &'a TypeRegistryArc) -> Self {
+    pub fn new(snapshot: &'a DynamicSnapshot, registry: &'a TypeRegistryArc) -> Self {
         SnapshotSerializer { snapshot, registry }
     }
 }
@@ -111,7 +110,7 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
 }
 
 struct SnapshotListSerializer<'a> {
-    snapshots: &'a [Snapshot],
+    snapshots: &'a [DynamicSnapshot],
     registry: &'a TypeRegistryArc,
 }
 
@@ -247,7 +246,7 @@ pub struct SnapshotDeserializer<'a> {
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
-    type Value = Snapshot;
+    type Value = DynamicSnapshot;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -268,7 +267,7 @@ struct SnapshotVisitor<'a> {
 }
 
 impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
-    type Value = Snapshot;
+    type Value = DynamicSnapshot;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
         formatter.write_str("snapshot struct")
@@ -314,7 +313,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
         let entities = entities.ok_or_else(|| Error::missing_field(SNAPSHOT_ENTITIES))?;
         let resources = resources.ok_or_else(|| Error::missing_field(SNAPSHOT_RESOURCES))?;
 
-        Ok(Snapshot {
+        Ok(DynamicSnapshot {
             entities,
             resources,
             rollbacks,
@@ -341,7 +340,7 @@ impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
             registry: self.registry,
         })?;
 
-        Ok(Snapshot {
+        Ok(DynamicSnapshot {
             entities,
             resources,
             rollbacks,
@@ -444,7 +443,7 @@ struct SnapshotListDeserializer<'a> {
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for SnapshotListDeserializer<'a> {
-    type Value = Vec<Snapshot>;
+    type Value = Vec<DynamicSnapshot>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -461,7 +460,7 @@ struct SnapshotListVisitor<'a> {
 }
 
 impl<'a, 'de> Visitor<'de> for SnapshotListVisitor<'a> {
-    type Value = Vec<Snapshot>;
+    type Value = Vec<DynamicSnapshot>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str("sequence of snapshots")
@@ -672,110 +671,6 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
 }
 
 // --------------------------------------------------------------------------------------------------------------------
-
-impl<C, R> Serialize for Snapshot2<C, R>
-where
-    C: ExtractSerialize,
-    R: ExtractSerialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut ser = serializer.serialize_struct("Snapshot", 2)?;
-        ser.serialize_field("entities", &self.entities)?;
-        ser.serialize_field("resources", &self.resources)?;
-        ser.end()
-    }
-}
-
-impl<'de, C, R> Deserialize<'de> for Snapshot2<C, R>
-where
-    C: ExtractDeserialize,
-    R: ExtractDeserialize,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(field_identifier, rename_all = "lowercase")]
-        enum Fields {
-            Entities,
-            Resources,
-        }
-
-        struct SnapshotVisitor<C, R>(PhantomData<(C, R)>);
-
-        impl<'de, C, R> Visitor<'de> for SnapshotVisitor<C, R>
-        where
-            C: ExtractDeserialize,
-            R: ExtractDeserialize,
-        {
-            type Value = Snapshot2<C, R>;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("snapshot struct")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let entities = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
-
-                let resources = seq
-                    .next_element()?
-                    .ok_or_else(|| serde::de::Error::invalid_length(1, &self))?;
-
-                Ok(Snapshot2 {
-                    entities,
-                    resources,
-                })
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::MapAccess<'de>,
-            {
-                let mut entities = None;
-                let mut resources = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Fields::Entities => {
-                            if entities.is_some() {
-                                return Err(serde::de::Error::duplicate_field("entities"));
-                            }
-                            entities = Some(map.next_value()?);
-                        }
-                        Fields::Resources => {
-                            if resources.is_some() {
-                                return Err(serde::de::Error::duplicate_field("resources"));
-                            }
-                            resources = Some(map.next_value()?);
-                        }
-                    }
-                }
-
-                let entities =
-                    entities.ok_or_else(|| serde::de::Error::missing_field("entities"))?;
-                let resources =
-                    resources.ok_or_else(|| serde::de::Error::missing_field("resources"))?;
-
-                Ok(Snapshot2 {
-                    entities,
-                    resources,
-                })
-            }
-        }
-
-        const FIELDS: &[&str] = &["entities", "resources"];
-        deserializer.deserialize_struct("Snapshot", FIELDS, SnapshotVisitor(PhantomData))
-    }
-}
 
 impl<C> Serialize for Entities<C>
 where

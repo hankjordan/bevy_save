@@ -37,7 +37,9 @@ fn test_collect() {
     );
     assert_eq!(world.iter_entities().count(), 1);
 
-    let snapshot = Snapshot::builder(world).extract_entity(entity).build();
+    let snapshot = DynamicSnapshot::builder(world)
+        .extract_entity(entity)
+        .build();
 
     world
         .entity_mut(entity)
@@ -91,7 +93,9 @@ fn test_basic() {
 
     world.entity_mut(entity).get_mut::<Basic>().unwrap().data = 1;
 
-    let snapshot = Snapshot::builder(world).extract_entity(entity).build();
+    let snapshot = DynamicSnapshot::builder(world)
+        .extract_entity(entity)
+        .build();
 
     world.entity_mut(entity).get_mut::<Basic>().unwrap().data = 2;
 
