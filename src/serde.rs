@@ -41,7 +41,9 @@ use serde::{
 use crate::{
     extract::{
         ExtractComponent,
+        ExtractDeserialize,
         ExtractResource,
+        ExtractSerialize,
     },
     Components,
     Entities,
@@ -674,7 +676,11 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-impl<C: ExtractComponent, R: ExtractResource> Serialize for Snapshot2<C, R> {
+impl<C, R> Serialize for Snapshot2<C, R>
+where
+    C: ExtractComponent + ExtractSerialize,
+    R: ExtractResource + ExtractSerialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -686,7 +692,11 @@ impl<C: ExtractComponent, R: ExtractResource> Serialize for Snapshot2<C, R> {
     }
 }
 
-impl<'de, C: ExtractComponent, R: ExtractResource> Deserialize<'de> for Snapshot2<C, R> {
+impl<'de, C, R> Deserialize<'de> for Snapshot2<C, R>
+where
+    C: ExtractComponent + ExtractDeserialize,
+    R: ExtractResource + ExtractDeserialize,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -700,7 +710,11 @@ impl<'de, C: ExtractComponent, R: ExtractResource> Deserialize<'de> for Snapshot
 
         struct SnapshotVisitor<C, R>(PhantomData<(C, R)>);
 
-        impl<'de, C: ExtractComponent, R: ExtractResource> Visitor<'de> for SnapshotVisitor<C, R> {
+        impl<'de, C, R> Visitor<'de> for SnapshotVisitor<C, R>
+        where
+            C: ExtractComponent + ExtractDeserialize,
+            R: ExtractResource + ExtractDeserialize,
+        {
             type Value = Snapshot2<C, R>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -766,7 +780,10 @@ impl<'de, C: ExtractComponent, R: ExtractResource> Deserialize<'de> for Snapshot
     }
 }
 
-impl<C: ExtractComponent> Serialize for Entities<C> {
+impl<C> Serialize for Entities<C>
+where
+    C: ExtractComponent + ExtractSerialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -781,14 +798,20 @@ impl<C: ExtractComponent> Serialize for Entities<C> {
     }
 }
 
-impl<'de, C: ExtractComponent> Deserialize<'de> for Entities<C> {
+impl<'de, C> Deserialize<'de> for Entities<C>
+where
+    C: ExtractComponent + ExtractDeserialize,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct EntitiesVisitor<C>(PhantomData<C>);
 
-        impl<'de, C: ExtractComponent> Visitor<'de> for EntitiesVisitor<C> {
+        impl<'de, C> Visitor<'de> for EntitiesVisitor<C>
+        where
+            C: ExtractComponent + ExtractDeserialize,
+        {
             type Value = Entities<C>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -813,7 +836,10 @@ impl<'de, C: ExtractComponent> Deserialize<'de> for Entities<C> {
     }
 }
 
-impl<C: ExtractComponent> Serialize for Components<C> {
+impl<C> Serialize for Components<C>
+where
+    C: ExtractComponent + ExtractSerialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -824,14 +850,20 @@ impl<C: ExtractComponent> Serialize for Components<C> {
     }
 }
 
-impl<'de, C: ExtractComponent> Deserialize<'de> for Components<C> {
+impl<'de, C> Deserialize<'de> for Components<C>
+where
+    C: ExtractComponent + ExtractDeserialize,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct ComponentsVisitor<C>(PhantomData<C>);
 
-        impl<'de, C: ExtractComponent> Visitor<'de> for ComponentsVisitor<C> {
+        impl<'de, C> Visitor<'de> for ComponentsVisitor<C>
+        where
+            C: ExtractComponent + ExtractDeserialize,
+        {
             type Value = Components<C>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -850,7 +882,10 @@ impl<'de, C: ExtractComponent> Deserialize<'de> for Components<C> {
     }
 }
 
-impl<R: ExtractResource> Serialize for Resources<R> {
+impl<R> Serialize for Resources<R>
+where
+    R: ExtractResource + ExtractSerialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -861,14 +896,20 @@ impl<R: ExtractResource> Serialize for Resources<R> {
     }
 }
 
-impl<'de, R: ExtractResource> Deserialize<'de> for Resources<R> {
+impl<'de, R> Deserialize<'de> for Resources<R>
+where
+    R: ExtractResource + ExtractDeserialize,
+{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct ResourcesVisitor<R>(PhantomData<R>);
 
-        impl<'de, R: ExtractResource> Visitor<'de> for ResourcesVisitor<R> {
+        impl<'de, R> Visitor<'de> for ResourcesVisitor<R>
+        where
+            R: ExtractResource + ExtractDeserialize,
+        {
             type Value = Resources<R>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

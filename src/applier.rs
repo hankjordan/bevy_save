@@ -21,7 +21,8 @@ use bevy::{
 use crate::{
     extract::{
         ExtractComponent,
-        ExtractResource, ExtractMapEntities,
+        ExtractMapEntities,
+        ExtractResource,
     },
     Error,
     Snapshot,
@@ -321,8 +322,8 @@ where
 
 impl<'w, C, R, F> SnapshotApplier2<'w, C, R, F>
 where
-    C: ExtractComponent,
-    R: ExtractResource,
+    C: ExtractComponent + ExtractMapEntities,
+    R: ExtractResource + ExtractMapEntities,
     F: ReadOnlyWorldQuery,
 {
     /// Apply the [`Snapshot`] to the [`World`].
@@ -333,25 +334,6 @@ where
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     pub fn apply(self) -> Result<(), Error> {
-        R::apply(&self.snapshot.resources.0, self.world);
-        todo!()
-    }
-}
-
-impl<'w, C, R, F> SnapshotApplier2<'w, C, R, F>
-where
-    C: ExtractComponent + ExtractMapEntities,
-    R: ExtractResource ,
-    F: ReadOnlyWorldQuery,
-{
-    /// Apply the [`Snapshot`] to the [`World`], mapping entities with `MapEntities`.
-    ///
-    /// # Panics
-    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
-    ///
-    /// # Errors
-    /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    pub fn apply_map_entities(self) -> Result<(), Error> {
         R::apply(&self.snapshot.resources.0, self.world);
         todo!()
     }

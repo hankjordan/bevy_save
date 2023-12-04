@@ -128,5 +128,5 @@ pub struct Snapshot2<C: ExtractComponent, R: ExtractResource> {
 }
 
 pub struct Entities<C: ExtractComponent>(pub Vec<(Entity, Components<C>)>);
-pub struct Components<C: ExtractComponent>(pub C::Output);
-pub struct Resources<R: ExtractResource>(pub R::Output);
+pub struct Components<C: ExtractComponent>(pub C::Value);
+pub struct Resources<R: ExtractResource>(pub R::Value);
