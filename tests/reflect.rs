@@ -33,6 +33,10 @@ pub struct StructComponent {
 
 #[derive(Component, Clone, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component)]
+pub struct TupleComponent(u64);
+
+#[derive(Component, Clone, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component)]
 pub struct UnitComponent;
 
 fn app() -> App {
@@ -60,7 +64,7 @@ fn app() -> App {
         list: vec![1.0, 2.0, 3.0],
         unit: (),
     }));
-    world.spawn(EnumComponent::C);
+    world.spawn((EnumComponent::C, TupleComponent(5)));
 
     app
 }
@@ -73,6 +77,7 @@ fn test_json() {
     let typed = SaveRegistry::new()
         .component::<EnumComponent>()
         .component::<StructComponent>()
+        .component::<TupleComponent>()
         .component::<UnitComponent>()
         .builder(world)
         .extract_all_entities()
@@ -96,6 +101,7 @@ fn test_json() {
                 }
             },
             null,
+            null,
             {}
         ],
         "1": [
@@ -115,11 +121,13 @@ fn test_json() {
                 ],
                 "unit": null
             },
+            null,
             null
         ],
         "2": [
             "C",
             null,
+            5,
             null
         ]
     },
@@ -131,6 +139,7 @@ fn test_json() {
     let reflect = SaveRegistry::new()
         .reflect_component::<EnumComponent>()
         .reflect_component::<StructComponent>()
+        .reflect_component::<TupleComponent>()
         .reflect_component::<UnitComponent>()
         .builder(world)
         .extract_all_entities()
@@ -155,6 +164,7 @@ fn test_mp() {
     let typed = SaveRegistry::new()
         .component::<EnumComponent>()
         .component::<StructComponent>()
+        .component::<TupleComponent>()
         .component::<UnitComponent>()
         .builder(world)
         .extract_all_entities()
@@ -167,11 +177,11 @@ fn test_mp() {
 
     let typed = buf;
     let expected = [
-        146, 131, 0, 147, 129, 161, 65, 147, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0, 202, 64, 64, 0,
-        0, 192, 128, 1, 147, 129, 161, 66, 147, 202, 64, 128, 0, 0, 202, 64, 160, 0, 0, 202, 64,
-        192, 0, 0, 147, 173, 72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33, 147, 202,
-        63, 128, 0, 0, 202, 64, 0, 0, 0, 202, 64, 64, 0, 0, 192, 192, 2, 147, 161, 67, 192, 192,
-        144,
+        146, 131, 0, 148, 129, 161, 65, 147, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0, 202, 64, 64, 0,
+        0, 192, 192, 128, 1, 148, 129, 161, 66, 147, 202, 64, 128, 0, 0, 202, 64, 160, 0, 0, 202,
+        64, 192, 0, 0, 147, 173, 72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33, 147,
+        202, 63, 128, 0, 0, 202, 64, 0, 0, 0, 202, 64, 64, 0, 0, 192, 192, 192, 2, 148, 161, 67,
+        192, 5, 192, 144,
     ];
 
     assert_eq!(typed, expected);
@@ -179,6 +189,7 @@ fn test_mp() {
     let reflect = SaveRegistry::new()
         .reflect_component::<EnumComponent>()
         .reflect_component::<StructComponent>()
+        .reflect_component::<TupleComponent>()
         .reflect_component::<UnitComponent>()
         .builder(world)
         .extract_all_entities()

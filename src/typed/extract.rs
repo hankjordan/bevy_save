@@ -172,16 +172,24 @@ impl<'a> Serialize for ReflectSerializer<'a> {
                 }
             }
             bevy::reflect::ReflectRef::TupleStruct(tuple) => {
-                let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
+                if tuple.field_len() > 1 {
+                    let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
 
-                for field in tuple.iter_fields() {
-                    ser.serialize_element(&Self {
+                    for field in tuple.iter_fields() {
+                        ser.serialize_element(&Self {
+                            registry: self.registry,
+                            value: field,
+                        })?;
+                    }
+
+                    ser.end()
+                } else {
+                    Self {
+                        value: tuple.field(0).unwrap(),
                         registry: self.registry,
-                        value: field,
-                    })?;
+                    }
+                    .serialize(serializer)
                 }
-
-                ser.end()
             }
             bevy::reflect::ReflectRef::Tuple(tuple) => {
                 if tuple.field_len() > 0 {

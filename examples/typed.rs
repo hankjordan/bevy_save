@@ -26,24 +26,7 @@ pub struct Player;
 #[derive(Component, Clone, Serialize, Deserialize)]
 pub struct Head;
 
-#[derive(Component, Clone, Serialize, Deserialize)]
-pub enum EnumComponent {
-    A { x: f32, y: f32, z: f32 },
-    B(f32, f32, f32),
-    C,
-}
-
 fn setup(mut commands: Commands) {
-    commands.spawn(EnumComponent::A {
-        x: 1.0,
-        y: 2.0,
-        z: 3.0,
-    });
-
-    commands.spawn(EnumComponent::B(4.0, 5.0, 6.0));
-
-    commands.spawn(EnumComponent::C);
-
     commands
         .spawn((SpatialBundle::default(), Player))
         .with_children(|p| {
@@ -82,22 +65,21 @@ impl Pipeline for TypedPipeline {
 
     fn registry() -> SaveRegistry<Self::Components, Self::Resources> {
         SaveRegistry::new()
-            //.component::<Head>()
-            //.component::<Player>()
-            //.component::<GlobalTransform>()
-            //.component::<Transform>()
-            .component::<EnumComponent>()
-            //.reflect_component::<Parent>()
-            //.reflect_component::<Children>()
-            //.reflect_component::<InheritedVisibility>()
-            //.reflect_component::<ViewVisibility>()
-            //.reflect_component::<Visibility>()
+            .component::<Head>()
+            .component::<Player>()
+            .component::<GlobalTransform>()
+            .component::<Transform>()
+            .reflect_component::<Parent>()
+            .reflect_component::<Children>()
+            .reflect_component::<InheritedVisibility>()
+            .reflect_component::<ViewVisibility>()
+            .reflect_component::<Visibility>()
     }
 
     fn capture(world: &bevy::prelude::World) -> Snapshot<Self::Components, Self::Resources> {
         Self::registry()
             .builder(world)
-            .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>() || e.contains::<EnumComponent>())
+            .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
             .build()
     }
 
