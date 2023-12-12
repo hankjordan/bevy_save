@@ -1,9 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::{
-    ecs::entity::MapEntities,
-    prelude::*,
-};
+use bevy::prelude::*;
 use serde::Deserialize;
 
 use crate::{

@@ -7,6 +7,7 @@ use bevy::{
             EntityMapper,
             MapEntities,
         },
+        reflect::AppTypeRegistry,
         system::Resource,
         world::{
             EntityRef,
@@ -15,12 +16,11 @@ use bevy::{
         },
     },
     reflect::{
+        serde::ReflectValueSerializer,
         Enum,
         FromReflect,
-        FromType,
         Reflect,
-        ReflectSerialize,
-        TypePath,
+        TypeRegistry,
         VariantField,
     },
 };
@@ -43,7 +43,7 @@ pub(crate) trait Extractable {
 }
 
 pub trait ExtractComponent: Extractable {
-    fn extract(entity: &EntityRef) -> Self::Value;
+    fn extract(world: &World, entity: &EntityRef) -> Self::Value;
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut);
 }
 
@@ -70,19 +70,29 @@ pub trait ExtractMapEntities: Extractable {
 
 pub struct Dynamic<T>(PhantomData<T>);
 
+pub struct DynamicValue<T> {
+    value: Option<T>,
+    registry: AppTypeRegistry,
+}
+
 impl<T> Extractable for Dynamic<T> {
-    type Value = Option<T>;
+    type Value = DynamicValue<T>;
 }
 
 impl<T: Component + FromReflect> ExtractComponent for Dynamic<T> {
-    fn extract(entity: &EntityRef) -> Self::Value {
-        entity
+    fn extract(world: &World, entity: &EntityRef) -> Self::Value {
+        let value = entity
             .get::<T>()
-            .map(|c| T::take_from_reflect(c.clone_value()).unwrap())
+            .map(|c| T::take_from_reflect(c.clone_value()).unwrap());
+
+        DynamicValue {
+            value,
+            registry: world.resource::<AppTypeRegistry>().clone(),
+        }
     }
 
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
-        if let Some(value) = value {
+        if let Some(value) = &value.value {
             entity.insert(T::take_from_reflect(value.clone_value()).unwrap());
         }
     }
@@ -90,13 +100,18 @@ impl<T: Component + FromReflect> ExtractComponent for Dynamic<T> {
 
 impl<T: Resource + FromReflect> ExtractResource for Dynamic<T> {
     fn extract(world: &World) -> Self::Value {
-        world
+        let value = world
             .get_resource::<T>()
-            .map(|c| T::take_from_reflect(c.clone_value()).unwrap())
+            .map(|c| T::take_from_reflect(c.clone_value()).unwrap());
+
+        DynamicValue {
+            value,
+            registry: world.resource::<AppTypeRegistry>().clone(),
+        }
     }
 
     fn apply(value: &Self::Value, world: &mut World) {
-        if let Some(value) = value {
+        if let Some(value) = &value.value {
             world.insert_resource(T::take_from_reflect(value.clone_value()).unwrap());
         }
     }
@@ -107,54 +122,91 @@ impl<T: Reflect> ExtractSerialize for Dynamic<T> {
         value: &Self::Value,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        if let Some(value) = value {
-            seq.serialize_element(&ReflectSerializer(value.as_reflect()))?;
+        if let Some(data) = &value.value {
+            seq.serialize_element(&ReflectSerializer {
+                registry: &value.registry.read(),
+                value: data.as_reflect(),
+            })?;
+        } else {
+            seq.serialize_element(&None::<()>)?;
         }
 
         Ok(())
     }
 }
 
-struct ReflectSerializer<'a>(&'a dyn Reflect);
+struct ReflectSerializer<'a> {
+    value: &'a dyn Reflect,
+    registry: &'a TypeRegistry,
+}
 
 impl<'a> Serialize for ReflectSerializer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        match self.0.reflect_ref() {
+        match self.value.reflect_ref() {
             bevy::reflect::ReflectRef::Struct(value) => {
-                let mut ser = serializer.serialize_map(Some(value.field_len()))?;
+                if serializer.is_human_readable() || value.field_len() == 0 {
+                    let mut ser = serializer.serialize_map(Some(value.field_len()))?;
 
-                for (i, field) in value.iter_fields().enumerate() {
-                    ser.serialize_entry(value.name_at(i).unwrap(), &Self(field))?;
+                    for (i, field) in value.iter_fields().enumerate() {
+                        ser.serialize_entry(value.name_at(i).unwrap(), &Self {
+                            registry: self.registry,
+                            value: field,
+                        })?;
+                    }
+
+                    ser.end()
+                } else {
+                    let mut ser = serializer.serialize_seq(Some(value.field_len()))?;
+
+                    for field in value.iter_fields() {
+                        ser.serialize_element(&Self {
+                            registry: self.registry,
+                            value: field,
+                        })?;
+                    }
+
+                    ser.end()
                 }
-
-                ser.end()
             }
             bevy::reflect::ReflectRef::TupleStruct(tuple) => {
                 let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
 
                 for field in tuple.iter_fields() {
-                    ser.serialize_element(&Self(field))?;
+                    ser.serialize_element(&Self {
+                        registry: self.registry,
+                        value: field,
+                    })?;
                 }
 
                 ser.end()
             }
             bevy::reflect::ReflectRef::Tuple(tuple) => {
-                let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
+                if tuple.field_len() > 0 {
+                    let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
 
-                for field in tuple.iter_fields() {
-                    ser.serialize_element(&Self(field))?;
+                    for field in tuple.iter_fields() {
+                        ser.serialize_element(&Self {
+                            registry: self.registry,
+                            value: field,
+                        })?;
+                    }
+
+                    ser.end()
+                } else {
+                    serializer.serialize_unit()
                 }
-
-                ser.end()
             }
             bevy::reflect::ReflectRef::List(list) => {
                 let mut ser = serializer.serialize_seq(Some(list.len()))?;
 
                 for item in list.iter() {
-                    ser.serialize_element(&Self(item))?;
+                    ser.serialize_element(&Self {
+                        registry: self.registry,
+                        value: item,
+                    })?;
                 }
 
                 ser.end()
@@ -163,7 +215,10 @@ impl<'a> Serialize for ReflectSerializer<'a> {
                 let mut ser = serializer.serialize_seq(Some(array.len()))?;
 
                 for item in array.iter() {
-                    ser.serialize_element(&Self(item))?;
+                    ser.serialize_element(&Self {
+                        registry: self.registry,
+                        value: item,
+                    })?;
                 }
 
                 ser.end()
@@ -172,32 +227,59 @@ impl<'a> Serialize for ReflectSerializer<'a> {
                 let mut ser = serializer.serialize_map(Some(map.len()))?;
 
                 for (key, value) in map.iter() {
-                    ser.serialize_entry(&Self(key), &Self(value))?;
+                    ser.serialize_entry(
+                        &Self {
+                            registry: self.registry,
+                            value: key,
+                        },
+                        &Self {
+                            registry: self.registry,
+                            value,
+                        },
+                    )?;
                 }
 
                 ser.end()
             }
             bevy::reflect::ReflectRef::Enum(value) => {
-                struct Struct<'a>(&'a dyn Enum);
+                struct Struct<'a>(&'a dyn Enum, &'a TypeRegistry);
 
                 impl<'a> Serialize for Struct<'a> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
                         S: serde::Serializer,
                     {
-                        let mut ser = serializer.serialize_map(Some(self.0.field_len()))?;
+                        if serializer.is_human_readable() {
+                            let mut ser = serializer.serialize_map(Some(self.0.field_len()))?;
 
-                        for field in self.0.iter_fields() {
-                            if let VariantField::Struct(name, value) = field {
-                                ser.serialize_entry(name, &ReflectSerializer(value))?;
+                            for field in self.0.iter_fields() {
+                                if let VariantField::Struct(name, value) = field {
+                                    ser.serialize_entry(name, &ReflectSerializer {
+                                        registry: self.1,
+                                        value,
+                                    })?;
+                                }
                             }
-                        }
 
-                        ser.end()
+                            ser.end()
+                        } else {
+                            let mut ser = serializer.serialize_seq(Some(self.0.field_len()))?;
+
+                            for field in self.0.iter_fields() {
+                                if let VariantField::Struct(_, value) = field {
+                                    ser.serialize_element(&ReflectSerializer {
+                                        registry: self.1,
+                                        value,
+                                    })?;
+                                }
+                            }
+
+                            ser.end()
+                        }
                     }
                 }
 
-                struct Tuple<'a>(&'a dyn Enum);
+                struct Tuple<'a>(&'a dyn Enum, &'a TypeRegistry);
 
                 impl<'a> Serialize for Tuple<'a> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -208,7 +290,10 @@ impl<'a> Serialize for ReflectSerializer<'a> {
 
                         for field in self.0.iter_fields() {
                             if let VariantField::Tuple(value) = field {
-                                ser.serialize_element(&ReflectSerializer(value))?;
+                                ser.serialize_element(&ReflectSerializer {
+                                    registry: self.1,
+                                    value,
+                                })?;
                             }
                         }
 
@@ -218,13 +303,13 @@ impl<'a> Serialize for ReflectSerializer<'a> {
 
                 match value.variant_type() {
                     bevy::reflect::VariantType::Struct => {
-                        let mut ser = serializer.serialize_map(Some(2))?;
-                        ser.serialize_entry(value.variant_name(), &Struct(value))?;
+                        let mut ser = serializer.serialize_map(Some(1))?;
+                        ser.serialize_entry(value.variant_name(), &Struct(value, self.registry))?;
                         ser.end()
                     }
                     bevy::reflect::VariantType::Tuple => {
-                        let mut ser = serializer.serialize_map(Some(2))?;
-                        ser.serialize_entry(value.variant_name(), &Tuple(value))?;
+                        let mut ser = serializer.serialize_map(Some(1))?;
+                        ser.serialize_entry(value.variant_name(), &Tuple(value, self.registry))?;
                         ser.end()
                     }
                     bevy::reflect::VariantType::Unit => {
@@ -232,32 +317,11 @@ impl<'a> Serialize for ReflectSerializer<'a> {
                     }
                 }
             }
-            bevy::reflect::ReflectRef::Value(value) => {
-                // Primitive, attempt to serialize directly
-                match value
-                    .get_represented_type_info()
-                    .map(|t| t.type_path())
-                    .expect("Attempted to serialize a non-primitive type as a primitive type")
-                {
-                    "bool" => todo!(),
-                    "char" => todo!(),
-                    "f32" => todo!(),
-                    "f64" => todo!(),
-                    "i8" => todo!(),
-                    "i16" => todo!(),
-                    "i32" => todo!(),
-                    "i64" => todo!(),
-                    "i128" => todo!(),
-                    "isize" => todo!(),
-                    "u8" => todo!(),
-                    "u16" => todo!(),
-                    "u32" => todo!(),
-                    "u64" => todo!(),
-                    "u128" => todo!(),
-                    "usize" => todo!(),
-                    _ => unimplemented!(),
-                }
+            bevy::reflect::ReflectRef::Value(value) => ReflectValueSerializer {
+                value,
+                registry: self.registry,
             }
+            .serialize(serializer),
         }
     }
 }
@@ -283,7 +347,7 @@ impl<T> Extractable for Typed<T> {
 }
 
 impl<T: Component + Clone> ExtractComponent for Typed<T> {
-    fn extract(entity: &EntityRef) -> Self::Value {
+    fn extract(_: &World, entity: &EntityRef) -> Self::Value {
         entity.get::<T>().cloned()
     }
 
@@ -335,8 +399,8 @@ impl<E: Extractable> Extractable for Mapped<E> {
 }
 
 impl<E: ExtractComponent> ExtractComponent for Mapped<E> {
-    fn extract(entity: &EntityRef) -> Self::Value {
-        E::extract(entity)
+    fn extract(world: &World, entity: &EntityRef) -> Self::Value {
+        E::extract(world, entity)
     }
 
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
@@ -373,7 +437,7 @@ impl<E: ExtractDeserialize> ExtractDeserialize for Mapped<E> {
 
 impl<T: MapEntities> ExtractMapEntities for Mapped<Dynamic<T>> {
     fn map_entities(value: &mut Self::Value, entity_mapper: &mut EntityMapper) {
-        if let Some(value) = value {
+        if let Some(value) = &mut value.value {
             value.map_entities(entity_mapper);
         }
     }
@@ -392,7 +456,7 @@ impl Extractable for () {
 }
 
 impl ExtractComponent for () {
-    fn extract(_: &EntityRef) -> Self::Value {}
+    fn extract(_: &World, _: &EntityRef) -> Self::Value {}
     fn apply(_: &Self::Value, _: &mut EntityWorldMut) {}
 }
 
@@ -422,8 +486,8 @@ impl<T0: Extractable, T1: Extractable> Extractable for (T0, T1) {
 }
 
 impl<T0: ExtractComponent, T1: ExtractComponent> ExtractComponent for (T0, T1) {
-    fn extract(entity: &EntityRef) -> Self::Value {
-        (T0::extract(entity), T1::extract(entity))
+    fn extract(world: &World, entity: &EntityRef) -> Self::Value {
+        (T0::extract(world, entity), T1::extract(world, entity))
     }
 
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
