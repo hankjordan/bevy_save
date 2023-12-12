@@ -1,0 +1,4000 @@
+{
+  "entities": {
+    "3": [
+      null,
+      {},
+      [
+        -282.8427,
+        282.8427
+      ],
+      null,
+      null,
+      {
+        "translation": [
+          391.266,
+          -35.857857,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          30.0,
+          30.0,
+          0.0
+        ]
+      },
+      [
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        391.266,
+        -35.857857,
+        1.0
+      ],
+      {
+        "center": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      null,
+      "Inherited",
+      true,
+      false
+    ],
+    "2": [
+      {},
+      null,
+      null,
+      {},
+      null,
+      {
+        "translation": [
+          0.0,
+          -240.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          120.0,
+          20.0,
+          0.0
+        ]
+      },
+      [
+        120.0,
+        0.0,
+        0.0,
+        0.0,
+        20.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -240.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.3,
+            "green": 0.3,
+            "blue": 0.7,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "9": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "10": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "11": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "12": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "13": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "14": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "15": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "16": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          45.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        45.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "17": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "18": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "19": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "20": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "21": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "22": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "23": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "24": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          80.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        80.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "25": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "26": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "27": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "28": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "29": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "30": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "31": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "32": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          115.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        115.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "33": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "34": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "35": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "36": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "37": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "38": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "39": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "40": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        150.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "41": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "42": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "43": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "44": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "45": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "46": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "47": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "48": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          185.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        185.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "49": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "50": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "51": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "52": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "53": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "54": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "55": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "56": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          220.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        220.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "57": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -367.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -367.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "58": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -262.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -262.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "59": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -157.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -157.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "60": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          -52.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        -52.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "61": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          52.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        52.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "62": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          157.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        157.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "63": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          262.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        262.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ],
+    "64": [
+      null,
+      null,
+      null,
+      {},
+      {},
+      {
+        "translation": [
+          367.5,
+          255.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          100.0,
+          30.0,
+          1.0
+        ]
+      },
+      [
+        100.0,
+        0.0,
+        0.0,
+        0.0,
+        30.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        367.5,
+        255.0,
+        0.0
+      ],
+      {
+        "center": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "half_extents": {
+          "x": 0.5,
+          "y": 0.5,
+          "z": 0.0
+        }
+      },
+      {
+        "color": {
+          "Rgba": {
+            "red": 0.5,
+            "green": 0.5,
+            "blue": 1.0,
+            "alpha": 1.0
+          }
+        },
+        "flip_x": false,
+        "flip_y": false,
+        "custom_size": "None",
+        "rect": "None",
+        "anchor": "Center"
+      },
+      "Inherited",
+      true,
+      true
+    ]
+  },
+  "resources": [
+    {
+      "score": 0
+    }
+  ]
+}
