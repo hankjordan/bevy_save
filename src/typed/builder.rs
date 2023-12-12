@@ -99,7 +99,7 @@ where
         Snapshot {
             entities: Entities(
                 self.entities
-                    .map(|e| (e, Extracted(C::extract(self.world, &self.world.entity(e)))))
+                    .map(|e| (e, Extracted(C::extract(&self.world.entity(e)))))
                     .collect(),
             ),
             resources: Extracted(R::extract(self.world)),
