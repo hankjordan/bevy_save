@@ -1,19 +1,34 @@
 use std::marker::PhantomData;
 
-use bevy::ecs::{
-    component::Component,
-    entity::{
-        EntityMapper,
-        MapEntities,
+use bevy::{
+    ecs::{
+        component::Component,
+        entity::{
+            EntityMapper,
+            MapEntities,
+        },
+        system::Resource,
+        world::{
+            EntityRef,
+            EntityWorldMut,
+            World,
+        },
     },
-    system::Resource,
-    world::{
-        EntityRef,
-        EntityWorldMut,
-        World,
+    reflect::{
+        Enum,
+        FromReflect,
+        FromType,
+        Reflect,
+        ReflectSerialize,
+        TypePath,
+        VariantField,
     },
 };
 use serde::{
+    ser::{
+        SerializeMap,
+        SerializeSeq,
+    },
     Deserialize,
     Serialize,
 };
@@ -27,91 +42,247 @@ pub(crate) trait Extractable {
     type Value;
 }
 
-pub(crate) trait ExtractComponent: Extractable {
+pub trait ExtractComponent: Extractable {
     fn extract(entity: &EntityRef) -> Self::Value;
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut);
 }
 
-pub(crate) trait ExtractResource: Extractable {
+pub trait ExtractResource: Extractable {
     fn extract(world: &World) -> Self::Value;
     fn apply(value: &Self::Value, world: &mut World);
 }
 
-pub(crate) trait ExtractSerialize: Extractable {
+pub trait ExtractSerialize: Extractable {
     fn serialize<S: serde::ser::SerializeSeq>(
         value: &Self::Value,
         seq: &mut S,
     ) -> Result<(), S::Error>;
 }
 
-pub(crate) trait ExtractDeserialize: Extractable {
+pub trait ExtractDeserialize: Extractable {
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(seq: &mut D)
         -> Result<Self::Value, D::Error>;
 }
 
-pub(crate) trait ExtractMapEntities: Extractable {
+pub trait ExtractMapEntities: Extractable {
     fn map_entities(value: &mut Self::Value, entity_mapper: &mut EntityMapper);
 }
 
-pub(crate) struct Extract<T>(PhantomData<T>);
+pub struct Dynamic<T>(PhantomData<T>);
 
-impl<T> Extractable for Extract<T> {
+impl<T> Extractable for Dynamic<T> {
     type Value = Option<T>;
 }
 
-impl<T: Component + Clone> ExtractComponent for Extract<T> {
+impl<T: Component + FromReflect> ExtractComponent for Dynamic<T> {
     fn extract(entity: &EntityRef) -> Self::Value {
-        entity.get::<T>().cloned()
+        entity
+            .get::<T>()
+            .map(|c| T::take_from_reflect(c.clone_value()).unwrap())
     }
 
     fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
         if let Some(value) = value {
-            entity.insert(value.clone());
+            entity.insert(T::take_from_reflect(value.clone_value()).unwrap());
         }
     }
 }
 
-impl<T: Resource + Clone> ExtractResource for Extract<T> {
+impl<T: Resource + FromReflect> ExtractResource for Dynamic<T> {
     fn extract(world: &World) -> Self::Value {
-        world.get_resource::<T>().cloned()
+        world
+            .get_resource::<T>()
+            .map(|c| T::take_from_reflect(c.clone_value()).unwrap())
     }
 
     fn apply(value: &Self::Value, world: &mut World) {
         if let Some(value) = value {
-            world.insert_resource(value.clone());
+            world.insert_resource(T::take_from_reflect(value.clone_value()).unwrap());
         }
     }
 }
 
-impl<T: Serialize> ExtractSerialize for Extract<T> {
+impl<T: Reflect> ExtractSerialize for Dynamic<T> {
     fn serialize<S: serde::ser::SerializeSeq>(
         value: &Self::Value,
         seq: &mut S,
     ) -> Result<(), S::Error> {
-        seq.serialize_element(&value.as_ref().map(UnitSer::new))
+        if let Some(value) = value {
+            seq.serialize_element(&ReflectSerializer(value.as_reflect()))?;
+        }
+
+        Ok(())
     }
 }
 
-impl<T: for<'de> Deserialize<'de>> ExtractDeserialize for Extract<T> {
+struct ReflectSerializer<'a>(&'a dyn Reflect);
+
+impl<'a> Serialize for ReflectSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.0.reflect_ref() {
+            bevy::reflect::ReflectRef::Struct(value) => {
+                let mut ser = serializer.serialize_map(Some(value.field_len()))?;
+
+                for (i, field) in value.iter_fields().enumerate() {
+                    ser.serialize_entry(value.name_at(i).unwrap(), &Self(field))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::TupleStruct(tuple) => {
+                let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
+
+                for field in tuple.iter_fields() {
+                    ser.serialize_element(&Self(field))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::Tuple(tuple) => {
+                let mut ser = serializer.serialize_seq(Some(tuple.field_len()))?;
+
+                for field in tuple.iter_fields() {
+                    ser.serialize_element(&Self(field))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::List(list) => {
+                let mut ser = serializer.serialize_seq(Some(list.len()))?;
+
+                for item in list.iter() {
+                    ser.serialize_element(&Self(item))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::Array(array) => {
+                let mut ser = serializer.serialize_seq(Some(array.len()))?;
+
+                for item in array.iter() {
+                    ser.serialize_element(&Self(item))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::Map(map) => {
+                let mut ser = serializer.serialize_map(Some(map.len()))?;
+
+                for (key, value) in map.iter() {
+                    ser.serialize_entry(&Self(key), &Self(value))?;
+                }
+
+                ser.end()
+            }
+            bevy::reflect::ReflectRef::Enum(value) => {
+                struct Struct<'a>(&'a dyn Enum);
+
+                impl<'a> Serialize for Struct<'a> {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: serde::Serializer,
+                    {
+                        let mut ser = serializer.serialize_map(Some(self.0.field_len()))?;
+
+                        for field in self.0.iter_fields() {
+                            if let VariantField::Struct(name, value) = field {
+                                ser.serialize_entry(name, &ReflectSerializer(value))?;
+                            }
+                        }
+
+                        ser.end()
+                    }
+                }
+
+                struct Tuple<'a>(&'a dyn Enum);
+
+                impl<'a> Serialize for Tuple<'a> {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: serde::Serializer,
+                    {
+                        let mut ser = serializer.serialize_seq(Some(self.0.field_len()))?;
+
+                        for field in self.0.iter_fields() {
+                            if let VariantField::Tuple(value) = field {
+                                ser.serialize_element(&ReflectSerializer(value))?;
+                            }
+                        }
+
+                        ser.end()
+                    }
+                }
+
+                match value.variant_type() {
+                    bevy::reflect::VariantType::Struct => {
+                        let mut ser = serializer.serialize_map(Some(2))?;
+                        ser.serialize_entry(value.variant_name(), &Struct(value))?;
+                        ser.end()
+                    }
+                    bevy::reflect::VariantType::Tuple => {
+                        let mut ser = serializer.serialize_map(Some(2))?;
+                        ser.serialize_entry(value.variant_name(), &Tuple(value))?;
+                        ser.end()
+                    }
+                    bevy::reflect::VariantType::Unit => {
+                        serializer.serialize_str(value.variant_name())
+                    }
+                }
+            }
+            bevy::reflect::ReflectRef::Value(value) => {
+                // Primitive, attempt to serialize directly
+                match value
+                    .get_represented_type_info()
+                    .map(|t| t.type_path())
+                    .expect("Attempted to serialize a non-primitive type as a primitive type")
+                {
+                    "bool" => todo!(),
+                    "char" => todo!(),
+                    "f32" => todo!(),
+                    "f64" => todo!(),
+                    "i8" => todo!(),
+                    "i16" => todo!(),
+                    "i32" => todo!(),
+                    "i64" => todo!(),
+                    "i128" => todo!(),
+                    "isize" => todo!(),
+                    "u8" => todo!(),
+                    "u16" => todo!(),
+                    "u32" => todo!(),
+                    "u64" => todo!(),
+                    "u128" => todo!(),
+                    "usize" => todo!(),
+                    _ => unimplemented!(),
+                }
+            }
+        }
+    }
+}
+
+impl<T: Reflect> ExtractDeserialize for Dynamic<T> {
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
         seq: &mut D,
     ) -> Result<Self::Value, D::Error> {
-        seq.next_element::<Option<UnitDe<T>>>()
-            .map(|e| e.flatten().map(|e| e.value))
+        // seq.next_element::<Option<UnitDe<T>>>()
+        //     .map(|e| e.flatten().map(|e| e.value))
+        todo!()
     }
 }
 
-impl<T> ExtractMapEntities for Extract<T> {
+impl<T> ExtractMapEntities for Dynamic<T> {
     fn map_entities(_: &mut Self::Value, _: &mut EntityMapper) {}
 }
 
-pub(crate) struct ExtractMap<T>(PhantomData<T>);
+pub struct Typed<T>(PhantomData<T>);
 
-impl<T> Extractable for ExtractMap<T> {
+impl<T> Extractable for Typed<T> {
     type Value = Option<T>;
 }
 
-impl<T: Component + Clone> ExtractComponent for ExtractMap<T> {
+impl<T: Component + Clone> ExtractComponent for Typed<T> {
     fn extract(entity: &EntityRef) -> Self::Value {
         entity.get::<T>().cloned()
     }
@@ -123,7 +294,7 @@ impl<T: Component + Clone> ExtractComponent for ExtractMap<T> {
     }
 }
 
-impl<T: Resource + Clone> ExtractResource for ExtractMap<T> {
+impl<T: Resource + Clone> ExtractResource for Typed<T> {
     fn extract(world: &World) -> Self::Value {
         world.get_resource::<T>().cloned()
     }
@@ -135,7 +306,7 @@ impl<T: Resource + Clone> ExtractResource for ExtractMap<T> {
     }
 }
 
-impl<T: Serialize> ExtractSerialize for ExtractMap<T> {
+impl<T: Serialize> ExtractSerialize for Typed<T> {
     fn serialize<S: serde::ser::SerializeSeq>(
         value: &Self::Value,
         seq: &mut S,
@@ -144,7 +315,7 @@ impl<T: Serialize> ExtractSerialize for ExtractMap<T> {
     }
 }
 
-impl<T: for<'de> Deserialize<'de>> ExtractDeserialize for ExtractMap<T> {
+impl<T: for<'de> Deserialize<'de>> ExtractDeserialize for Typed<T> {
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
         seq: &mut D,
     ) -> Result<Self::Value, D::Error> {
@@ -153,7 +324,62 @@ impl<T: for<'de> Deserialize<'de>> ExtractDeserialize for ExtractMap<T> {
     }
 }
 
-impl<T: MapEntities> ExtractMapEntities for ExtractMap<T> {
+impl<T> ExtractMapEntities for Typed<T> {
+    fn map_entities(_: &mut Self::Value, _: &mut EntityMapper) {}
+}
+
+pub struct Mapped<E>(PhantomData<E>);
+
+impl<E: Extractable> Extractable for Mapped<E> {
+    type Value = E::Value;
+}
+
+impl<E: ExtractComponent> ExtractComponent for Mapped<E> {
+    fn extract(entity: &EntityRef) -> Self::Value {
+        E::extract(entity)
+    }
+
+    fn apply(value: &Self::Value, entity: &mut EntityWorldMut) {
+        E::apply(value, entity);
+    }
+}
+
+impl<E: ExtractResource> ExtractResource for Mapped<E> {
+    fn extract(world: &World) -> Self::Value {
+        E::extract(world)
+    }
+
+    fn apply(value: &Self::Value, world: &mut World) {
+        E::apply(value, world);
+    }
+}
+
+impl<E: ExtractSerialize> ExtractSerialize for Mapped<E> {
+    fn serialize<S: serde::ser::SerializeSeq>(
+        value: &Self::Value,
+        seq: &mut S,
+    ) -> Result<(), S::Error> {
+        E::serialize(value, seq)
+    }
+}
+
+impl<E: ExtractDeserialize> ExtractDeserialize for Mapped<E> {
+    fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
+        seq: &mut D,
+    ) -> Result<Self::Value, D::Error> {
+        E::deserialize(seq)
+    }
+}
+
+impl<T: MapEntities> ExtractMapEntities for Mapped<Dynamic<T>> {
+    fn map_entities(value: &mut Self::Value, entity_mapper: &mut EntityMapper) {
+        if let Some(value) = value {
+            value.map_entities(entity_mapper);
+        }
+    }
+}
+
+impl<T: MapEntities> ExtractMapEntities for Mapped<Typed<T>> {
     fn map_entities(value: &mut Self::Value, entity_mapper: &mut EntityMapper) {
         if let Some(value) = value {
             value.map_entities(entity_mapper);

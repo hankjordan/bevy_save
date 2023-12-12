@@ -12,6 +12,9 @@ pub trait AppSaveableExt {
     /// Initialize a [`DynamicPipeline`], allowing it to be used with [`WorldSaveableExt`] methods.
     fn init_pipeline<P: DynamicPipeline>(&mut self) -> &mut Self;
 
+    /// Initialize a [`Pipeline`], allowing it to be used with [`WorldSaveableExt`] methods.
+    fn init_typed_pipeline<P: Pipeline>(&mut self) -> &mut Self;
+
     /// Set a type to allow rollback - it will be included in rollback and affected by save/load.
     fn allow_rollback<T: Any>(&mut self) -> &mut Self;
 
@@ -21,6 +24,11 @@ pub trait AppSaveableExt {
 
 impl AppSaveableExt for App {
     fn init_pipeline<P: DynamicPipeline>(&mut self) -> &mut Self {
+        P::build(self);
+        self
+    }
+    
+    fn init_typed_pipeline<P: Pipeline>(&mut self) -> &mut Self {
         P::build(self);
         self
     }

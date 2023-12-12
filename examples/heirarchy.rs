@@ -22,7 +22,7 @@ fn setup(mut commands: Commands) {
     // ENTER     - Save
     // R         - Reset, delete all player entities
     // BACKSPACE - Load
-    // P         - Print head info <== head will have an invalid parent
+    // P         - Print head info
     println!("Controls:");
     println!("P: to print debug info on `Head` entities and to validate their parent exists");
     println!("R: to recursively delete all `Player` entities");

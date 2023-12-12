@@ -6,7 +6,9 @@ use crate::{
         DynamicSnapshotDeserializer,
         DynamicSnapshotSerializer,
     },
+    pipeline::Pipeline,
     prelude::*,
+    typed::extract::ExtractSerialize,
     Error,
 };
 
@@ -20,6 +22,12 @@ pub trait WorldSaveableExt {
     /// # Errors
     /// - See [`Error`]
     fn save<P: DynamicPipeline>(&self, pipeline: P) -> Result<(), Error>;
+
+    fn save_typed<P>(&self, pipeline: P) -> Result<(), Error>
+    where
+        P: Pipeline,
+        P::Components: ExtractSerialize,
+        P::Resources: ExtractSerialize;
 
     /// Loads the game state with the given [`DynamicPipeline`].
     ///
@@ -42,6 +50,19 @@ impl WorldSaveableExt for World {
         let ser = DynamicSnapshotSerializer::new(&snapshot, registry);
 
         backend.save::<P::Format, _>(pipeline.key(), &ser)
+    }
+
+    fn save_typed<P>(&self, pipeline: P) -> Result<(), Error>
+    where
+        P: Pipeline,
+        P::Components: ExtractSerialize,
+        P::Resources: ExtractSerialize,
+    {
+        let backend = self.resource::<P::Backend>();
+
+        let snapshot = pipeline.capture_seed(self);
+
+        backend.save::<P::Format, _>(pipeline.key(), &snapshot)
     }
 
     fn load<P: DynamicPipeline>(&mut self, pipeline: P) -> Result<(), Error> {

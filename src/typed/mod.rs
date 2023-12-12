@@ -1,6 +1,6 @@
 mod applier;
 mod builder;
-mod extract;
+pub mod extract;
 mod registry;
 mod serde;
 mod snapshot;

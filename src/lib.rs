@@ -8,6 +8,7 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::too_many_lines)]
+#![allow(clippy::ignored_unit_patterns)]
 #![doc = include_str!("../README.md")]
 // Document optional features
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
@@ -61,6 +62,7 @@ pub mod prelude {
         pipeline::{
             DebugDynamicPipeline,
             DynamicPipeline,
+            Pipeline,
         },
         plugins::SavePlugins,
         typed::{

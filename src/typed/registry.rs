@@ -9,10 +9,10 @@ use serde::Deserialize;
 use crate::{
     prelude::*,
     typed::extract::{
-        Extract,
+        Dynamic,
         ExtractDeserialize,
-        ExtractMap,
         Extractable,
+        Typed,
     },
 };
 
@@ -40,20 +40,18 @@ impl<C, R> SaveRegistry<C, R> {
     /// Register a component to be extracted when building or included when deserializing snapshots.
     ///
     /// You must extract entities from the world in order to actually get any output.
-    pub fn register_component<T: Component + Clone>(self) -> SaveRegistry<(C, Extract<T>), R> {
+    pub fn component<T: Component + Clone>(self) -> SaveRegistry<(C, Typed<T>), R> {
         SaveRegistry {
             _marker: PhantomData,
         }
     }
 
-    /// Register a component to be extracted when building or included when deserializing snapshots.
+    /// Register a reflect-enabled component to be extracted when building or included when deserializing snapshots.
+    ///
+    /// Prefer to use the typed method where available.
     ///
     /// You must extract entities from the world in order to actually get any output.
-    ///
-    /// Runs the [`MapEntities`] implementation when applied.
-    pub fn register_component_map<T: Component + Clone + MapEntities>(
-        self,
-    ) -> SaveRegistry<(C, ExtractMap<T>), R> {
+    pub fn reflect_component<T: Component + FromReflect>(self) -> SaveRegistry<(C, Dynamic<T>), R> {
         SaveRegistry {
             _marker: PhantomData,
         }
@@ -62,7 +60,7 @@ impl<C, R> SaveRegistry<C, R> {
     /// Register a resource to be extracted when building or included when deserializing snapshots.
     ///
     /// The resource is automatically extracted when the builder is built into a [`Snapshot`].
-    pub fn register_resource<T: Resource + Clone>(self) -> SaveRegistry<C, (R, Extract<T>)> {
+    pub fn resource<T: Resource + Clone>(self) -> SaveRegistry<C, (R, Typed<T>)> {
         SaveRegistry {
             _marker: PhantomData,
         }
@@ -70,12 +68,10 @@ impl<C, R> SaveRegistry<C, R> {
 
     /// Register a resource to be extracted when building or included when deserializing snapshots.
     ///
-    /// The resource is automatically extracted when the builder is built into a [`Snapshot`].
+    /// Prefer to use the typed method where available.
     ///
-    /// Runs the [`MapEntities`] implementation when applied.
-    pub fn register_resource_map<T: Resource + Clone + MapEntities>(
-        self,
-    ) -> SaveRegistry<C, (R, ExtractMap<T>)> {
+    /// The resource is automatically extracted when the builder is built into a [`Snapshot`].
+    pub fn reflect_resource<T: Resource + FromReflect>(self) -> SaveRegistry<C, (R, Dynamic<T>)> {
         SaveRegistry {
             _marker: PhantomData,
         }

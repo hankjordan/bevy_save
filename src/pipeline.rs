@@ -2,6 +2,10 @@ use bevy::prelude::*;
 
 use crate::{
     prelude::*,
+    typed::{
+        extract::Extractable,
+        SaveRegistry,
+    },
     Error,
 };
 
@@ -63,6 +67,45 @@ pub trait DynamicPipeline {
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     fn apply_seed(&self, world: &mut World, snapshot: &DynamicSnapshot) -> Result<(), Error> {
         Self::apply(world, snapshot)
+    }
+}
+
+pub trait Pipeline {
+    /// The interface between the saver / loader and data storage.
+    type Backend: for<'a> Backend<Self::Key<'a>> + Resource + Default;
+    /// The format used for serializing and deserializing data.
+    type Format: Format;
+
+    /// Used to uniquely identify each saved [`Snapshot`].
+    type Key<'a>;
+
+    type Components: Extractable;
+    type Resources: Extractable;
+
+    /// Called when the pipeline is initialized with [`App::init_pipeline`](`AppSaveableExt::init_pipeline`).
+    fn build(app: &mut App) {
+        app.world.insert_resource(Self::Backend::default());
+    }
+
+    /// Retrieve the unique identifier for the [`Snapshot`] being processed by the [`Pipeline`].
+    fn key(&self) -> Self::Key<'_>;
+
+    fn registry() -> SaveRegistry<Self::Components, Self::Resources>;
+
+    fn capture(world: &World) -> Snapshot<Self::Components, Self::Resources>;
+
+    fn capture_seed(&self, world: &World) -> Snapshot<Self::Components, Self::Resources> {
+        Self::capture(world)
+    }
+
+    fn apply(world: &mut World, snapshot: &Snapshot<Self::Components, Self::Resources>);
+
+    fn apply_seed(
+        &self,
+        world: &mut World,
+        snapshot: &Snapshot<Self::Components, Self::Resources>,
+    ) {
+        Self::apply(world, snapshot);
     }
 }
 
