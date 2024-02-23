@@ -19,11 +19,14 @@ use bevy::{
         Enum,
         FromReflect,
         Reflect,
+        StructInfo,
+        TypeInfo,
         TypeRegistry,
         VariantField,
     },
 };
 use serde::{
+    de::Visitor,
     ser::{
         SerializeMap,
         SerializeSeq,
@@ -276,7 +279,61 @@ impl<'a> Serialize for ReflectSerializer<'a> {
     }
 }
 
-impl<T: Reflect> ExtractDeserialize for Dynamic<T> {
+struct ReflectDeserializer<T>(T);
+
+impl<'de, T: bevy::reflect::Typed> Deserialize<'de> for ReflectDeserializer<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let info = T::type_info();
+
+        match info {
+            TypeInfo::Struct(ty) => {
+                struct StructVisitor<'a, T> {
+                    info: &'a StructInfo,
+                    _marker: PhantomData<T>,
+                }
+
+                impl<'a, 'de, T> Visitor<'de> for StructVisitor<'a, T> {
+                    type Value = ReflectDeserializer<T>;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("a struct")
+                    }
+
+                    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::SeqAccess<'de>,
+                    {
+                        todo!()
+                    }
+
+                    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::MapAccess<'de>,
+                    {
+                        todo!()
+                    }
+                }
+
+                deserializer.deserialize_struct(info.type_path(), ty.field_names(), StructVisitor {
+                    info: ty,
+                    _marker: PhantomData,
+                })
+            }
+            TypeInfo::TupleStruct(_) => todo!(),
+            TypeInfo::Tuple(_) => todo!(),
+            TypeInfo::List(_) => todo!(),
+            TypeInfo::Array(_) => todo!(),
+            TypeInfo::Map(_) => todo!(),
+            TypeInfo::Enum(_) => todo!(),
+            TypeInfo::Value(_) => todo!(),
+        }
+    }
+}
+
+impl<T: bevy::reflect::Typed> ExtractDeserialize for Dynamic<T> {
     fn deserialize<'de, D: serde::de::SeqAccess<'de>>(
         seq: &mut D,
     ) -> Result<Self::Value, D::Error> {
