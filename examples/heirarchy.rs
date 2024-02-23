@@ -57,15 +57,15 @@ impl Pipeline for HeirarchyPipeline {
 }
 
 fn interact(world: &mut World) {
-    let keys = world.resource::<Input<KeyCode>>();
+    let keys = world.resource::<ButtonInput<KeyCode>>();
 
-    if keys.just_released(KeyCode::Return) {
+    if keys.just_released(KeyCode::Enter) {
         info!("Save");
         world.save(HeirarchyPipeline).expect("Failed to save");
-    } else if keys.just_released(KeyCode::Back) {
+    } else if keys.just_released(KeyCode::Backspace) {
         info!("Load");
         world.load(HeirarchyPipeline).expect("Failed to load");
-    } else if keys.just_pressed(KeyCode::E) {
+    } else if keys.just_pressed(KeyCode::KeyE) {
         info!("Info");
         for entity in world.iter_entities() {
             info!("Entity: {:?}", entity.id());
@@ -79,13 +79,13 @@ fn interact(world: &mut World) {
 }
 
 fn handle_keys(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     head_query: Query<(Entity, &Parent)>,
     despawn_query: Query<Entity, With<Player>>,
     mut commands: Commands,
 ) {
     // Print head debug info, check that all heads have a valid parent
-    if keys.just_released(KeyCode::P) {
+    if keys.just_released(KeyCode::KeyP) {
         println!("{} Heads", head_query.iter().len());
         for (entity, parent) in &head_query {
             println!("  Head {:?} has parent: {:?}", entity, parent.get());
@@ -98,7 +98,7 @@ fn handle_keys(
     }
 
     // Reset, delete all entities
-    if keys.just_released(KeyCode::R) {
+    if keys.just_released(KeyCode::KeyR) {
         for entity in &despawn_query {
             commands.entity(entity).despawn_recursive();
         }

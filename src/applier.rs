@@ -5,7 +5,8 @@ use std::{
 
 use bevy::{
     ecs::{
-        query::ReadOnlyWorldQuery,
+        entity::EntityHashMap,
+        query::QueryFilter,
         reflect::ReflectMapEntities,
         system::{
             CommandQueue,
@@ -56,7 +57,7 @@ pub type BoxedHook = Box<dyn Hook>;
 pub struct SnapshotApplier<'a, F = ()> {
     snapshot: &'a Snapshot,
     world: &'a mut World,
-    entity_map: Option<&'a mut HashMap<Entity, Entity>>,
+    entity_map: Option<&'a mut EntityHashMap<Entity>>,
     type_registry: Option<&'a AppTypeRegistry>,
     despawn: Option<PhantomData<F>>,
     hook: Option<BoxedHook>,
@@ -78,7 +79,7 @@ impl<'a> SnapshotApplier<'a> {
 
 impl<'a, A> SnapshotApplier<'a, A> {
     /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
-    pub fn entity_map(mut self, entity_map: &'a mut HashMap<Entity, Entity>) -> Self {
+    pub fn entity_map(mut self, entity_map: &'a mut EntityHashMap<Entity>) -> Self {
         self.entity_map = Some(entity_map);
         self
     }
@@ -92,7 +93,7 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 
     /// Change how the snapshot affects existing entities while applying.
-    pub fn despawn<F: ReadOnlyWorldQuery + 'static>(self) -> SnapshotApplier<'a, F> {
+    pub fn despawn<F: QueryFilter + 'static>(self) -> SnapshotApplier<'a, F> {
         SnapshotApplier {
             snapshot: self.snapshot,
             world: self.world,
@@ -110,7 +111,7 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 }
 
-impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
+impl<'a, F: QueryFilter> SnapshotApplier<'a, F> {
     /// Apply the [`Snapshot`] to the [`World`].
     ///
     /// # Panics
@@ -127,7 +128,7 @@ impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to apply.")
             .read();
 
-        let mut default_entity_map = HashMap::new();
+        let mut default_entity_map = EntityHashMap::default();
 
         let entity_map = self.entity_map.unwrap_or(&mut default_entity_map);
 
@@ -213,7 +214,7 @@ impl<'a, F: ReadOnlyWorldQuery> SnapshotApplier<'a, F> {
                 // If the entity already has the given component attached,
                 // just apply the (possibly) new value, otherwise add the
                 // component to the entity.
-                reflect_component.insert(entity_mut, &**component);
+                reflect_component.insert(entity_mut, &**component, &type_registry);
             }
         }
 

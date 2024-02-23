@@ -6,12 +6,14 @@ use bevy::{
         SystemParam,
         SystemState,
     },
+    math::bounding::{
+        Aabb2d,
+        BoundingCircle,
+        BoundingVolume,
+        IntersectsVolume,
+    },
     prelude::*,
     sprite::{
-        collide_aabb::{
-            collide,
-            Collision,
-        },
         MaterialMesh2dBundle,
         Mesh2dHandle,
     },
@@ -19,9 +21,6 @@ use bevy::{
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
-
-// Defines the amount of time that should elapse between each physics step.
-const TIME_STEP: f32 = 1.0 / 60.0;
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -34,6 +33,7 @@ const PADDLE_PADDING: f32 = 10.0;
 // We set the z-value of the ball to 1 so it renders on top in the case of overlapping sprites.
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
 const BALL_SIZE: Vec3 = Vec3::new(30.0, 30.0, 0.0);
+const BALL_DIAMETER: f32 = 30.;
 const BALL_SPEED: f32 = 400.0;
 const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
 
@@ -112,7 +112,7 @@ fn main() {
         .register_type::<Collider>()
         .register_type::<Brick>()
         .register_type::<Scoreboard>()
-        .register_type::<ScoreboardText>()
+        .register_type::<ScoreboardUi>()
         .register_type::<Toast>()
 
         // Setup
@@ -231,7 +231,7 @@ struct Scoreboard {
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
-struct ScoreboardText;
+struct ScoreboardUi;
 
 // Add the game's entities to our world
 fn setup(
@@ -270,7 +270,7 @@ fn setup(
     // Ball
     commands.spawn((
         MaterialMesh2dBundle {
-            mesh: meshes.add(shape::Circle::default().into()).into(),
+            mesh: meshes.add(Circle::default()).into(),
             material: materials.add(ColorMaterial::from(BALL_COLOR)),
             transform: Transform::from_translation(BALL_STARTING_POSITION).with_scale(BALL_SIZE),
             ..default()
@@ -299,7 +299,7 @@ fn setup(
             left: SCOREBOARD_TEXT_PADDING,
             ..default()
         }),
-        ScoreboardText,
+        ScoreboardUi,
     ));
 
     // Walls
@@ -364,22 +364,24 @@ fn setup(
 }
 
 fn move_paddle(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Paddle>>,
+    time: Res<Time>,
 ) {
     let mut paddle_transform = query.single_mut();
     let mut direction = 0.0;
 
-    if keyboard_input.pressed(KeyCode::Left) {
+    if keyboard_input.pressed(KeyCode::ArrowLeft) {
         direction -= 1.0;
     }
 
-    if keyboard_input.pressed(KeyCode::Right) {
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
         direction += 1.0;
     }
 
     // Calculate the new horizontal paddle position based on player input
-    let new_paddle_position = paddle_transform.translation.x + direction * PADDLE_SPEED * TIME_STEP;
+    let new_paddle_position =
+        paddle_transform.translation.x + direction * PADDLE_SPEED * time.delta_seconds();
 
     // Update the paddle position,
     // making sure it doesn't cause the paddle to leave the arena
@@ -389,17 +391,14 @@ fn move_paddle(
     paddle_transform.translation.x = new_paddle_position.clamp(left_bound, right_bound);
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>) {
+fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
     for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * TIME_STEP;
-        transform.translation.y += velocity.y * TIME_STEP;
+        transform.translation.x += velocity.x * time.delta_seconds();
+        transform.translation.y += velocity.y * time.delta_seconds();
     }
 }
 
-fn update_scoreboard(
-    scoreboard: Res<Scoreboard>,
-    mut query: Query<&mut Text, With<ScoreboardText>>,
-) {
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text, With<ScoreboardUi>>) {
     let mut text = query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
 }
@@ -412,16 +411,17 @@ fn check_for_collisions(
     mut collision_events: EventWriter<CollisionEvent>,
 ) {
     let (mut ball_velocity, ball_transform) = ball_query.single_mut();
-    let ball_size = ball_transform.scale.truncate();
 
     // check collision with walls
     for (collider_entity, transform, maybe_brick) in &collider_query {
-        let collision = collide(
-            ball_transform.translation,
-            ball_size,
-            transform.translation,
-            transform.scale.truncate(),
+        let collision = collide_with_side(
+            BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
+            Aabb2d::new(
+                transform.translation.truncate(),
+                transform.scale.truncate() / 2.,
+            ),
         );
+
         if let Some(collision) = collision {
             // Sends a collision event so that other systems can react to the collision
             collision_events.send_default();
@@ -443,7 +443,6 @@ fn check_for_collisions(
                 Collision::Right => reflect_x = ball_velocity.x < 0.0,
                 Collision::Top => reflect_y = ball_velocity.y < 0.0,
                 Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
-                Collision::Inside => { /* do nothing */ }
             }
 
             // reflect velocity on the x-axis if we hit something on the x-axis
@@ -474,6 +473,38 @@ fn play_collision_sound(
             settings: PlaybackSettings::DESPAWN,
         });
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+enum Collision {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+// Returns `Some` if `ball` collides with `wall`. The returned `Collision` is the
+// side of `wall` that `ball` hit.
+fn collide_with_side(ball: BoundingCircle, wall: Aabb2d) -> Option<Collision> {
+    if !ball.intersects(&wall) {
+        return None;
+    }
+
+    let closest = wall.closest_point(ball.center());
+    let offset = ball.center() - closest;
+    let side = if offset.x.abs() > offset.y.abs() {
+        if offset.x < 0. {
+            Collision::Left
+        } else {
+            Collision::Right
+        }
+    } else if offset.y > 0. {
+        Collision::Top
+    } else {
+        Collision::Bottom
+    };
+
+    Some(side)
 }
 
 fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -604,7 +635,7 @@ impl Pipeline for BreakoutPipeline {
 
     fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = Mesh2dHandle(meshes.add(shape::Circle::default().into()));
+        let mesh = Mesh2dHandle(meshes.add(Circle::default()));
         let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
         let material = materials.add(ColorMaterial::from(BALL_COLOR));
 
@@ -621,25 +652,25 @@ impl Pipeline for BreakoutPipeline {
 }
 
 fn handle_save_input(world: &mut World) {
-    let keys = world.resource::<Input<KeyCode>>();
+    let keys = world.resource::<ButtonInput<KeyCode>>();
 
     let mut text = None;
 
     if keys.just_released(KeyCode::Space) {
         world.checkpoint::<BreakoutPipeline>();
         text = Some("Checkpoint");
-    } else if keys.just_released(KeyCode::Return) {
+    } else if keys.just_released(KeyCode::Enter) {
         world.save(BreakoutPipeline).expect("Failed to save");
         text = Some("Save");
-    } else if keys.just_released(KeyCode::Back) {
+    } else if keys.just_released(KeyCode::Backspace) {
         world.load(BreakoutPipeline).expect("Failed to load");
         text = Some("Load");
-    } else if keys.just_released(KeyCode::A) {
+    } else if keys.just_released(KeyCode::KeyA) {
         world
             .rollback::<BreakoutPipeline>(1)
             .expect("Failed to rollback");
         text = Some("Rollback");
-    } else if keys.just_released(KeyCode::D) {
+    } else if keys.just_released(KeyCode::KeyD) {
         world
             .rollback::<BreakoutPipeline>(-1)
             .expect("Failed to rollforward");

@@ -1,8 +1,7 @@
 //! An example of how to implement your own `Pipeline`.
 
 use bevy::{
-    prelude::*,
-    utils::HashMap,
+    ecs::entity::EntityHashMap, prelude::*, utils::HashMap
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
@@ -60,7 +59,7 @@ fn setup_world(mut commands: Commands) {
     commands.insert_resource(map);
 }
 
-fn display_world(keys: Res<Input<KeyCode>>, map: Res<TileMap>, tiles: Query<&Tile>) {
+fn display_world(keys: Res<ButtonInput<KeyCode>>, map: Res<TileMap>, tiles: Query<&Tile>) {
     if keys.just_released(KeyCode::Space) {
         println!("Count: {:?}", tiles.iter().len());
 
@@ -73,11 +72,11 @@ fn display_world(keys: Res<Input<KeyCode>>, map: Res<TileMap>, tiles: Query<&Til
 
 fn handle_despawn_input(
     mut commands: Commands,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
     mut map: ResMut<TileMap>,
     tiles: Query<(Entity, &TilePosition), With<Tile>>,
 ) {
-    if input.just_released(KeyCode::D) {
+    if input.just_released(KeyCode::KeyD) {
         for (entity, position) in &tiles {
             map.map.remove(position).unwrap();
             commands.entity(entity).despawn();
@@ -86,18 +85,18 @@ fn handle_despawn_input(
 }
 
 fn handle_save_input(world: &mut World) {
-    let keys = world.resource::<Input<KeyCode>>();
+    let keys = world.resource::<ButtonInput<KeyCode>>();
 
     // Using DebugPipeline as the argument for save/load, we can save locally with JSON.
 
-    if keys.just_released(KeyCode::Return) {
+    if keys.just_released(KeyCode::Enter) {
         // Save every tile individually.
         for position in world.resource::<TileMap>().map.keys() {
             world
                 .save(TilePipeline::new(*position))
                 .expect("Failed to save");
         }
-    } else if keys.just_released(KeyCode::Back) {
+    } else if keys.just_released(KeyCode::Backspace) {
         // For ease of implementation, let's just load the origin.
         world
             .load(TilePipeline::new(TilePosition { x: 0, y: 0 }))
@@ -144,7 +143,7 @@ impl Pipeline for TilePipeline {
     }
 
     fn apply_seed(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
-        let mut mapper = HashMap::new();
+        let mut mapper = EntityHashMap::default();
 
         world.resource_scope(|world, mut tiles: Mut<TileMap>| {
             for saved in &snapshot.entities {
