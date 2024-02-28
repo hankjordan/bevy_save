@@ -220,6 +220,7 @@ NOTE: We do not track Bevy main.
 
 | Bevy Version | Crate Version                     |
 | ------------ | --------------------------------- |
+| `0.13`       | `0.14`                            |
 | `0.12`       | `0.10`, `0.11`, `0.12`, `0.13`    |
 | `0.11`       | `0.9`                             |
 | `0.10`       | `0.4`, `0.5`, `0.6`, `0.7`, `0.8` |
@@ -246,13 +247,13 @@ NOTE: We do not track Bevy main.
 —
 :hammer_and_wrench: = In progress
 
-[img_bevy]: https://img.shields.io/badge/Bevy-0.12-blue
+[img_bevy]: https://img.shields.io/badge/Bevy-0.13-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [img_downloads]: https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
-[bevy]: https://crates.io/crates/bevy/0.12.1
+[bevy]: https://crates.io/crates/bevy/0.13.0
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save
 [license]: https://github.com/hankjordan/bevy_save#license
