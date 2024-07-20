@@ -4,41 +4,21 @@ use bevy::{
     ecs::entity::Entity,
     reflect::{
         serde::{
-            TypeRegistrationDeserializer,
-            TypedReflectDeserializer,
+            ReflectDeserializer, TypeRegistrationDeserializer, TypedReflectDeserializer,
             TypedReflectSerializer,
-            UntypedReflectDeserializer,
         },
-        Reflect,
-        TypeRegistry,
-        TypeRegistryArc,
+        Reflect, TypeRegistry, TypeRegistryArc,
     },
     scene::DynamicEntity,
     utils::HashSet,
 };
 use serde::{
-    de::{
-        DeserializeSeed,
-        Error,
-        MapAccess,
-        SeqAccess,
-        Visitor,
-    },
-    ser::{
-        SerializeMap,
-        SerializeSeq,
-        SerializeStruct,
-    },
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
+    de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor},
+    ser::{SerializeMap, SerializeSeq, SerializeStruct},
+    Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{
-    Rollbacks,
-    Snapshot,
-};
+use crate::{Rollbacks, Snapshot};
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
 const SNAPSHOT_ENTITIES: &str = "entities";
@@ -80,20 +60,29 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
                 2
             },
         )?;
-        state.serialize_field(SNAPSHOT_ENTITIES, &EntityMapSerializer {
-            entities: &self.snapshot.entities,
-            registry: self.registry,
-        })?;
-        state.serialize_field(SNAPSHOT_RESOURCES, &ReflectMapSerializer {
-            entries: &self.snapshot.resources,
-            registry: self.registry,
-        })?;
+        state.serialize_field(
+            SNAPSHOT_ENTITIES,
+            &EntityMapSerializer {
+                entities: &self.snapshot.entities,
+                registry: self.registry,
+            },
+        )?;
+        state.serialize_field(
+            SNAPSHOT_RESOURCES,
+            &ReflectMapSerializer {
+                entries: &self.snapshot.resources,
+                registry: self.registry,
+            },
+        )?;
 
         if let Some(rollbacks) = &self.snapshot.rollbacks {
-            state.serialize_field(SNAPSHOT_ROLLBACKS, &RollbacksSerializer {
-                rollbacks,
-                registry: self.registry,
-            })?;
+            state.serialize_field(
+                SNAPSHOT_ROLLBACKS,
+                &RollbacksSerializer {
+                    rollbacks,
+                    registry: self.registry,
+                },
+            )?;
         }
 
         state.end()
@@ -138,10 +127,13 @@ impl<'a> Serialize for RollbacksSerializer<'a> {
     {
         let mut state = serializer.serialize_struct(ROLLBACKS_STRUCT, 2)?;
 
-        state.serialize_field(ROLLBACKS_CHECKPOINTS, &SnapshotListSerializer {
-            snapshots: &self.rollbacks.checkpoints,
-            registry: self.registry,
-        })?;
+        state.serialize_field(
+            ROLLBACKS_CHECKPOINTS,
+            &SnapshotListSerializer {
+                snapshots: &self.rollbacks.checkpoints,
+                registry: self.registry,
+            },
+        )?;
         state.serialize_field(ROLLBACKS_ACTIVE, &self.rollbacks.active)?;
 
         state.end()
@@ -160,10 +152,13 @@ impl<'a> Serialize for EntityMapSerializer<'a> {
     {
         let mut state = serializer.serialize_map(Some(self.entities.len()))?;
         for entity in self.entities {
-            state.serialize_entry(&entity.entity, &EntitySerializer {
-                entity,
-                registry: self.registry,
-            })?;
+            state.serialize_entry(
+                &entity.entity,
+                &EntitySerializer {
+                    entity,
+                    registry: self.registry,
+                },
+            )?;
         }
         state.end()
     }
@@ -180,10 +175,13 @@ impl<'a> Serialize for EntitySerializer<'a> {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct(ENTITY_STRUCT, 1)?;
-        state.serialize_field(ENTITY_COMPONENTS, &ReflectMapSerializer {
-            entries: &self.entity.components,
-            registry: self.registry,
-        })?;
+        state.serialize_field(
+            ENTITY_COMPONENTS,
+            &ReflectMapSerializer {
+                entries: &self.entity.components,
+                registry: self.registry,
+            },
+        )?;
         state.end()
     }
 }
@@ -530,10 +528,14 @@ impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_COMPONENTS], EntityVisitor {
-            entity: self.entity,
-            registry: self.registry,
-        })
+        deserializer.deserialize_struct(
+            ENTITY_STRUCT,
+            &[ENTITY_COMPONENTS],
+            EntityVisitor {
+                entity: self.entity,
+                registry: self.registry,
+            },
+        )
     }
 }
 
@@ -651,9 +653,7 @@ impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
         A: SeqAccess<'de>,
     {
         let mut dynamic_properties = Vec::new();
-        while let Some(entity) =
-            seq.next_element_seed(UntypedReflectDeserializer::new(self.registry))?
-        {
+        while let Some(entity) = seq.next_element_seed(ReflectDeserializer::new(self.registry))? {
             dynamic_properties.push(entity);
         }
 

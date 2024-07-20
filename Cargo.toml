@@ -11,8 +11,8 @@ readme = "README.md"
 repository = "https://github.com/hankjordan/bevy_save"
 
 [dev-dependencies]
-bevy = { version = "0.13" }
-bevy-inspector-egui = "0.23"
+bevy = { version = "0.14" }
+bevy-inspector-egui = "0.25"
 ron = "0.8"
 
 [features]
@@ -23,7 +23,7 @@ bevy_sprite = ["bevy/bevy_sprite"]
 brotli = ["dep:brotli"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy = { version = "0.13", default-features = false, features = ["webgl2"] }
+bevy = { version = "0.14", default-features = false, features = ["webgl2"] }
 web-sys = { version = "0.3", default-features = false, features = [
     "Storage",
     "Window",
@@ -32,7 +32,7 @@ wasm-bindgen = { version = "0.2", default-features = false }
 fragile = "2.0"
 
 [dependencies]
-bevy = { version = "0.13", default-features = false, features = ["bevy_scene"] }
+bevy = { version = "0.14", default-features = false, features = ["bevy_scene"] }
 rmp-serde = "1.1"
 serde_json = "1.0"
 serde = { version = "1.0" }

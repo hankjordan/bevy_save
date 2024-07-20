@@ -17,7 +17,7 @@ fn test_collect() {
     app.register_type::<Collect>();
     app.register_type::<Vec<u32>>();
 
-    let world = &mut app.world;
+    let world = app.world_mut();
 
     let entity = world
         .spawn_empty()
@@ -79,7 +79,7 @@ fn test_basic() {
 
     app.register_type::<Basic>();
 
-    let world = &mut app.world;
+    let world = app.world_mut();
 
     let entity = world.spawn_empty().insert(Basic { data: 0 }).id();
 
