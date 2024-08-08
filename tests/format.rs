@@ -32,7 +32,7 @@ struct Position {
     z: f32,
 }
 
-fn init_app() -> App {
+fn init_app() -> (App, Vec<u64>) {
     let mut app = App::new();
 
     app //
@@ -47,34 +47,51 @@ fn init_app() -> App {
 
     let world = app.world_mut();
 
-    world.spawn(());
+    let mut ids = Vec::new();
 
-    world.spawn((
-        Position {
-            x: 0.0,
-            y: 1.0,
-            z: 2.0,
-        },
-        Collect {
-            data: vec![3, 4, 5],
-        },
-        Unit,
-    ));
+    ids.push(world.spawn(()).id().to_bits());
 
-    world.spawn((Basic { data: 42 }, Nullable { data: Some(77) }, Unit));
+    ids.push(
+        world
+            .spawn((
+                Position {
+                    x: 0.0,
+                    y: 1.0,
+                    z: 2.0,
+                },
+                Collect {
+                    data: vec![3, 4, 5],
+                },
+                Unit,
+            ))
+            .id()
+            .to_bits(),
+    );
 
-    world.spawn((
-        Position {
-            x: 6.0,
-            y: 7.0,
-            z: 8.0,
-        },
-        Unit,
-    ));
+    ids.push(
+        world
+            .spawn((Basic { data: 42 }, Nullable { data: Some(77) }, Unit))
+            .id()
+            .to_bits(),
+    );
 
-    world.spawn(Nullable { data: None });
+    ids.push(
+        world
+            .spawn((
+                Position {
+                    x: 6.0,
+                    y: 7.0,
+                    z: 8.0,
+                },
+                Unit,
+            ))
+            .id()
+            .to_bits(),
+    );
 
-    app
+    ids.push(world.spawn(Nullable { data: None }).id().to_bits());
+
+    (app, ids)
 }
 
 fn extract(world: &World) -> Snapshot {
@@ -95,66 +112,69 @@ fn test_json() {
         String::from_utf8(buf).unwrap()
     }
 
-    let mut app = init_app();
+    let (mut app, ids) = init_app();
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>();
     let snapshot = extract(world);
 
     let output = serialize(&snapshot, registry);
-    let expected = r#"{
-    "entities": {
-        "0": {
-            "components": {}
-        },
-        "1": {
-            "components": {
-                "format::Position": {
+    let expected = format!(
+        r#"{{
+    "entities": {{
+        "{}": {{
+            "components": {{}}
+        }},
+        "{}": {{
+            "components": {{
+                "format::Position": {{
                     "x": 0.0,
                     "y": 1.0,
                     "z": 2.0
-                },
-                "format::Collect": {
+                }},
+                "format::Collect": {{
                     "data": [
                         3,
                         4,
                         5
                     ]
-                },
-                "format::Unit": {}
-            }
-        },
-        "2": {
-            "components": {
-                "format::Unit": {},
-                "format::Basic": {
+                }},
+                "format::Unit": {{}}
+            }}
+        }},
+        "{}": {{
+            "components": {{
+                "format::Unit": {{}},
+                "format::Basic": {{
                     "data": 42
-                },
-                "format::Nullable": {
+                }},
+                "format::Nullable": {{
                     "data": 77
-                }
-            }
-        },
-        "3": {
-            "components": {
-                "format::Position": {
+                }}
+            }}
+        }},
+        "{}": {{
+            "components": {{
+                "format::Position": {{
                     "x": 6.0,
                     "y": 7.0,
                     "z": 8.0
-                },
-                "format::Unit": {}
-            }
-        },
-        "4": {
-            "components": {
-                "format::Nullable": {
+                }},
+                "format::Unit": {{}}
+            }}
+        }},
+        "{}": {{
+            "components": {{
+                "format::Nullable": {{
                     "data": null
-                }
-            }
-        }
-    },
-    "resources": {}
-}"#;
+                }}
+            }}
+        }}
+    }},
+    "resources": {{}}
+}}"#,
+        ids[0], ids[1], ids[2], ids[3], ids[4]
+    );
 
     assert_eq!(output, expected);
 
@@ -184,26 +204,31 @@ fn test_mp() {
         buf
     }
 
-    let mut app = init_app();
+    let (mut app, ids) = init_app();
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>();
     let snapshot = extract(world);
 
     let output = serialize(&snapshot, registry);
-    let expected = [
-        146, 133, 0, 145, 128, 1, 145, 131, 176, 102, 111, 114, 109, 97, 116, 58, 58, 80, 111, 115,
-        105, 116, 105, 111, 110, 147, 202, 0, 0, 0, 0, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0, 175,
-        102, 111, 114, 109, 97, 116, 58, 58, 67, 111, 108, 108, 101, 99, 116, 145, 147, 3, 4, 5,
-        172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 2, 145, 131, 172, 102,
-        111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 173, 102, 111, 114, 109, 97, 116,
-        58, 58, 66, 97, 115, 105, 99, 145, 42, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117,
-        108, 108, 97, 98, 108, 101, 145, 77, 3, 145, 130, 176, 102, 111, 114, 109, 97, 116, 58, 58,
-        80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 64, 192, 0, 0, 202, 64, 224, 0, 0, 202,
-        65, 0, 0, 0, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 4, 145, 129,
-        176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117, 108, 108, 97, 98, 108, 101, 145, 192,
-        128,
+    let mut expected = vec![
+        146, 133, 207, 145, 128, 207, 145, 131, 176, 102, 111, 114, 109, 97, 116, 58, 58, 80, 111,
+        115, 105, 116, 105, 111, 110, 147, 202, 0, 0, 0, 0, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0,
+        175, 102, 111, 114, 109, 97, 116, 58, 58, 67, 111, 108, 108, 101, 99, 116, 145, 147, 3, 4,
+        5, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 207, 145, 131, 172,
+        102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 173, 102, 111, 114, 109, 97,
+        116, 58, 58, 66, 97, 115, 105, 99, 145, 42, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78,
+        117, 108, 108, 97, 98, 108, 101, 145, 77, 207, 145, 130, 176, 102, 111, 114, 109, 97, 116,
+        58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 64, 192, 0, 0, 202, 64, 224, 0, 0,
+        202, 65, 0, 0, 0, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 207,
+        145, 129, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117, 108, 108, 97, 98, 108, 101,
+        145, 192, 128,
     ];
+    for (idx, id) in [3, 14, 93, 153, 211].iter().zip(ids) {
+        for b in id.to_le_bytes() {
+            expected.insert(*idx, b);
+        }
+    }
 
     assert_eq!(output, expected);
 
