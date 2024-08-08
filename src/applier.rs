@@ -25,7 +25,7 @@ use crate::{Error, Snapshot};
 /// # let mut app = App::new();
 /// # app.add_plugins(MinimalPlugins);
 /// # app.add_plugins(SavePlugins);
-/// # let world = &mut app.world;
+/// # let world = app.world_mut();
 /// # let snapshot = Snapshot::from_world(world);
 /// # let parent = world.spawn_empty().id();
 /// snapshot
