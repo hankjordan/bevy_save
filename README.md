@@ -2,7 +2,7 @@
 
 [![][img_bevy]][bevy] [![][img_version]][crates] [![][img_doc]][doc] [![][img_license]][license] [![][img_tracking]][tracking] [![][img_downloads]][crates]
 
-A framework for saving and loading game state in Bevy.
+A framework for saving and loading application state in Bevy.
 
 <https://user-images.githubusercontent.com/29737477/234151375-4c561c53-a8f4-4bfe-a5e7-b69af883bf65.mp4>
 
@@ -12,12 +12,12 @@ A framework for saving and loading game state in Bevy.
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [whatever platform](#platforms) it is running on.
 
-- `World::save()` and `World::load()` uses your app's save location to save and load your game state, handling all serialization and deserialization for you.
+- `World::save()` and `World::load()` uses your app's save location to save and load your application state, handling all serialization and deserialization for you.
 - These methods accept a `Pipeline`, a strongly typed representation of how you are going to be saving and loading.
 - The `Pipeline` trait uses the `Backend` trait as an interface between disk / database and `bevy_save`.
 - The `Backend` trait uses the `Format` trait to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
   - The default `Pipeline` uses the `FileIO` backend which saves each snapshot to an individual file on the disk by the given key.
-    - Many games have different requirements like saving to multiple directories, to a database, or to WebStorage.
+    - Many applications have different requirements like saving to multiple directories, to a database, or to WebStorage.
     - You can use a different `Backend` by implementing your own `Pipeline` with a custom `Backend`.
   - The default `Pipeline` is set up to use `rmp_serde` as the file format.
     - You can use to a different `Format` by implementing your own `Pipeline` with a custom `Format`.
@@ -140,7 +140,7 @@ snapshot
 
 ### Partial Snapshots
 
-While `bevy_save` aims to make it as easy as possible to save your entire world, some games also need to be able to save only parts of the world.
+While `bevy_save` aims to make it as easy as possible to save your entire world, some applications also need to be able to save only parts of the world.
 
 `Builder` allows you to manually create snapshots like `DynamicSceneBuilder`:
 
@@ -212,6 +212,19 @@ Pipelines also let you re-use `Snapshot` appliers and extractors.
 | `bevy_sprite` | Enables `bevy_sprite` type registration | Yes      |
 | `brotli`      | Enables `Brotli` compression middleware | No       |
 
+## Stabilization
+
+`bevy_save` does not *yet* provide any stability guarantees for save file format between versions.
+
+`bevy_save` relies on serialization to create save files and as such is exposed to internal implementation details for types.
+Expect Bevy or other crate updates to break your save file format.
+It should be possible to mitigate this by overriding `ReflectDeserialize` for any offending types.
+
+Changing what entities have what components or how you use your entities or resources in your logic can also result in broken saves.
+While `bevy_save` does not *yet* have explicit support for save file migration, you can use `Applier::hook` to account for changes while applying a snapshot.
+
+If your application has specific migration requirements, please [open an issue](https://github.com/hankjordan/bevy_save/issues/new).
+
 ## Compatibility
 
 ### Bevy
@@ -220,6 +233,7 @@ NOTE: We do not track Bevy main.
 
 | Bevy Version | Crate Version                     |
 | ------------ | --------------------------------- |
+| `0.14`       | `0.15`                            |
 | `0.13`       | `0.14`                            |
 | `0.12`       | `0.10`, `0.11`, `0.12`, `0.13`    |
 | `0.11`       | `0.9`                             |
@@ -247,13 +261,13 @@ NOTE: We do not track Bevy main.
 —
 :hammer_and_wrench: = In progress
 
-[img_bevy]: https://img.shields.io/badge/Bevy-0.13-blue
+[img_bevy]: https://img.shields.io/badge/Bevy-0.14-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [img_downloads]: https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
-[bevy]: https://crates.io/crates/bevy/0.13.0
+[bevy]: https://crates.io/crates/bevy/0.14.0
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save
 [license]: https://github.com/hankjordan/bevy_save#license
