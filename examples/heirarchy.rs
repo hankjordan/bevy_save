@@ -12,7 +12,7 @@ pub struct Head;
 
 fn setup(mut commands: Commands) {
     commands
-        .spawn((SpatialBundle::default(), Player))
+        .spawn((Player, Transform::default(), Visibility::default()))
         .with_children(|p| {
             p.spawn(Head);
         });

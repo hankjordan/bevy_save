@@ -1,17 +1,14 @@
 use std::fmt::Formatter;
 
 use bevy::{
-    ecs::entity::Entity,
+    prelude::*,
     reflect::{
         serde::{
             ReflectDeserializer,
             TypeRegistrationDeserializer,
             TypedReflectDeserializer,
-            TypedReflectSerializer,
         },
-        Reflect,
         TypeRegistry,
-        TypeRegistryArc,
     },
     scene::DynamicEntity,
     utils::HashSet,
@@ -24,190 +21,11 @@ use serde::{
         SeqAccess,
         Visitor,
     },
-    ser::{
-        SerializeMap,
-        SerializeSeq,
-        SerializeStruct,
-    },
     Deserialize,
     Deserializer,
-    Serialize,
-    Serializer,
 };
 
-use crate::{
-    Rollbacks,
-    Snapshot,
-};
-
-const SNAPSHOT_STRUCT: &str = "Snapshot";
-const SNAPSHOT_ENTITIES: &str = "entities";
-const SNAPSHOT_RESOURCES: &str = "resources";
-const SNAPSHOT_ROLLBACKS: &str = "rollbacks";
-
-const ROLLBACKS_STRUCT: &str = "Rollbacks";
-const ROLLBACKS_CHECKPOINTS: &str = "checkpoints";
-const ROLLBACKS_ACTIVE: &str = "active";
-
-const ENTITY_STRUCT: &str = "Entity";
-const ENTITY_COMPONENTS: &str = "components";
-
-/// Handles serialization of a snapshot as a struct containing its entities and resources.
-pub struct SnapshotSerializer<'a> {
-    /// The snapshot to serialize.
-    pub snapshot: &'a Snapshot,
-    /// Type registry in which the components and resources types used in the snapshot are registered.
-    pub registry: &'a TypeRegistryArc,
-}
-
-impl<'a> SnapshotSerializer<'a> {
-    /// Creates a snapshot serializer.
-    pub fn new(snapshot: &'a Snapshot, registry: &'a TypeRegistryArc) -> Self {
-        SnapshotSerializer { snapshot, registry }
-    }
-}
-
-impl Serialize for SnapshotSerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct(
-            SNAPSHOT_STRUCT,
-            if self.snapshot.rollbacks.is_some() {
-                3
-            } else {
-                2
-            },
-        )?;
-        state.serialize_field(SNAPSHOT_ENTITIES, &EntityMapSerializer {
-            entities: &self.snapshot.entities,
-            registry: self.registry,
-        })?;
-        state.serialize_field(SNAPSHOT_RESOURCES, &ReflectMapSerializer {
-            entries: &self.snapshot.resources,
-            registry: self.registry,
-        })?;
-
-        if let Some(rollbacks) = &self.snapshot.rollbacks {
-            state.serialize_field(SNAPSHOT_ROLLBACKS, &RollbacksSerializer {
-                rollbacks,
-                registry: self.registry,
-            })?;
-        }
-
-        state.end()
-    }
-}
-
-struct SnapshotListSerializer<'a> {
-    snapshots: &'a [Snapshot],
-    registry: &'a TypeRegistryArc,
-}
-
-impl Serialize for SnapshotListSerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(Some(self.snapshots.len()))?;
-
-        for snapshot in self.snapshots {
-            seq.serialize_element(&SnapshotSerializer {
-                snapshot,
-                registry: self.registry,
-            })?;
-        }
-
-        seq.end()
-    }
-}
-
-/// Handles serialization of the global rollbacks store.
-pub struct RollbacksSerializer<'a> {
-    /// The rollbacks to serialize.
-    pub rollbacks: &'a Rollbacks,
-    /// Type registry in which the components and resources types used in the rollbacks are registered.
-    pub registry: &'a TypeRegistryArc,
-}
-
-impl Serialize for RollbacksSerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct(ROLLBACKS_STRUCT, 2)?;
-
-        state.serialize_field(ROLLBACKS_CHECKPOINTS, &SnapshotListSerializer {
-            snapshots: &self.rollbacks.checkpoints,
-            registry: self.registry,
-        })?;
-        state.serialize_field(ROLLBACKS_ACTIVE, &self.rollbacks.active)?;
-
-        state.end()
-    }
-}
-
-struct EntityMapSerializer<'a> {
-    entities: &'a [DynamicEntity],
-    registry: &'a TypeRegistryArc,
-}
-
-impl Serialize for EntityMapSerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_map(Some(self.entities.len()))?;
-        for entity in self.entities {
-            state.serialize_entry(&entity.entity, &EntitySerializer {
-                entity,
-                registry: self.registry,
-            })?;
-        }
-        state.end()
-    }
-}
-
-struct EntitySerializer<'a> {
-    entity: &'a DynamicEntity,
-    registry: &'a TypeRegistryArc,
-}
-
-impl Serialize for EntitySerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct(ENTITY_STRUCT, 1)?;
-        state.serialize_field(ENTITY_COMPONENTS, &ReflectMapSerializer {
-            entries: &self.entity.components,
-            registry: self.registry,
-        })?;
-        state.end()
-    }
-}
-
-struct ReflectMapSerializer<'a> {
-    entries: &'a [Box<dyn Reflect>],
-    registry: &'a TypeRegistryArc,
-}
-
-impl Serialize for ReflectMapSerializer<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_map(Some(self.entries.len()))?;
-        for reflect in self.entries {
-            state.serialize_entry(
-                reflect.get_represented_type_info().unwrap().type_path(),
-                &TypedReflectSerializer::new(&**reflect, &self.registry.read()),
-            )?;
-        }
-        state.end()
-    }
-}
+use crate::prelude::*;
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
@@ -599,7 +417,7 @@ struct ReflectMapDeserializer<'a> {
 }
 
 impl<'de> DeserializeSeed<'de> for ReflectMapDeserializer<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn PartialReflect>>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -616,7 +434,7 @@ struct ReflectMapVisitor<'a> {
 }
 
 impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
-    type Value = Vec<Box<dyn Reflect>>;
+    type Value = Vec<Box<dyn PartialReflect>>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str("map of reflect types")
@@ -638,9 +456,19 @@ impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
                 )));
             }
 
-            entries.push(
-                map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?,
-            );
+            let value =
+                map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
+
+            // Attempt to convert using FromReflect.
+            let value = self
+                .registry
+                .get(registration.type_id())
+                .and_then(|tr| tr.data::<ReflectFromReflect>())
+                .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                .map(PartialReflect::into_partial_reflect)
+                .unwrap_or(value);
+
+            entries.push(value);
         }
 
         Ok(entries)

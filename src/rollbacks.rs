@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    reflect::TypeRegistry,
+};
 
 use crate::prelude::*;
 
@@ -52,9 +55,13 @@ impl Rollbacks {
 }
 
 impl CloneReflect for Rollbacks {
-    fn clone_value(&self) -> Self {
+    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
         Self {
-            checkpoints: self.checkpoints.iter().map(|r| r.clone_value()).collect(),
+            checkpoints: self
+                .checkpoints
+                .iter()
+                .map(|r| r.clone_reflect(registry))
+                .collect(),
             active: self.active,
         }
     }

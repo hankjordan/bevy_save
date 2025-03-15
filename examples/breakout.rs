@@ -13,10 +13,6 @@ use bevy::{
         IntersectsVolume,
     },
     prelude::*,
-    sprite::{
-        MaterialMesh2dBundle,
-        Mesh2dHandle,
-    },
     utils::Instant,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -24,7 +20,7 @@ use bevy_save::prelude::*;
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
-const PADDLE_SIZE: Vec3 = Vec3::new(120.0, 20.0, 0.0);
+const PADDLE_SIZE: Vec2 = Vec2::new(120.0, 20.0);
 const GAP_BETWEEN_PADDLE_AND_FLOOR: f32 = 60.0;
 const PADDLE_SPEED: f32 = 500.0;
 // How close can the paddle get to the wall
@@ -32,7 +28,6 @@ const PADDLE_PADDING: f32 = 10.0;
 
 // We set the z-value of the ball to 1 so it renders on top in the case of overlapping sprites.
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
-const BALL_SIZE: Vec3 = Vec3::new(30.0, 30.0, 0.0);
 const BALL_DIAMETER: f32 = 30.;
 const BALL_SPEED: f32 = 400.0;
 const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
@@ -53,16 +48,8 @@ const GAP_BETWEEN_BRICKS: f32 = 5.0;
 const GAP_BETWEEN_BRICKS_AND_CEILING: f32 = 20.0;
 const GAP_BETWEEN_BRICKS_AND_SIDES: f32 = 20.0;
 
-const SCOREBOARD_FONT_SIZE: f32 = 40.0;
+const SCOREBOARD_FONT_SIZE: f32 = 33.0;
 const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
-
-const HELP_FONT_SIZE: f32 = 16.0;
-const HELP_TEXT_PADDING: Val = Val::Px(5.0);
-
-const TOAST_FONT_SIZE: f32 = 32.0;
-const TOAST_TEXT_PADDING: Val = Val::Px(5.0);
-const TOAST_TEXT_COLOR: Color = Color::srgb(0.5, 0.1, 0.1);
-const TOAST_DURATION: f32 = 0.5;
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const PADDLE_COLOR: Color = Color::srgb(0.3, 0.3, 0.7);
@@ -72,14 +59,13 @@ const WALL_COLOR: Color = Color::srgb(0.8, 0.8, 0.8);
 const TEXT_COLOR: Color = Color::srgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
 
-#[rustfmt::skip]
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.build().set(AssetPlugin {
             file_path: "examples/assets".to_owned(),
             ..default()
         }))
-        .insert_resource(Scoreboard { score: 0 })
+        .insert_resource(Score(0))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_event::<CollisionEvent>()
         .add_systems(Startup, setup)
@@ -96,58 +82,55 @@ fn main() {
                 .chain(),
         )
         .add_systems(Update, (update_scoreboard, close_on_esc))
-
         .add_plugins((
             // Inspector
             WorldInspectorPlugin::new(),
-
             // Bevy Save
             SavePlugins,
         ))
-
         // Register our types
         .register_type::<Paddle>()
         .register_type::<Ball>()
         .register_type::<Velocity>()
         .register_type::<Collider>()
         .register_type::<Brick>()
-        .register_type::<Scoreboard>()
+        .register_type::<Score>()
         .register_type::<ScoreboardUi>()
         .register_type::<Toast>()
-
         // Setup
         .add_systems(Startup, (setup_help, setup_entity_count).after(setup))
-        
         // Systems
-        .add_systems(Update, (update_entity_count, handle_save_input, update_toasts))
-
+        .add_systems(
+            Update,
+            (update_entity_count, handle_save_input, update_toasts),
+        )
         .run();
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 struct Paddle;
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 struct Ball;
 
-#[derive(Component, Deref, DerefMut, Reflect, Default)]
+#[derive(Component, Reflect, Deref, DerefMut)]
 #[reflect(Component)]
 struct Velocity(Vec2);
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 struct Collider;
 
 #[derive(Event, Default)]
 struct CollisionEvent;
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 struct Brick;
 
-#[derive(Resource)]
+#[derive(Resource, Deref)]
 struct CollisionSound(Handle<AudioSource>);
 
 // This bundle is a collection of the components that define a "wall" in our game
@@ -155,7 +138,8 @@ struct CollisionSound(Handle<AudioSource>);
 struct WallBundle {
     // You can nest bundles inside of other bundles like this
     // Allowing you to compose their functionality
-    sprite_bundle: SpriteBundle,
+    sprite: Sprite,
+    transform: Transform,
     collider: Collider,
 }
 
@@ -168,6 +152,7 @@ enum WallLocation {
 }
 
 impl WallLocation {
+    /// Location of the *center* of the wall, used in `transform.translation()`
     fn position(&self) -> Vec2 {
         match self {
             WallLocation::Left => Vec2::new(LEFT_WALL, 0.),
@@ -177,6 +162,7 @@ impl WallLocation {
         }
     }
 
+    /// (x, y) dimensions of the wall, used in `transform.scale()`
     fn size(&self) -> Vec2 {
         let arena_height = TOP_WALL - BOTTOM_WALL;
         let arena_width = RIGHT_WALL - LEFT_WALL;
@@ -200,21 +186,15 @@ impl WallBundle {
     // making our code easier to read and less prone to bugs when we change the logic
     fn new(location: WallLocation) -> WallBundle {
         WallBundle {
-            sprite_bundle: SpriteBundle {
-                transform: Transform {
-                    // We need to convert our Vec2 into a Vec3, by giving it a z-coordinate
-                    // This is used to determine the order of our sprites
-                    translation: location.position().extend(0.0),
-                    // The z-scale of 2D objects must always be 1.0,
-                    // or their ordering will be affected in surprising ways.
-                    // See https://github.com/bevyengine/bevy/issues/4149
-                    scale: location.size().extend(1.0),
-                    ..default()
-                },
-                sprite: Sprite {
-                    color: WALL_COLOR,
-                    ..default()
-                },
+            sprite: Sprite::from_color(WALL_COLOR, Vec2::ONE),
+            transform: Transform {
+                // We need to convert our Vec2 into a Vec3, by giving it a z-coordinate
+                // This is used to determine the order of our sprites
+                translation: location.position().extend(0.0),
+                // The z-scale of 2D objects must always be 1.0,
+                // or their ordering will be affected in surprising ways.
+                // See https://github.com/bevyengine/bevy/issues/4149
+                scale: location.size().extend(1.0),
                 ..default()
             },
             collider: Collider,
@@ -223,13 +203,11 @@ impl WallBundle {
 }
 
 // This resource tracks the game's score
-#[derive(Resource, Reflect, Default)]
+#[derive(Resource, Reflect, Deref, DerefMut)]
 #[reflect(Resource)]
-struct Scoreboard {
-    score: usize,
-}
+struct Score(usize);
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect)]
 #[reflect(Component)]
 struct ScoreboardUi;
 
@@ -241,7 +219,7 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     // Camera
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 
     // Sound
     let ball_collision_sound = asset_server.load("sounds/breakout_collision.ogg");
@@ -251,16 +229,10 @@ fn setup(
     let paddle_y = BOTTOM_WALL + GAP_BETWEEN_PADDLE_AND_FLOOR;
 
     commands.spawn((
-        SpriteBundle {
-            transform: Transform {
-                translation: Vec3::new(0.0, paddle_y, 0.0),
-                scale: PADDLE_SIZE,
-                ..default()
-            },
-            sprite: Sprite {
-                color: PADDLE_COLOR,
-                ..default()
-            },
+        Sprite::from_color(PADDLE_COLOR, Vec2::ONE),
+        Transform {
+            translation: Vec3::new(0.0, paddle_y, 0.0),
+            scale: PADDLE_SIZE.extend(1.0),
             ..default()
         },
         Paddle,
@@ -269,38 +241,39 @@ fn setup(
 
     // Ball
     commands.spawn((
-        MaterialMesh2dBundle {
-            mesh: meshes.add(Circle::default()).into(),
-            material: materials.add(ColorMaterial::from(BALL_COLOR)),
-            transform: Transform::from_translation(BALL_STARTING_POSITION).with_scale(BALL_SIZE),
-            ..default()
-        },
+        Mesh2d(meshes.add(Circle::default())),
+        MeshMaterial2d(materials.add(BALL_COLOR)),
+        Transform::from_translation(BALL_STARTING_POSITION)
+            .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
         Ball,
         Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
     ));
 
     // Scoreboard
-    commands.spawn((
-        TextBundle::from_sections([
-            TextSection::new("Score: ", TextStyle {
+    commands
+        .spawn((
+            Text::new("Score: "),
+            TextFont {
                 font_size: SCOREBOARD_FONT_SIZE,
-                color: TEXT_COLOR,
                 ..default()
-            }),
-            TextSection::from_style(TextStyle {
+            },
+            TextColor(TEXT_COLOR),
+            ScoreboardUi,
+            Node {
+                position_type: PositionType::Absolute,
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+            },
+        ))
+        .with_child((
+            TextSpan::default(),
+            TextFont {
                 font_size: SCOREBOARD_FONT_SIZE,
-                color: SCORE_COLOR,
                 ..default()
-            }),
-        ])
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: SCOREBOARD_TEXT_PADDING,
-            left: SCOREBOARD_TEXT_PADDING,
-            ..default()
-        }),
-        ScoreboardUi,
-    ));
+            },
+            TextColor(SCORE_COLOR),
+        ));
 
     // Walls
     commands.spawn(WallBundle::new(WallLocation::Left));
@@ -344,16 +317,13 @@ fn setup(
 
             // brick
             commands.spawn((
-                SpriteBundle {
-                    sprite: Sprite {
-                        color: BRICK_COLOR,
-                        ..default()
-                    },
-                    transform: Transform {
-                        translation: brick_position.extend(0.0),
-                        scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
-                        ..default()
-                    },
+                Sprite {
+                    color: BRICK_COLOR,
+                    ..default()
+                },
+                Transform {
+                    translation: brick_position.extend(0.0),
+                    scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
                     ..default()
                 },
                 Brick,
@@ -365,10 +335,9 @@ fn setup(
 
 fn move_paddle(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Paddle>>,
+    mut paddle_transform: Single<&mut Transform, With<Paddle>>,
     time: Res<Time>,
 ) {
-    let mut paddle_transform = query.single_mut();
     let mut direction = 0.0;
 
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
@@ -381,7 +350,7 @@ fn move_paddle(
 
     // Calculate the new horizontal paddle position based on player input
     let new_paddle_position =
-        paddle_transform.translation.x + direction * PADDLE_SPEED * time.delta_seconds();
+        paddle_transform.translation.x + direction * PADDLE_SPEED * time.delta_secs();
 
     // Update the paddle position,
     // making sure it doesn't cause the paddle to leave the arena
@@ -393,32 +362,34 @@ fn move_paddle(
 
 fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time: Res<Time>) {
     for (mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.x * time.delta_seconds();
-        transform.translation.y += velocity.y * time.delta_seconds();
+        transform.translation.x += velocity.x * time.delta_secs();
+        transform.translation.y += velocity.y * time.delta_secs();
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text, With<ScoreboardUi>>) {
-    let mut text = query.single_mut();
-    text.sections[1].value = scoreboard.score.to_string();
+fn update_scoreboard(
+    score: Res<Score>,
+    score_root: Single<Entity, (With<ScoreboardUi>, With<Text>)>,
+    mut writer: TextUiWriter,
+) {
+    *writer.text(*score_root, 1) = score.to_string();
 }
 
 fn check_for_collisions(
     mut commands: Commands,
-    mut scoreboard: ResMut<Scoreboard>,
-    mut ball_query: Query<(&mut Velocity, &Transform), With<Ball>>,
+    mut score: ResMut<Score>,
+    ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
     collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
     mut collision_events: EventWriter<CollisionEvent>,
 ) {
-    let (mut ball_velocity, ball_transform) = ball_query.single_mut();
+    let (mut ball_velocity, ball_transform) = ball_query.into_inner();
 
-    // check collision with walls
-    for (collider_entity, transform, maybe_brick) in &collider_query {
-        let collision = collide_with_side(
+    for (collider_entity, collider_transform, maybe_brick) in &collider_query {
+        let collision = ball_collision(
             BoundingCircle::new(ball_transform.translation.truncate(), BALL_DIAMETER / 2.),
             Aabb2d::new(
-                transform.translation.truncate(),
-                transform.scale.truncate() / 2.,
+                collider_transform.translation.truncate(),
+                collider_transform.scale.truncate() / 2.,
             ),
         );
 
@@ -428,16 +399,16 @@ fn check_for_collisions(
 
             // Bricks should be despawned and increment the scoreboard on collision
             if maybe_brick.is_some() {
-                scoreboard.score += 1;
                 commands.entity(collider_entity).despawn();
+                **score += 1;
             }
 
-            // reflect the ball when it collides
+            // Reflect the ball's velocity when it collides
             let mut reflect_x = false;
             let mut reflect_y = false;
 
-            // only reflect if the ball's velocity is going in the opposite direction of the
-            // collision
+            // Reflect only if the velocity is in the opposite direction of the collision
+            // This prevents the ball from getting stuck inside the bar
             match collision {
                 Collision::Left => reflect_x = ball_velocity.x > 0.0,
                 Collision::Right => reflect_x = ball_velocity.x < 0.0,
@@ -445,12 +416,12 @@ fn check_for_collisions(
                 Collision::Bottom => reflect_y = ball_velocity.y > 0.0,
             }
 
-            // reflect velocity on the x-axis if we hit something on the x-axis
+            // Reflect velocity on the x-axis if we hit something on the x-axis
             if reflect_x {
                 ball_velocity.x = -ball_velocity.x;
             }
 
-            // reflect velocity on the y-axis if we hit something on the y-axis
+            // Reflect velocity on the y-axis if we hit something on the y-axis
             if reflect_y {
                 ball_velocity.y = -ball_velocity.y;
             }
@@ -467,11 +438,7 @@ fn play_collision_sound(
     if !collision_events.is_empty() {
         // This prevents events staying active on the next frame.
         collision_events.clear();
-        commands.spawn(AudioBundle {
-            source: sound.0.clone(),
-            // auto-despawn the entity when playback finishes
-            settings: PlaybackSettings::DESPAWN,
-        });
+        commands.spawn((AudioPlayer(sound.clone()), PlaybackSettings::DESPAWN));
     }
 }
 
@@ -483,14 +450,14 @@ enum Collision {
     Bottom,
 }
 
-// Returns `Some` if `ball` collides with `wall`. The returned `Collision` is the
-// side of `wall` that `ball` hit.
-fn collide_with_side(ball: BoundingCircle, wall: Aabb2d) -> Option<Collision> {
-    if !ball.intersects(&wall) {
+// Returns `Some` if `ball` collides with `bounding_box`.
+// The returned `Collision` is the side of `bounding_box` that `ball` hit.
+fn ball_collision(ball: BoundingCircle, bounding_box: Aabb2d) -> Option<Collision> {
+    if !ball.intersects(&bounding_box) {
         return None;
     }
 
-    let closest = wall.closest_point(ball.center());
+    let closest = bounding_box.closest_point(ball.center());
     let offset = ball.center() - closest;
     let side = if offset.x.abs() > offset.y.abs() {
         if offset.x < 0. {
@@ -507,30 +474,34 @@ fn collide_with_side(ball: BoundingCircle, wall: Aabb2d) -> Option<Collision> {
     Some(side)
 }
 
+// Bevy_save
+
+const HELP_FONT_SIZE: f32 = 16.0;
+const HELP_TEXT_PADDING: Val = Val::Px(5.0);
+
+const TOAST_FONT_SIZE: f32 = 32.0;
+const TOAST_TEXT_PADDING: Val = Val::Px(5.0);
+const TOAST_TEXT_COLOR: Color = Color::srgb(0.5, 0.1, 0.1);
+const TOAST_DURATION: f32 = 0.5;
+
 fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(
-        TextBundle::from_sections([
-            TextSection::new("Enter - Save | Backspace - Load\n", TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: HELP_FONT_SIZE,
-                color: TEXT_COLOR,
-            }),
-            TextSection::new(
-                "Space - Checkpoint | A - Rollback | D - Rollforward\n",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                    font_size: HELP_FONT_SIZE,
-                    color: TEXT_COLOR,
-                },
-            ),
-        ])
-        .with_style(Style {
+    commands.spawn((
+        Text::new(
+            "Enter - Save | Backspace - Load\nSpace - Checkpoint | A - Rollback | D - Rollforward",
+        ),
+        TextFont {
+            font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+            font_size: HELP_FONT_SIZE,
+            ..default()
+        },
+        TextColor(TEXT_COLOR),
+        Node {
             position_type: PositionType::Absolute,
             bottom: HELP_TEXT_PADDING,
             left: HELP_TEXT_PADDING,
             ..default()
-        }),
-    );
+        },
+    ));
 }
 
 #[derive(Component)]
@@ -538,24 +509,26 @@ struct EntityCount;
 
 fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
-        TextBundle::from_section("", TextStyle {
+        Text::new(""),
+        TextFont {
             font: asset_server.load("fonts/FiraMono-Medium.ttf"),
             font_size: HELP_FONT_SIZE,
-            color: TEXT_COLOR,
-        })
-        .with_style(Style {
+            ..default()
+        },
+        TextColor(TEXT_COLOR),
+        Node {
             position_type: PositionType::Absolute,
             top: HELP_TEXT_PADDING,
             right: HELP_TEXT_PADDING,
             ..default()
-        }),
+        },
         EntityCount,
     ));
 }
 
 fn update_entity_count(entities: Query<Entity>, mut counters: Query<&mut Text, With<EntityCount>>) {
     let mut text = counters.single_mut();
-    text.sections[0].value = format!("Entities: {:?}", entities.iter().len());
+    text.0 = format!("Entities: {:?}", entities.iter().len());
 }
 
 #[derive(Component, Reflect)]
@@ -593,17 +566,19 @@ impl Toaster<'_, '_> {
         }
 
         self.commands.spawn((
-            TextBundle::from_sections([TextSection::new(text, TextStyle {
+            Text::new(text),
+            TextFont {
                 font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: TOAST_FONT_SIZE,
-                color: TOAST_TEXT_COLOR,
-            })])
-            .with_style(Style {
+                ..default()
+            },
+            TextColor(TOAST_TEXT_COLOR),
+            Node {
                 position_type: PositionType::Absolute,
                 bottom: TOAST_TEXT_PADDING,
                 right: TOAST_TEXT_PADDING,
                 ..default()
-            }),
+            },
             Toast::default(),
         ));
     }
@@ -623,21 +598,21 @@ impl Pipeline for BreakoutPipeline {
 
     fn capture(builder: SnapshotBuilder) -> Snapshot {
         builder
-            .deny::<Mesh2dHandle>()
-            .deny::<Handle<ColorMaterial>>()
+            .deny::<Mesh2d>()
+            .deny::<MeshMaterial2d<ColorMaterial>>()
             .extract_entities_matching(|e| {
                 e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>()
             })
-            .extract_resource::<Scoreboard>()
+            .extract_resource::<Score>()
             .extract_rollbacks()
             .build()
     }
 
     fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = Mesh2dHandle(meshes.add(Circle::default()));
+        let mesh = Mesh2d(meshes.add(Circle::default()));
         let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
-        let material = materials.add(ColorMaterial::from(BALL_COLOR));
+        let material = MeshMaterial2d(materials.add(ColorMaterial::from(BALL_COLOR)));
 
         snapshot
             .applier(world)
