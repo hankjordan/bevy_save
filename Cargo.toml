@@ -3,7 +3,7 @@ members = ["."]
 
 [package]
 name = "bevy_save"
-version = "0.15.0"
+version = "0.15.1"
 edition = "2021"
 description = "A framework for saving and loading game state in Bevy."
 license = "MIT OR Apache-2.0"
@@ -29,7 +29,7 @@ thiserror = "1.0"
 brotli = { version = "3.4", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-bevy = { version = "0.14", default-features = false, features = ["webgl2"] }
+bevy = { version = "0.14", default-features = false }
 web-sys = { version = "0.3", default-features = false, features = [
     "Storage",
     "Window",
