@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    reflect::TypeRegistry,
+};
 
 use crate::{
     Backend,
@@ -17,17 +20,30 @@ pub trait WorldSaveableExt: Sized {
     /// Captures a [`Snapshot`] from the current [`World`] state.
     fn snapshot<P: Pipeline>(&self) -> Snapshot;
 
-    /// Saves the game state with the given [`Pipeline`].
+    /// Saves the application state with the given [`Pipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error>;
 
-    /// Loads the game state with the given [`Pipeline`].
+    /// Saves the application state with the given [`Pipeline`] and [`TypeRegistry`].
+    ///
+    /// # Errors
+    /// - See [`Error`]
+    fn save_with<P: Pipeline>(&self, pipeline: P, registry: &TypeRegistry) -> Result<(), Error>;
+
+    /// Loads the application state with the given [`Pipeline`].
     ///
     /// # Errors
     /// - See [`Error`]
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error>;
+
+    /// Loads the application state with the given [`Pipeline`] and [`TypeRegistry`].
+    ///
+    /// # Errors
+    /// - See [`Error`]
+    fn load_with<P: Pipeline>(&mut self, pipeline: P, registry: &TypeRegistry)
+        -> Result<(), Error>;
 }
 
 impl WorldSaveableExt for World {
@@ -36,23 +52,31 @@ impl WorldSaveableExt for World {
     }
 
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
-        let registry = self.resource::<AppTypeRegistry>();
+        let registry = self.resource::<AppTypeRegistry>().read();
+        self.save_with(pipeline, &registry)
+    }
+
+    fn save_with<P: Pipeline>(&self, pipeline: P, registry: &TypeRegistry) -> Result<(), Error> {
         let backend = self.resource::<P::Backend>();
-
         let snapshot = pipeline.capture_seed(Snapshot::builder(self));
-
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
         backend.save::<P::Format, _>(pipeline.key(), &ser)
     }
 
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
-        let registry = self.resource::<AppTypeRegistry>().clone();
-        let reg = registry.read();
+        let app_type_registry = self.resource::<AppTypeRegistry>().clone();
+        let type_registry = app_type_registry.read();
+        self.load_with(pipeline, &type_registry)
+    }
+
+    fn load_with<P: Pipeline>(
+        &mut self,
+        pipeline: P,
+        registry: &TypeRegistry,
+    ) -> Result<(), Error> {
         let backend = self.resource::<P::Backend>();
-
-        let de = SnapshotDeserializer { registry: &reg };
-
+        let de = SnapshotDeserializer { registry };
         let snapshot = backend.load::<P::Format, _, _>(pipeline.key(), de)?;
 
         pipeline.apply_seed(self, &snapshot)
@@ -69,6 +93,16 @@ pub trait WorldRollbackExt {
     /// # Errors
     /// - See [`Error`]
     fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error>;
+
+    /// Rolls back / forward the [`World`] state using the given [`TypeRegistry`].
+    ///
+    /// # Errors
+    /// - See [`Error`]
+    fn rollback_with<P: Pipeline>(
+        &mut self,
+        checkpoints: isize,
+        registry: &TypeRegistry,
+    ) -> Result<(), Error>;
 }
 
 impl WorldRollbackExt for World {
@@ -78,10 +112,21 @@ impl WorldRollbackExt for World {
     }
 
     fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error> {
+        let app_type_registry = self.resource::<AppTypeRegistry>().clone();
+        let type_registry = app_type_registry.read();
+
+        self.rollback_with::<P>(checkpoints, &type_registry)
+    }
+
+    fn rollback_with<P: Pipeline>(
+        &mut self,
+        checkpoints: isize,
+        registry: &TypeRegistry,
+    ) -> Result<(), Error> {
         if let Some(rollback) = self
             .resource_mut::<Rollbacks>()
             .rollback(checkpoints)
-            .map(|r| r.clone_value())
+            .map(|r| r.clone_reflect(registry))
         {
             P::apply(self, &rollback)
         } else {

@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    reflect::TypeRegistry,
+};
 use bevy_save::prelude::*;
 use serde::{
     de::DeserializeSeed,
@@ -35,7 +38,7 @@ struct Position {
     z: f32,
 }
 
-fn init_app() -> (App, Vec<u64>) {
+fn init_app() -> (App, Vec<Entity>) {
     let mut app = App::new();
 
     app //
@@ -51,7 +54,7 @@ fn init_app() -> (App, Vec<u64>) {
     let world = app.world_mut();
 
     let ids = vec![
-        world.spawn(()).id().to_bits(),
+        world.spawn(()).id(),
         world
             .spawn((
                 Position {
@@ -64,12 +67,10 @@ fn init_app() -> (App, Vec<u64>) {
                 },
                 Unit,
             ))
-            .id()
-            .to_bits(),
+            .id(),
         world
             .spawn((Basic { data: 42 }, Nullable { data: Some(77) }, Unit))
-            .id()
-            .to_bits(),
+            .id(),
         world
             .spawn((
                 Position {
@@ -79,9 +80,8 @@ fn init_app() -> (App, Vec<u64>) {
                 },
                 Unit,
             ))
-            .id()
-            .to_bits(),
-        world.spawn(Nullable { data: None }).id().to_bits(),
+            .id(),
+        world.spawn(Nullable { data: None }).id(),
     ];
 
     (app, ids)
@@ -93,7 +93,7 @@ fn extract(world: &World) -> Snapshot {
 
 #[test]
 fn test_json() {
-    fn serialize(snapshot: &Snapshot, registry: &AppTypeRegistry) -> String {
+    fn serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> String {
         let serializer = SnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();
@@ -105,88 +105,85 @@ fn test_json() {
         String::from_utf8(buf).unwrap()
     }
 
-    let (mut app, ids) = init_app();
+    let (mut app, _) = init_app();
     let world = app.world_mut();
 
-    let registry = world.resource::<AppTypeRegistry>();
+    let registry = world.resource::<AppTypeRegistry>().read();
     let snapshot = extract(world);
 
-    let output = serialize(&snapshot, registry);
-    let expected = format!(
-        r#"{{
-    "entities": {{
-        "{}": {{
-            "components": {{}}
-        }},
-        "{}": {{
-            "components": {{
-                "format::Position": {{
-                    "x": 0.0,
-                    "y": 1.0,
-                    "z": 2.0
-                }},
-                "format::Collect": {{
+    let output = serialize(&snapshot, &registry);
+    let expected = r#"{
+    "entities": {
+        "4294967296": {
+            "components": {}
+        },
+        "4294967297": {
+            "components": {
+                "format::Collect": {
                     "data": [
                         3,
                         4,
                         5
                     ]
-                }},
-                "format::Unit": {{}}
-            }}
-        }},
-        "{}": {{
-            "components": {{
-                "format::Unit": {{}},
-                "format::Basic": {{
+                },
+                "format::Position": {
+                    "x": 0.0,
+                    "y": 1.0,
+                    "z": 2.0
+                },
+                "format::Unit": {}
+            }
+        },
+        "4294967298": {
+            "components": {
+                "format::Basic": {
                     "data": 42
-                }},
-                "format::Nullable": {{
+                },
+                "format::Nullable": {
                     "data": 77
-                }}
-            }}
-        }},
-        "{}": {{
-            "components": {{
-                "format::Position": {{
+                },
+                "format::Unit": {}
+            }
+        },
+        "4294967299": {
+            "components": {
+                "format::Position": {
                     "x": 6.0,
                     "y": 7.0,
                     "z": 8.0
-                }},
-                "format::Unit": {{}}
-            }}
-        }},
-        "{}": {{
-            "components": {{
-                "format::Nullable": {{
+                },
+                "format::Unit": {}
+            }
+        },
+        "4294967300": {
+            "components": {
+                "format::Nullable": {
                     "data": null
-                }}
-            }}
-        }}
-    }},
-    "resources": {{}}
-}}"#,
-        ids[0], ids[1], ids[2], ids[3], ids[4]
-    );
+                }
+            }
+        }
+    },
+    "resources": {}
+}"#;
 
     assert_eq!(output, expected);
 
     let deserializer = SnapshotDeserializer {
-        registry: &registry.read(),
+        registry: &registry,
     };
 
     let mut de = serde_json::Deserializer::from_str(&output);
 
     let value = deserializer.deserialize(&mut de).unwrap();
 
-    let output = serialize(&value, registry);
+    let output = serialize(&value, &registry);
 
     assert_eq!(output, expected);
 }
 
 #[test]
 fn test_mp() {
-    fn serialize(snapshot: &Snapshot, registry: &AppTypeRegistry) -> Vec<u8> {
+    fn serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> Vec<u8> {
         let serializer = SnapshotSerializer { snapshot, registry };
 
         let mut buf = Vec::new();
@@ -197,43 +194,39 @@ fn test_mp() {
         buf
     }
 
-    let (mut app, ids) = init_app();
+    let (mut app, _) = init_app();
     let world = app.world_mut();
 
-    let registry = world.resource::<AppTypeRegistry>();
+    let registry = world.resource::<AppTypeRegistry>().read();
     let snapshot = extract(world);
 
-    let output = serialize(&snapshot, registry);
-    let mut expected = vec![
-        146, 133, 207, 145, 128, 207, 145, 131, 176, 102, 111, 114, 109, 97, 116, 58, 58, 80, 111,
-        115, 105, 116, 105, 111, 110, 147, 202, 0, 0, 0, 0, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0,
+    let output = serialize(&snapshot, &registry);
+    let expected = vec![
+        146, 133, 207, 0, 0, 0, 1, 0, 0, 0, 0, 145, 128, 207, 0, 0, 0, 1, 0, 0, 0, 1, 145, 131,
         175, 102, 111, 114, 109, 97, 116, 58, 58, 67, 111, 108, 108, 101, 99, 116, 145, 147, 3, 4,
-        5, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 207, 145, 131, 172,
-        102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 173, 102, 111, 114, 109, 97,
-        116, 58, 58, 66, 97, 115, 105, 99, 145, 42, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78,
-        117, 108, 108, 97, 98, 108, 101, 145, 77, 207, 145, 130, 176, 102, 111, 114, 109, 97, 116,
-        58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 64, 192, 0, 0, 202, 64, 224, 0, 0,
-        202, 65, 0, 0, 0, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144, 207,
-        145, 129, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117, 108, 108, 97, 98, 108, 101,
-        145, 192, 128,
+        5, 176, 102, 111, 114, 109, 97, 116, 58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147,
+        202, 0, 0, 0, 0, 202, 63, 128, 0, 0, 202, 64, 0, 0, 0, 172, 102, 111, 114, 109, 97, 116,
+        58, 58, 85, 110, 105, 116, 144, 207, 0, 0, 0, 1, 0, 0, 0, 2, 145, 131, 173, 102, 111, 114,
+        109, 97, 116, 58, 58, 66, 97, 115, 105, 99, 145, 42, 176, 102, 111, 114, 109, 97, 116, 58,
+        58, 78, 117, 108, 108, 97, 98, 108, 101, 145, 77, 172, 102, 111, 114, 109, 97, 116, 58, 58,
+        85, 110, 105, 116, 144, 207, 0, 0, 0, 1, 0, 0, 0, 3, 145, 130, 176, 102, 111, 114, 109, 97,
+        116, 58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 64, 192, 0, 0, 202, 64, 224,
+        0, 0, 202, 65, 0, 0, 0, 172, 102, 111, 114, 109, 97, 116, 58, 58, 85, 110, 105, 116, 144,
+        207, 0, 0, 0, 1, 0, 0, 0, 4, 145, 129, 176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117,
+        108, 108, 97, 98, 108, 101, 145, 192, 128,
     ];
-    for (idx, id) in [3, 14, 93, 153, 211].iter().zip(ids) {
-        for b in id.to_le_bytes() {
-            expected.insert(*idx, b);
-        }
-    }
 
     assert_eq!(output, expected);
 
     let deserializer = SnapshotDeserializer {
-        registry: &registry.read(),
+        registry: &registry,
     };
 
     let mut de = rmp_serde::Deserializer::new(&*output);
 
     let value = deserializer.deserialize(&mut de).unwrap();
 
-    let output = serialize(&value, registry);
+    let output = serialize(&value, &registry);
 
     assert_eq!(output, expected);
 }

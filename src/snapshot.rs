@@ -1,5 +1,6 @@
 use bevy::{
     prelude::*,
+    reflect::TypeRegistry,
     scene::DynamicEntity,
 };
 
@@ -9,6 +10,7 @@ use crate::{
     Rollbacks,
     SnapshotApplier,
     SnapshotBuilder,
+    SnapshotSerializer,
 };
 
 /// A collection of serializable entities and resources.
@@ -19,7 +21,7 @@ pub struct Snapshot {
     pub entities: Vec<DynamicEntity>,
 
     /// Resources contained in the snapshot.
-    pub resources: Vec<Box<dyn Reflect>>,
+    pub resources: Vec<Box<dyn PartialReflect>>,
 
     pub(crate) rollbacks: Option<Rollbacks>,
 }
@@ -104,14 +106,41 @@ impl Snapshot {
     pub fn applier<'a>(&'a self, world: &'a mut World) -> SnapshotApplier<'a> {
         SnapshotApplier::new(self, world)
     }
+
+    /// Create a [`SnapshotSerializer`] from the [`Snapshot`] and the [`TypeRegistry`].
+    pub fn serializer<'a>(&'a self, registry: &'a TypeRegistry) -> SnapshotSerializer<'a> {
+        SnapshotSerializer {
+            snapshot: self,
+            registry,
+        }
+    }
 }
 
 impl CloneReflect for Snapshot {
-    fn clone_value(&self) -> Self {
+    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
+        #[allow(clippy::borrowed_box)]
+        let clone_from_reflect = |value: &Box<dyn PartialReflect>| {
+            registry
+                .get(value.get_represented_type_info().unwrap().type_id())
+                .and_then(|r| {
+                    r.data::<ReflectFromReflect>()
+                        .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                        .map(|fr| fr.into_partial_reflect())
+                })
+                .unwrap_or_else(|| value.clone_value())
+        };
+
         Self {
-            entities: self.entities.iter().map(|e| e.clone_value()).collect(),
-            resources: self.resources.clone_value(),
-            rollbacks: self.rollbacks.clone_value(),
+            entities: self
+                .entities
+                .iter()
+                .map(|d| DynamicEntity {
+                    entity: d.entity,
+                    components: d.components.iter().map(&clone_from_reflect).collect(),
+                })
+                .collect(),
+            resources: self.resources.iter().map(&clone_from_reflect).collect(),
+            rollbacks: self.rollbacks.as_ref().map(|r| r.clone_reflect(registry)),
         }
     }
 }

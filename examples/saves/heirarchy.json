@@ -1,74 +1,54 @@
 {
-  "resources": {},
   "entities": {
-    "1": {
+    "4294967301": {
       "components": {
-        "bevy_render::view::visibility::Visibility": "Inherited",
-        "bevy_render::view::visibility::InheritedVisibility": [
-          true
+        "bevy_hierarchy::components::children::Children": [
+          4294967302
         ],
-        "bevy_render::view::visibility::ViewVisibility": [
-          false
+        "bevy_render::view::visibility::InheritedVisibility": true,
+        "bevy_render::view::visibility::ViewVisibility": false,
+        "bevy_render::view::visibility::Visibility": "Inherited",
+        "bevy_transform::components::global_transform::GlobalTransform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
         ],
         "bevy_transform::components::transform::Transform": {
-          "translation": {
-            "x": 0.0,
-            "y": 0.0,
-            "z": 0.0
-          },
-          "rotation": {
-            "x": 0.0,
-            "y": 0.0,
-            "z": 0.0,
-            "w": 1.0
-          },
-          "scale": {
-            "x": 1.0,
-            "y": 1.0,
-            "z": 1.0
-          }
-        },
-        "bevy_transform::components::global_transform::GlobalTransform": [
-          {
-            "matrix3": {
-              "x_axis": {
-                "x": 1.0,
-                "y": 0.0,
-                "z": 0.0
-              },
-              "y_axis": {
-                "x": 0.0,
-                "y": 1.0,
-                "z": 0.0
-              },
-              "z_axis": {
-                "x": 0.0,
-                "y": 0.0,
-                "z": 1.0
-              }
-            },
-            "translation": {
-              "x": 0.0,
-              "y": 0.0,
-              "z": 0.0
-            }
-          }
-        ],
-        "heirarchy::Player": {},
-        "bevy_hierarchy::components::children::Children": [
-          [
-            2
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
           ]
-        ]
+        },
+        "heirarchy::Player": {}
       }
     },
-    "2": {
+    "4294967302": {
       "components": {
-        "heirarchy::Head": {},
-        "bevy_hierarchy::components::parent::Parent": [
-          1
-        ]
+        "bevy_hierarchy::components::parent::Parent": 4294967301,
+        "heirarchy::Head": {}
       }
     }
-  }
+  },
+  "resources": {}
 }

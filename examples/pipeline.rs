@@ -180,7 +180,7 @@ fn main() {
         .register_type::<TilePosition>()
         .register_type::<Tile>()
         // Bevy's reflection requires we register each generic instance of a type individually
-        // Note that we only need to register it in the AppTypeRegistry and not in the SaveableRegistry
+        // Note that we only need to register it in the AppTypeRegistry for it to be included in saves
         .register_type::<HashMap<TilePosition, Entity>>()
         // Resources
         .init_resource::<TileMap>()

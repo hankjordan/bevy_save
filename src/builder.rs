@@ -1,11 +1,15 @@
 use std::{
-    any::Any,
+    any::{
+        Any,
+        TypeId,
+    },
     collections::BTreeMap,
 };
 
 use bevy::{
     ecs::component::ComponentId,
     prelude::*,
+    reflect::TypeRegistry,
     scene::DynamicEntity,
 };
 
@@ -19,8 +23,9 @@ use crate::{
 /// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
 pub struct SnapshotBuilder<'a> {
     world: &'a World,
+    type_registry: Option<&'a TypeRegistry>,
     entities: BTreeMap<Entity, DynamicEntity>,
-    resources: BTreeMap<ComponentId, Box<dyn Reflect>>,
+    resources: BTreeMap<ComponentId, Box<dyn PartialReflect>>,
     filter: SceneFilter,
     rollbacks: Option<Rollbacks>,
     is_rollback: bool,
@@ -52,6 +57,7 @@ impl<'a> SnapshotBuilder<'a> {
     pub fn snapshot(world: &'a World) -> Self {
         Self {
             world,
+            type_registry: None,
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
@@ -87,6 +93,7 @@ impl<'a> SnapshotBuilder<'a> {
     pub fn rollback(world: &'a World) -> Self {
         Self {
             world,
+            type_registry: None,
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
@@ -103,6 +110,14 @@ impl<'a> SnapshotBuilder<'a> {
         'a: 'w,
     {
         self.world
+    }
+
+    /// Set the [`TypeRegistry`] to be used for reflection.
+    ///
+    /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
+    pub fn type_registry(mut self, type_registry: &'a TypeRegistry) -> Self {
+        self.type_registry = Some(type_registry);
+        self
     }
 }
 
@@ -165,11 +180,23 @@ impl SnapshotBuilder<'_> {
     }
 
     /// Extract the given entities from the builder’s [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     pub fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
-        let registry = self.world.resource::<AppTypeRegistry>().read();
-        let rollbacks = self.world.resource::<RollbackRegistry>();
+        let app_type_registry = self
+            .world
+            .get_resource::<AppTypeRegistry>()
+            .map(|r| r.read());
 
-        for entity in entities.filter_map(|e| self.world.get_entity(e)) {
+        let type_registry = self
+            .type_registry
+            .or(app_type_registry.as_deref())
+            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
+
+        let rollbacks = self.world.get_resource::<RollbackRegistry>();
+
+        for entity in entities.filter_map(|e| self.world.get_entity(e).ok()) {
             let id = entity.id();
             let mut entry = DynamicEntity {
                 entity: id,
@@ -185,17 +212,28 @@ impl SnapshotBuilder<'_> {
                     .filter(|id| self.filter.is_allowed_by_id(*id))
                     .filter(|id| {
                         if self.is_rollback {
-                            rollbacks.is_allowed_by_id(*id)
+                            rollbacks.is_none_or(|rb| rb.is_allowed_by_id(*id))
                         } else {
                             true
                         }
                     })
-                    .and_then(|id| registry.get(id))
-                    .and_then(|reg| reg.data::<ReflectComponent>())
-                    .and_then(|reflect| reflect.reflect(entity));
+                    .and_then(|id| type_registry.get(id))
+                    .and_then(|r| {
+                        let reflect = r.data::<ReflectComponent>()?.reflect(entity)?;
+
+                        let reflect = r
+                            .data::<ReflectFromReflect>()
+                            .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
+                            .map_or_else(
+                                || reflect.clone_value(),
+                                PartialReflect::into_partial_reflect,
+                            );
+
+                        Some(reflect)
+                    });
 
                 if let Some(reflect) = reflect {
-                    entry.components.push(reflect.clone_value());
+                    entry.components.push(reflect);
                 }
             }
 
@@ -219,19 +257,15 @@ impl SnapshotBuilder<'_> {
 
     /// Extract a single resource from the builder's [`World`].
     pub fn extract_resource<T: Resource>(self) -> Self {
-        let registry = self.world.resource::<AppTypeRegistry>().read();
-
-        let path = self
+        let type_id = self
             .world
             .components()
             .resource_id::<T>()
             .and_then(|i| self.world.components().get_info(i))
             .and_then(|i| i.type_id())
-            .and_then(|i| registry.get(i))
-            .map(|i| i.type_info().type_path())
             .into_iter();
 
-        self.extract_resources_by_path(path)
+        self.extract_resources_by_type_id(type_id)
     }
 
     /// Extract a single resource with the given type path from the builder's [`World`].
@@ -240,29 +274,71 @@ impl SnapshotBuilder<'_> {
     }
 
     /// Extract resources with the given type paths from the builder's [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     pub fn extract_resources_by_path<T: AsRef<str>>(
-        mut self,
+        self,
         type_paths: impl Iterator<Item = T>,
     ) -> Self {
-        let registry = self.world.resource::<AppTypeRegistry>().read();
-        let rollbacks = self.world.resource::<RollbackRegistry>();
+        let app_type_registry = self
+            .world
+            .get_resource::<AppTypeRegistry>()
+            .map(|r| r.read());
 
-        type_paths
-            .filter_map(|p| registry.get_with_type_path(p.as_ref()))
+        let type_registry = self
+            .type_registry
+            .or(app_type_registry.as_deref())
+            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
+
+        self.extract_resources_by_type_id(
+            type_paths
+                .filter_map(|p| type_registry.get_with_type_path(p.as_ref()))
+                .map(|r| r.type_id()),
+        )
+    }
+
+    /// Extract resources with the given [`TypeId`]'s from the builder's [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
+    pub fn extract_resources_by_type_id(mut self, type_ids: impl Iterator<Item = TypeId>) -> Self {
+        let app_type_registry = self
+            .world
+            .get_resource::<AppTypeRegistry>()
+            .map(|r| r.read());
+
+        let type_registry = self
+            .type_registry
+            .or(app_type_registry.as_deref())
+            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
+
+        let rollbacks = self.world.get_resource::<RollbackRegistry>();
+
+        type_ids
+            .filter_map(|id| type_registry.get(id))
             .filter(|r| self.filter.is_allowed_by_id((*r).type_id()))
             .filter(|r| {
                 if self.is_rollback {
-                    rollbacks.is_allowed_by_id((*r).type_id())
+                    rollbacks.is_none_or(|rb| rb.is_allowed_by_id((*r).type_id()))
                 } else {
                     true
                 }
             })
             .filter_map(|r| {
+                let reflect = r.data::<ReflectResource>()?.reflect(self.world)?;
+
+                let reflect = r
+                    .data::<ReflectFromReflect>()
+                    .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
+                    .map_or_else(
+                        || reflect.clone_value(),
+                        PartialReflect::into_partial_reflect,
+                    );
+
                 Some((
                     self.world.components().get_resource_id(r.type_id())?,
-                    r.data::<ReflectResource>()?
-                        .reflect(self.world)?
-                        .clone_value(),
+                    reflect,
                 ))
             })
             .for_each(|(i, r)| {
@@ -274,8 +350,6 @@ impl SnapshotBuilder<'_> {
 
     /// Extract all resources from the builder's [`World`].
     pub fn extract_all_resources(self) -> Self {
-        let registry = self.world.resource::<AppTypeRegistry>().read();
-
         let resources = self
             .world
             .storages()
@@ -283,19 +357,30 @@ impl SnapshotBuilder<'_> {
             .iter()
             .map(|(id, _)| id)
             .filter_map(move |id| self.world.components().get_info(id))
-            .filter_map(|info| info.type_id())
-            .filter_map(|id| registry.get(id))
-            .map(|reg| reg.type_info().type_path());
+            .filter_map(|info| info.type_id());
 
-        self.extract_resources_by_path(resources)
+        self.extract_resources_by_type_id(resources)
     }
 
     /// Extract [`Rollbacks`] from the builder's [`World`].
+    ///
+    /// # Panics
+    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     pub fn extract_rollbacks(mut self) -> Self {
+        let app_type_registry = self
+            .world
+            .get_resource::<AppTypeRegistry>()
+            .map(|r| r.read());
+
+        let type_registry = self
+            .type_registry
+            .or(app_type_registry.as_deref())
+            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
+
         self.rollbacks = self
             .world
             .get_resource::<Rollbacks>()
-            .map(|r| r.clone_value());
+            .map(|r| r.clone_reflect(type_registry));
 
         self
     }
