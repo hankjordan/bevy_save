@@ -3,7 +3,7 @@ members = ["."]
 
 [package]
 name = "bevy_save"
-version = "0.16.0"
+version = "0.15.1"
 edition = "2021"
 description = "A framework for saving and loading application state in Bevy."
 license = "MIT OR Apache-2.0"
