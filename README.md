@@ -34,7 +34,7 @@ With the default `FileIO` backend, your save directory is managed for you.
 
 On WASM, snapshots are saved to `LocalStorage`, with the key:
 
-```
+```ignore
 WORKSPACE.KEY
 ```
 

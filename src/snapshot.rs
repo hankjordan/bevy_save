@@ -1,15 +1,6 @@
-use bevy::{
-    prelude::*,
-    scene::DynamicEntity,
-};
+use bevy::{prelude::*, scene::DynamicEntity};
 
-use crate::{
-    CloneReflect,
-    Error,
-    Rollbacks,
-    SnapshotApplier,
-    SnapshotBuilder,
-};
+use crate::{CloneReflect, Error, Rollbacks, SnapshotApplier, SnapshotBuilder};
 
 /// A collection of serializable entities and resources.
 ///
@@ -36,7 +27,7 @@ impl Snapshot {
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
-    /// # let world = &mut app.world;
+    /// # let world = app.world_mut();
     /// Snapshot::builder(world)
     ///     .extract_all_with_rollbacks()
     ///     .build();
@@ -53,7 +44,7 @@ impl Snapshot {
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
-    /// # let world = &mut app.world;
+    /// # let world = app.world_mut();
     /// Snapshot::builder(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
@@ -87,7 +78,7 @@ impl Snapshot {
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
-    /// # let world = &mut app.world;
+    /// # let world = app.world_mut();
     /// # let parent = Entity::from_raw(0);
     /// let snapshot = Snapshot::from_world(world);
     ///

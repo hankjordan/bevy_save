@@ -23,13 +23,13 @@ impl AppSaveableExt for App {
     }
 
     fn allow_rollback<T: Any>(&mut self) -> &mut Self {
-        let mut registry = self.world.resource_mut::<RollbackRegistry>();
+        let mut registry = self.world_mut().resource_mut::<RollbackRegistry>();
         registry.allow::<T>();
         self
     }
 
     fn deny_rollback<T: Any>(&mut self) -> &mut Self {
-        let mut registry = self.world.resource_mut::<RollbackRegistry>();
+        let mut registry = self.world_mut().resource_mut::<RollbackRegistry>();
         registry.deny::<T>();
         self
     }

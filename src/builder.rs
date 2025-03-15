@@ -1,20 +1,8 @@
-use std::{
-    any::Any,
-    collections::BTreeMap,
-};
+use std::{any::Any, collections::BTreeMap};
 
-use bevy::{
-    ecs::component::ComponentId,
-    prelude::*,
-    scene::DynamicEntity,
-};
+use bevy::{ecs::component::ComponentId, prelude::*, scene::DynamicEntity};
 
-use crate::{
-    CloneReflect,
-    RollbackRegistry,
-    Rollbacks,
-    Snapshot,
-};
+use crate::{CloneReflect, RollbackRegistry, Rollbacks, Snapshot};
 
 /// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
 pub struct SnapshotBuilder<'a> {
@@ -38,7 +26,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
-    /// # let world = &mut app.world;
+    /// # let world = app.world_mut();
     /// SnapshotBuilder::snapshot(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
@@ -73,7 +61,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # let mut app = App::new();
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
-    /// # let world = &mut app.world;
+    /// # let world = app.world_mut();
     /// SnapshotBuilder::rollback(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()

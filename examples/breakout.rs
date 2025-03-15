@@ -2,21 +2,10 @@
 //! Modified to demonstrate integration of `bevy_save`.
 
 use bevy::{
-    ecs::system::{
-        SystemParam,
-        SystemState,
-    },
-    math::bounding::{
-        Aabb2d,
-        BoundingCircle,
-        BoundingVolume,
-        IntersectsVolume,
-    },
+    ecs::system::{SystemParam, SystemState},
+    math::bounding::{Aabb2d, BoundingCircle, BoundingVolume, IntersectsVolume},
     prelude::*,
-    sprite::{
-        MaterialMesh2dBundle,
-        Mesh2dHandle,
-    },
+    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     utils::Instant,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -61,16 +50,16 @@ const HELP_TEXT_PADDING: Val = Val::Px(5.0);
 
 const TOAST_FONT_SIZE: f32 = 32.0;
 const TOAST_TEXT_PADDING: Val = Val::Px(5.0);
-const TOAST_TEXT_COLOR: Color = Color::rgb(0.5, 0.1, 0.1);
+const TOAST_TEXT_COLOR: Color = Color::srgb(0.5, 0.1, 0.1);
 const TOAST_DURATION: f32 = 0.5;
 
-const BACKGROUND_COLOR: Color = Color::rgb(0.9, 0.9, 0.9);
-const PADDLE_COLOR: Color = Color::rgb(0.3, 0.3, 0.7);
-const BALL_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
-const BRICK_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
-const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
-const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
-const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
+const BACKGROUND_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+const PADDLE_COLOR: Color = Color::srgb(0.3, 0.3, 0.7);
+const BALL_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
+const BRICK_COLOR: Color = Color::srgb(0.5, 0.5, 1.0);
+const WALL_COLOR: Color = Color::srgb(0.8, 0.8, 0.8);
+const TEXT_COLOR: Color = Color::srgb(0.5, 0.5, 1.0);
+const SCORE_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
 
 #[rustfmt::skip]
 fn main() {
@@ -95,7 +84,7 @@ fn main() {
                 // `chain`ing systems together runs them in order
                 .chain(),
         )
-        .add_systems(Update, (update_scoreboard, bevy::window::close_on_esc))
+        .add_systems(Update, (update_scoreboard, close_on_esc))
 
         .add_plugins((
             // Inspector
@@ -282,11 +271,14 @@ fn setup(
     // Scoreboard
     commands.spawn((
         TextBundle::from_sections([
-            TextSection::new("Score: ", TextStyle {
-                font_size: SCOREBOARD_FONT_SIZE,
-                color: TEXT_COLOR,
-                ..default()
-            }),
+            TextSection::new(
+                "Score: ",
+                TextStyle {
+                    font_size: SCOREBOARD_FONT_SIZE,
+                    color: TEXT_COLOR,
+                    ..default()
+                },
+            ),
             TextSection::from_style(TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: SCORE_COLOR,
@@ -510,11 +502,14 @@ fn collide_with_side(ball: BoundingCircle, wall: Aabb2d) -> Option<Collision> {
 fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(
         TextBundle::from_sections([
-            TextSection::new("Enter - Save | Backspace - Load\n", TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: HELP_FONT_SIZE,
-                color: TEXT_COLOR,
-            }),
+            TextSection::new(
+                "Enter - Save | Backspace - Load\n",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: HELP_FONT_SIZE,
+                    color: TEXT_COLOR,
+                },
+            ),
             TextSection::new(
                 "Space - Checkpoint | A - Rollback | D - Rollforward\n",
                 TextStyle {
@@ -538,11 +533,14 @@ struct EntityCount;
 
 fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
-        TextBundle::from_section("", TextStyle {
-            font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-            font_size: HELP_FONT_SIZE,
-            color: TEXT_COLOR,
-        })
+        TextBundle::from_section(
+            "",
+            TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: HELP_FONT_SIZE,
+                color: TEXT_COLOR,
+            },
+        )
         .with_style(Style {
             position_type: PositionType::Absolute,
             top: HELP_TEXT_PADDING,
@@ -593,11 +591,14 @@ impl<'w, 's> Toaster<'w, 's> {
         }
 
         self.commands.spawn((
-            TextBundle::from_sections([TextSection::new(text, TextStyle {
-                font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: TOAST_FONT_SIZE,
-                color: TOAST_TEXT_COLOR,
-            })])
+            TextBundle::from_sections([TextSection::new(
+                text,
+                TextStyle {
+                    font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
+                    font_size: TOAST_FONT_SIZE,
+                    color: TOAST_TEXT_COLOR,
+                },
+            )])
             .with_style(Style {
                 position_type: PositionType::Absolute,
                 bottom: TOAST_TEXT_PADDING,
@@ -685,5 +686,21 @@ fn handle_save_input(world: &mut World) {
         toaster.show(text);
 
         state.apply(world);
+    }
+}
+
+pub fn close_on_esc(
+    mut commands: Commands,
+    focused_windows: Query<(Entity, &Window)>,
+    input: Res<ButtonInput<KeyCode>>,
+) {
+    for (window, focus) in focused_windows.iter() {
+        if !focus.focused {
+            continue;
+        }
+
+        if input.just_pressed(KeyCode::Escape) {
+            commands.entity(window).despawn();
+        }
     }
 }
