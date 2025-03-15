@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{prelude::*, Error};
+use crate::{
+    prelude::*,
+    Error,
+};
 
 /// Trait that defines how exactly your app saves and loads.
 pub trait Pipeline: Sized {
@@ -63,7 +66,7 @@ pub trait Pipeline: Sized {
     }
 }
 
-impl<'a> Pipeline for &'a str {
+impl Pipeline for &str {
     type Backend = DefaultBackend;
     type Format = DefaultFormat;
 
@@ -77,7 +80,7 @@ impl<'a> Pipeline for &'a str {
 /// Uses `JSON` and saves to the given local path.
 pub struct DebugPipeline<'a>(pub &'a str);
 
-impl<'a> Pipeline for DebugPipeline<'a> {
+impl Pipeline for DebugPipeline<'_> {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 

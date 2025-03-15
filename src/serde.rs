@@ -4,21 +4,41 @@ use bevy::{
     ecs::entity::Entity,
     reflect::{
         serde::{
-            ReflectDeserializer, TypeRegistrationDeserializer, TypedReflectDeserializer,
+            ReflectDeserializer,
+            TypeRegistrationDeserializer,
+            TypedReflectDeserializer,
             TypedReflectSerializer,
         },
-        Reflect, TypeRegistry, TypeRegistryArc,
+        Reflect,
+        TypeRegistry,
+        TypeRegistryArc,
     },
     scene::DynamicEntity,
     utils::HashSet,
 };
 use serde::{
-    de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeMap, SerializeSeq, SerializeStruct},
-    Deserialize, Deserializer, Serialize, Serializer,
+    de::{
+        DeserializeSeed,
+        Error,
+        MapAccess,
+        SeqAccess,
+        Visitor,
+    },
+    ser::{
+        SerializeMap,
+        SerializeSeq,
+        SerializeStruct,
+    },
+    Deserialize,
+    Deserializer,
+    Serialize,
+    Serializer,
 };
 
-use crate::{Rollbacks, Snapshot};
+use crate::{
+    Rollbacks,
+    Snapshot,
+};
 
 const SNAPSHOT_STRUCT: &str = "Snapshot";
 const SNAPSHOT_ENTITIES: &str = "entities";
@@ -47,7 +67,7 @@ impl<'a> SnapshotSerializer<'a> {
     }
 }
 
-impl<'a> Serialize for SnapshotSerializer<'a> {
+impl Serialize for SnapshotSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -60,29 +80,20 @@ impl<'a> Serialize for SnapshotSerializer<'a> {
                 2
             },
         )?;
-        state.serialize_field(
-            SNAPSHOT_ENTITIES,
-            &EntityMapSerializer {
-                entities: &self.snapshot.entities,
-                registry: self.registry,
-            },
-        )?;
-        state.serialize_field(
-            SNAPSHOT_RESOURCES,
-            &ReflectMapSerializer {
-                entries: &self.snapshot.resources,
-                registry: self.registry,
-            },
-        )?;
+        state.serialize_field(SNAPSHOT_ENTITIES, &EntityMapSerializer {
+            entities: &self.snapshot.entities,
+            registry: self.registry,
+        })?;
+        state.serialize_field(SNAPSHOT_RESOURCES, &ReflectMapSerializer {
+            entries: &self.snapshot.resources,
+            registry: self.registry,
+        })?;
 
         if let Some(rollbacks) = &self.snapshot.rollbacks {
-            state.serialize_field(
-                SNAPSHOT_ROLLBACKS,
-                &RollbacksSerializer {
-                    rollbacks,
-                    registry: self.registry,
-                },
-            )?;
+            state.serialize_field(SNAPSHOT_ROLLBACKS, &RollbacksSerializer {
+                rollbacks,
+                registry: self.registry,
+            })?;
         }
 
         state.end()
@@ -94,7 +105,7 @@ struct SnapshotListSerializer<'a> {
     registry: &'a TypeRegistryArc,
 }
 
-impl<'a> Serialize for SnapshotListSerializer<'a> {
+impl Serialize for SnapshotListSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -120,20 +131,17 @@ pub struct RollbacksSerializer<'a> {
     pub registry: &'a TypeRegistryArc,
 }
 
-impl<'a> Serialize for RollbacksSerializer<'a> {
+impl Serialize for RollbacksSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut state = serializer.serialize_struct(ROLLBACKS_STRUCT, 2)?;
 
-        state.serialize_field(
-            ROLLBACKS_CHECKPOINTS,
-            &SnapshotListSerializer {
-                snapshots: &self.rollbacks.checkpoints,
-                registry: self.registry,
-            },
-        )?;
+        state.serialize_field(ROLLBACKS_CHECKPOINTS, &SnapshotListSerializer {
+            snapshots: &self.rollbacks.checkpoints,
+            registry: self.registry,
+        })?;
         state.serialize_field(ROLLBACKS_ACTIVE, &self.rollbacks.active)?;
 
         state.end()
@@ -145,20 +153,17 @@ struct EntityMapSerializer<'a> {
     registry: &'a TypeRegistryArc,
 }
 
-impl<'a> Serialize for EntityMapSerializer<'a> {
+impl Serialize for EntityMapSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut state = serializer.serialize_map(Some(self.entities.len()))?;
         for entity in self.entities {
-            state.serialize_entry(
-                &entity.entity,
-                &EntitySerializer {
-                    entity,
-                    registry: self.registry,
-                },
-            )?;
+            state.serialize_entry(&entity.entity, &EntitySerializer {
+                entity,
+                registry: self.registry,
+            })?;
         }
         state.end()
     }
@@ -169,19 +174,16 @@ struct EntitySerializer<'a> {
     registry: &'a TypeRegistryArc,
 }
 
-impl<'a> Serialize for EntitySerializer<'a> {
+impl Serialize for EntitySerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct(ENTITY_STRUCT, 1)?;
-        state.serialize_field(
-            ENTITY_COMPONENTS,
-            &ReflectMapSerializer {
-                entries: &self.entity.components,
-                registry: self.registry,
-            },
-        )?;
+        state.serialize_field(ENTITY_COMPONENTS, &ReflectMapSerializer {
+            entries: &self.entity.components,
+            registry: self.registry,
+        })?;
         state.end()
     }
 }
@@ -191,7 +193,7 @@ struct ReflectMapSerializer<'a> {
     registry: &'a TypeRegistryArc,
 }
 
-impl<'a> Serialize for ReflectMapSerializer<'a> {
+impl Serialize for ReflectMapSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -234,7 +236,7 @@ pub struct SnapshotDeserializer<'a> {
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SnapshotDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
     type Value = Snapshot;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -255,7 +257,7 @@ struct SnapshotVisitor<'a> {
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for SnapshotVisitor<'a> {
+impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
     type Value = Snapshot;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -343,7 +345,7 @@ pub struct RollbacksDeserializer<'a> {
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for RollbacksDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for RollbacksDeserializer<'_> {
     type Value = Rollbacks;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -364,7 +366,7 @@ struct RollbacksVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for RollbacksVisitor<'a> {
+impl<'de> Visitor<'de> for RollbacksVisitor<'_> {
     type Value = Rollbacks;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -431,7 +433,7 @@ struct SnapshotListDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for SnapshotListDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for SnapshotListDeserializer<'_> {
     type Value = Vec<Snapshot>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -448,7 +450,7 @@ struct SnapshotListVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for SnapshotListVisitor<'a> {
+impl<'de> Visitor<'de> for SnapshotListVisitor<'_> {
     type Value = Vec<Snapshot>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -475,7 +477,7 @@ struct EntityMapDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for EntityMapDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for EntityMapDeserializer<'_> {
     type Value = Vec<DynamicEntity>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -492,7 +494,7 @@ struct EntityMapVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for EntityMapVisitor<'a> {
+impl<'de> Visitor<'de> for EntityMapVisitor<'_> {
     type Value = Vec<DynamicEntity>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -521,21 +523,17 @@ struct EntityDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for EntityDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for EntityDeserializer<'_> {
     type Value = DynamicEntity;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_struct(
-            ENTITY_STRUCT,
-            &[ENTITY_COMPONENTS],
-            EntityVisitor {
-                entity: self.entity,
-                registry: self.registry,
-            },
-        )
+        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_COMPONENTS], EntityVisitor {
+            entity: self.entity,
+            registry: self.registry,
+        })
     }
 }
 
@@ -544,7 +542,7 @@ struct EntityVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for EntityVisitor<'a> {
+impl<'de> Visitor<'de> for EntityVisitor<'_> {
     type Value = DynamicEntity;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -600,7 +598,7 @@ struct ReflectMapDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> DeserializeSeed<'de> for ReflectMapDeserializer<'a> {
+impl<'de> DeserializeSeed<'de> for ReflectMapDeserializer<'_> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -617,7 +615,7 @@ struct ReflectMapVisitor<'a> {
     pub registry: &'a TypeRegistry,
 }
 
-impl<'a, 'de> Visitor<'de> for ReflectMapVisitor<'a> {
+impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
     type Value = Vec<Box<dyn Reflect>>;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

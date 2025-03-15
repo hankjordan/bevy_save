@@ -1,6 +1,15 @@
-use bevy::{prelude::*, scene::DynamicEntity};
+use bevy::{
+    prelude::*,
+    scene::DynamicEntity,
+};
 
-use crate::{CloneReflect, Error, Rollbacks, SnapshotApplier, SnapshotBuilder};
+use crate::{
+    CloneReflect,
+    Error,
+    Rollbacks,
+    SnapshotApplier,
+    SnapshotBuilder,
+};
 
 /// A collection of serializable entities and resources.
 ///
@@ -92,7 +101,7 @@ impl Snapshot {
     ///     })
     ///     .apply();
     /// ```
-    pub fn applier<'a>(&'a self, world: &'a mut World) -> SnapshotApplier<'_> {
+    pub fn applier<'a>(&'a self, world: &'a mut World) -> SnapshotApplier<'a> {
         SnapshotApplier::new(self, world)
     }
 }

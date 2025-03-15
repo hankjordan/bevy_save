@@ -1,8 +1,20 @@
-use std::{any::Any, collections::BTreeMap};
+use std::{
+    any::Any,
+    collections::BTreeMap,
+};
 
-use bevy::{ecs::component::ComponentId, prelude::*, scene::DynamicEntity};
+use bevy::{
+    ecs::component::ComponentId,
+    prelude::*,
+    scene::DynamicEntity,
+};
 
-use crate::{CloneReflect, RollbackRegistry, Rollbacks, Snapshot};
+use crate::{
+    CloneReflect,
+    RollbackRegistry,
+    Rollbacks,
+    Snapshot,
+};
 
 /// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
 pub struct SnapshotBuilder<'a> {
@@ -94,7 +106,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl SnapshotBuilder<'_> {
     /// Specify a custom [`SceneFilter`] to be used with this builder.
     ///
     /// This filter is applied to both components and resources.
@@ -146,7 +158,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl SnapshotBuilder<'_> {
     /// Extract a single entity from the builder’s [`World`].
     pub fn extract_entity(self, entity: Entity) -> Self {
         self.extract_entities([entity].into_iter())
@@ -299,7 +311,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl SnapshotBuilder<'_> {
     /// Clear all extracted entities.
     pub fn clear_entities(mut self) -> Self {
         self.entities.clear();
@@ -330,7 +342,7 @@ impl<'a> SnapshotBuilder<'a> {
     }
 }
 
-impl<'a> SnapshotBuilder<'a> {
+impl SnapshotBuilder<'_> {
     /// Build the extracted entities and resources into a [`Snapshot`].
     pub fn build(self) -> Snapshot {
         Snapshot {

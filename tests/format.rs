@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use bevy_save::prelude::*;
-use serde::{de::DeserializeSeed, Serialize};
+use serde::{
+    de::DeserializeSeed,
+    Serialize,
+};
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
@@ -47,11 +50,8 @@ fn init_app() -> (App, Vec<u64>) {
 
     let world = app.world_mut();
 
-    let mut ids = Vec::new();
-
-    ids.push(world.spawn(()).id().to_bits());
-
-    ids.push(
+    let ids = vec![
+        world.spawn(()).id().to_bits(),
         world
             .spawn((
                 Position {
@@ -66,16 +66,10 @@ fn init_app() -> (App, Vec<u64>) {
             ))
             .id()
             .to_bits(),
-    );
-
-    ids.push(
         world
             .spawn((Basic { data: 42 }, Nullable { data: Some(77) }, Unit))
             .id()
             .to_bits(),
-    );
-
-    ids.push(
         world
             .spawn((
                 Position {
@@ -87,9 +81,8 @@ fn init_app() -> (App, Vec<u64>) {
             ))
             .id()
             .to_bits(),
-    );
-
-    ids.push(world.spawn(Nullable { data: None }).id().to_bits());
+        world.spawn(Nullable { data: None }).id().to_bits(),
+    ];
 
     (app, ids)
 }

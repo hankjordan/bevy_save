@@ -8,6 +8,7 @@
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
 
+#[allow(unused_imports)]
 pub use crate::{
     app::*,
     applier::*,
@@ -45,6 +46,7 @@ mod snapshot;
 mod world;
 
 /// Prelude: convenient import for all the user-facing APIs provided by the crate
+#[allow(unused_imports)]
 pub mod prelude {
     pub use crate::{
         app::*,

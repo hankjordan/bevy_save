@@ -1,6 +1,10 @@
 //! An example of how to implement your own `Pipeline`.
 
-use bevy::{ecs::entity::EntityHashMap, prelude::*, utils::HashMap};
+use bevy::{
+    ecs::entity::EntityHashMap,
+    prelude::*,
+    utils::HashMap,
+};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
 
@@ -41,17 +45,14 @@ fn setup_world(mut commands: Commands) {
             })
             .map(|(x, y, t)| (TilePosition { x, y }, t))
             .map(|(p, t)| {
-                (
-                    p,
-                    match t {
-                        'x' => Tile::Empty,
-                        'g' => Tile::Grass,
-                        'd' => Tile::Dirt,
-                        's' => Tile::Stone,
-                        'i' => Tile::IronOre,
-                        _ => panic!(),
-                    },
-                )
+                (p, match t {
+                    'x' => Tile::Empty,
+                    'g' => Tile::Grass,
+                    'd' => Tile::Dirt,
+                    's' => Tile::Stone,
+                    'i' => Tile::IronOre,
+                    _ => panic!(),
+                })
             })
             .map(|(p, t)| (p, commands.spawn(t).id()))
             .collect(),

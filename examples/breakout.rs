@@ -2,10 +2,21 @@
 //! Modified to demonstrate integration of `bevy_save`.
 
 use bevy::{
-    ecs::system::{SystemParam, SystemState},
-    math::bounding::{Aabb2d, BoundingCircle, BoundingVolume, IntersectsVolume},
+    ecs::system::{
+        SystemParam,
+        SystemState,
+    },
+    math::bounding::{
+        Aabb2d,
+        BoundingCircle,
+        BoundingVolume,
+        IntersectsVolume,
+    },
     prelude::*,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::{
+        MaterialMesh2dBundle,
+        Mesh2dHandle,
+    },
     utils::Instant,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -271,14 +282,11 @@ fn setup(
     // Scoreboard
     commands.spawn((
         TextBundle::from_sections([
-            TextSection::new(
-                "Score: ",
-                TextStyle {
-                    font_size: SCOREBOARD_FONT_SIZE,
-                    color: TEXT_COLOR,
-                    ..default()
-                },
-            ),
+            TextSection::new("Score: ", TextStyle {
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: TEXT_COLOR,
+                ..default()
+            }),
             TextSection::from_style(TextStyle {
                 font_size: SCOREBOARD_FONT_SIZE,
                 color: SCORE_COLOR,
@@ -502,14 +510,11 @@ fn collide_with_side(ball: BoundingCircle, wall: Aabb2d) -> Option<Collision> {
 fn setup_help(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(
         TextBundle::from_sections([
-            TextSection::new(
-                "Enter - Save | Backspace - Load\n",
-                TextStyle {
-                    font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                    font_size: HELP_FONT_SIZE,
-                    color: TEXT_COLOR,
-                },
-            ),
+            TextSection::new("Enter - Save | Backspace - Load\n", TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: HELP_FONT_SIZE,
+                color: TEXT_COLOR,
+            }),
             TextSection::new(
                 "Space - Checkpoint | A - Rollback | D - Rollforward\n",
                 TextStyle {
@@ -533,14 +538,11 @@ struct EntityCount;
 
 fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
-        TextBundle::from_section(
-            "",
-            TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
-                font_size: HELP_FONT_SIZE,
-                color: TEXT_COLOR,
-            },
-        )
+        TextBundle::from_section("", TextStyle {
+            font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+            font_size: HELP_FONT_SIZE,
+            color: TEXT_COLOR,
+        })
         .with_style(Style {
             position_type: PositionType::Absolute,
             top: HELP_TEXT_PADDING,
@@ -584,21 +586,18 @@ struct Toaster<'w, 's> {
     toasts: Query<'w, 's, Entity, With<Toast>>,
 }
 
-impl<'w, 's> Toaster<'w, 's> {
+impl Toaster<'_, '_> {
     fn show(&mut self, text: &str) {
         for entity in &self.toasts {
             self.commands.entity(entity).despawn_recursive();
         }
 
         self.commands.spawn((
-            TextBundle::from_sections([TextSection::new(
-                text,
-                TextStyle {
-                    font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
-                    font_size: TOAST_FONT_SIZE,
-                    color: TOAST_TEXT_COLOR,
-                },
-            )])
+            TextBundle::from_sections([TextSection::new(text, TextStyle {
+                font: self.asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: TOAST_FONT_SIZE,
+                color: TOAST_TEXT_COLOR,
+            })])
             .with_style(Style {
                 position_type: PositionType::Absolute,
                 bottom: TOAST_TEXT_PADDING,

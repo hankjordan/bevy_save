@@ -12,7 +12,7 @@ use serde::{
     Serialize,
 };
 
-struct RONFormat;
+pub struct RONFormat;
 
 impl Format for RONFormat {
     fn extension() -> &'static str {

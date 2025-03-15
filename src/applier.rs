@@ -1,4 +1,7 @@
-use std::{any::TypeId, marker::PhantomData};
+use std::{
+    any::TypeId,
+    marker::PhantomData,
+};
 
 use bevy::{
     ecs::{
@@ -6,14 +9,20 @@ use bevy::{
         query::QueryFilter,
         reflect::ReflectMapEntities,
         system::EntityCommands,
-        world::{CommandQueue, EntityRef},
+        world::{
+            CommandQueue,
+            EntityRef,
+        },
     },
     prelude::*,
     scene::SceneSpawnError,
     utils::HashMap,
 };
 
-use crate::{Error, Snapshot};
+use crate::{
+    Error,
+    Snapshot,
+};
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
 ///
@@ -102,7 +111,7 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 }
 
-impl<'a, F: QueryFilter> SnapshotApplier<'a, F> {
+impl<F: QueryFilter> SnapshotApplier<'_, F> {
     /// Apply the [`Snapshot`] to the [`World`].
     ///
     /// # Panics
