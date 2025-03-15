@@ -10,7 +10,7 @@ A framework for saving and loading application state in Bevy.
 
 ### Save file management
 
-`bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [whatever platform](#platforms) it is running on.
+`bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [any platform](#platforms) it can run on.
 
 - [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
 - These methods accept a [`Pipeline`], a strongly typed representation of how you are going to be saving and loading.
@@ -26,13 +26,13 @@ A framework for saving and loading application state in Bevy.
 
 With the default [`FileIO`] backend, your save directory is managed for you.
 
-`WORKSPACE` is the name of your project's workspace (parent folder) name.
+[`WORKSPACE`] is the name of your project's workspace (parent folder) name.
 
 | Windows                                             | Linux/\*BSD                      | MacOS                                           |
 | --------------------------------------------------- | -------------------------------- | ----------------------------------------------- |
 | `C:\Users\%USERNAME%\AppData\Local\WORKSPACE\saves` | `~/.local/share/WORKSPACE/saves` | `~/Library/Application Support/WORKSPACE/saves` |
 
-On WASM, snapshots are saved to `LocalStorage`, with the key:
+On WASM, snapshots are saved to [`LocalStorage`](https://docs.rs/web-sys/latest/web_sys/struct.Storage.html), with the key:
 
 ```ignore
 WORKSPACE.KEY
@@ -46,18 +46,18 @@ This crate introduces a snapshot type which may be used directly:
 
 - [`Snapshot`] is a serializable snapshot of all saveable resources, entities, and components.
 
-Or via the `World` extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html) and [`WorldRollbackExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html):
+Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html) and [`WorldRollbackExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html):
 
 - [`World::snapshot()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.snapshot) captures a snapshot of the current application state, including resources.
 - [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
 - [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
 
-The [`Rollbacks`](https://docs.rs/bevy_save/latest/bevy_save/struct.Rollbacks.html) resource also gives you fine-tuned control of the currently stored rollbacks.
+The [`Rollbacks`] resource also gives you fine-tuned control of the currently stored rollbacks.
 
 ### Type registration
 
-`bevy_save` adds methods to Bevy's `App` for registering types that should be saved.
-As long as the type implements [`Reflect`](https://docs.rs/bevy/latest/bevy/prelude/trait.Reflect.html), it can be registered and used with `bevy_save`.
+`bevy_save` adds methods to Bevy's [`App`] for registering types that should be saved.
+As long as the type implements [`Reflect`], it can be registered and used with `bevy_save`.
 
 - [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
 - [`App.allow_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/trait.AppRollbackExt.html#tymethod.allow_rollback) allows a type to roll back.
@@ -142,7 +142,7 @@ snapshot
 
 While `bevy_save` aims to make it as easy as possible to save your entire world, some applications also need to be able to save only parts of the world.
 
-[`SnapshotBuilder`] allows you to manually create snapshots like `DynamicSceneBuilder`:
+[`SnapshotBuilder`] allows you to manually create snapshots like [`DynamicSceneBuilder`]:
 
 ```rust,ignore
 fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
@@ -195,7 +195,7 @@ Snapshot::builder(world)
 
 ### Pipeline
 
-Pipelines allow you to use multiple different configurations of [`Backend`] and [`Format`] in the same `App`.
+Pipelines allow you to use multiple different configurations of [`Backend`] and [`Format`] in the same [`App`].
 
 Pipelines also let you re-use [`Snapshot`] appliers and extractors.
 
@@ -205,7 +205,7 @@ Pipelines also let you re-use [`Snapshot`] appliers and extractors.
 
 `bevy_save` relies on serialization to create save files and as such is exposed to internal implementation details for types.
 Expect Bevy or other crate updates to break your save file format.
-It should be possible to mitigate this by overriding `ReflectDeserialize` for any offending types.
+It should be possible to mitigate this by overriding [`ReflectDeserialize`] for any offending types.
 
 Changing what entities have what components or how you use your entities or resources in your logic can also result in broken saves.
 While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`SnapshotApplier::hook`](https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotApplier.html#method.hook) to account for changes while applying a snapshot.
@@ -214,13 +214,13 @@ If your application has specific migration requirements, please [open an issue](
 
 ### Entity
 
-> For all intents and purposes, `Entity` should be treated as an opaque identifier. The internal bit representation is liable to change from release to release as are the behaviors or performance characteristics of any of its trait implementations (i.e. `Ord`, `Hash,` etc.). This means that changes in `Entity`’s representation, though made readable through various functions on the type, are not considered breaking changes under SemVer.
+> For all intents and purposes, [`Entity`] should be treated as an opaque identifier. The internal bit representation is liable to change from release to release as are the behaviors or performance characteristics of any of its trait implementations (i.e. `Ord`, `Hash,` etc.). This means that changes in [`Entity`]’s representation, though made readable through various functions on the type, are not considered breaking changes under SemVer.
 >
-> In particular, directly serializing with `Serialize` and `Deserialize` make zero guarantee of long term wire format compatibility. Changes in behavior will cause serialized `Entity` values persisted to long term storage (i.e. disk, databases, etc.) will fail to deserialize upon being updated.
+> In particular, directly serializing with `Serialize` and `Deserialize` make zero guarantee of long term wire format compatibility. Changes in behavior will cause serialized [`Entity`] values persisted to long term storage (i.e. disk, databases, etc.) will fail to deserialize upon being updated.
 >
 > — [Bevy's `Entity` documentation](https://docs.rs/bevy/latest/bevy/ecs/entity/struct.Entity.html#stability-warning)
 
-`bevy_save` serializes and deserializes entities directly. If you need to maintain compatibility across Bevy versions, consider adding a unique identifier `Component` to your tracked entities.
+`bevy_save` serializes and deserializes entities directly. If you need to maintain compatibility across Bevy versions, consider adding a unique identifier [`Component`] to your tracked entities.
 
 ### Stabilization
 
@@ -242,8 +242,8 @@ If your application has specific migration requirements, please [open an issue](
 
 #### Save format changes (since `0.15`)
 
-1. <a id="1"></a> `bevy` changed Entity's on-disk representation
-2. <a id="2"></a> `bevy_save` began using `FromReflect` when taking snapshots
+1. <a id="1"></a> `bevy` changed [`Entity`]'s on-disk representation
+2. <a id="2"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
 
 ### Platforms
 
@@ -283,7 +283,17 @@ If your application has specific migration requirements, please [open an issue](
 [`Snapshot`]: https://docs.rs/bevy_save/latest/bevy_save/struct.Snapshot.html
 [`SnapshotBuilder`]: https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotBuilder.html
 [`SnapshotApplier`]: https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotApplier.html
+[`Rollbacks`]: https://docs.rs/bevy_save/latest/bevy_save/struct.Rollbacks.html
 [`Pipeline`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Pipeline.html
 [`Backend`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Backend.html
 [`Format`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Format.html
 [`FileIO`]: https://docs.rs/bevy_save/latest/bevy_save/struct.FileIO.html
+[`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/constant.WORKSPACE.html
+[`App`]: https://docs.rs/bevy/latest/bevy/prelude/struct.App.html
+[`Component`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Component.html
+[`DynamicSceneBuilder`]: https://docs.rs/bevy/latest/bevy/prelude/struct.DynamicSceneBuilder.html
+[`Entity`]: https://docs.rs/bevy/latest/bevy/prelude/struct.Entity.html
+[`FromReflect`]: https://docs.rs/bevy/latest/bevy/prelude/trait.FromReflect.html
+[`Reflect`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Reflect.html
+[`ReflectDeserialize`]: https://docs.rs/bevy/latest/bevy/prelude/struct.ReflectDeserialize.html
+[`World`]: https://docs.rs/bevy/latest/bevy/prelude/struct.World.html
