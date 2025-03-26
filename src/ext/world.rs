@@ -1,18 +1,17 @@
 use bevy::{
     prelude::*,
     reflect::TypeRegistry,
+    tasks::block_on,
 };
 
 use crate::{
-    Backend,
-    CloneReflect,
-    Error,
-    Pipeline,
-    Rollbacks,
-    Snapshot,
-    SnapshotBuilder,
-    SnapshotDeserializer,
-    SnapshotSerializer,
+    checkpoint::Checkpoints,
+    error::Error,
+    prelude::*,
+    serde::{
+        SnapshotDeserializer,
+        SnapshotSerializer,
+    },
 };
 
 /// Extension trait that adds save-related methods to Bevy's [`World`].
@@ -61,7 +60,7 @@ impl WorldSaveableExt for World {
         let snapshot = pipeline.capture_seed(Snapshot::builder(self));
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
-        backend.save::<P::Format, _>(pipeline.key(), &ser)
+        block_on(backend.save::<P::Format, _>(pipeline.key(), &ser))
     }
 
     fn load<P: Pipeline>(&mut self, pipeline: P) -> Result<(), Error> {
@@ -77,15 +76,15 @@ impl WorldSaveableExt for World {
     ) -> Result<(), Error> {
         let backend = self.resource::<P::Backend>();
         let de = SnapshotDeserializer { registry };
-        let snapshot = backend.load::<P::Format, _, _>(pipeline.key(), de)?;
+        let snapshot = block_on(backend.load::<P::Format, _, _>(pipeline.key(), de))?;
 
         pipeline.apply_seed(self, &snapshot)
     }
 }
 
-/// Extension trait that adds rollback-related methods to Bevy's [`World`].
-pub trait WorldRollbackExt {
-    /// Creates a checkpoint for rollback.
+/// Extension trait that adds rollback checkpoint-related methods to Bevy's [`World`].
+pub trait WorldCheckpointExt {
+    /// Creates a checkpoint for rollback and stores it in [`Checkpoints`].
     fn checkpoint<P: Pipeline>(&mut self);
 
     /// Rolls back / forward the [`World`] state.
@@ -105,10 +104,10 @@ pub trait WorldRollbackExt {
     ) -> Result<(), Error>;
 }
 
-impl WorldRollbackExt for World {
+impl WorldCheckpointExt for World {
     fn checkpoint<P: Pipeline>(&mut self) {
-        let rollback = P::capture(SnapshotBuilder::rollback(self));
-        self.resource_mut::<Rollbacks>().checkpoint(rollback);
+        let rollback = P::capture(SnapshotBuilder::checkpoint(self));
+        self.resource_mut::<Checkpoints>().checkpoint(rollback);
     }
 
     fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error> {
@@ -124,7 +123,7 @@ impl WorldRollbackExt for World {
         registry: &TypeRegistry,
     ) -> Result<(), Error> {
         if let Some(rollback) = self
-            .resource_mut::<Rollbacks>()
+            .resource_mut::<Checkpoints>()
             .rollback(checkpoints)
             .map(|r| r.clone_reflect(registry))
         {

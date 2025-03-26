@@ -1,10 +1,12 @@
+//! Middleware for [`Format`](crate::prelude::Format), allowing you to easily add features like compression or encryption.
+
 #[cfg(feature = "brotli")]
 mod brotli {
     use std::marker::PhantomData;
 
     use brotli::enc::BrotliEncoderParams;
 
-    use crate::Format;
+    use crate::prelude::*;
 
     /// Brotli middleware for compressing your data after serializing
     ///
@@ -61,4 +63,4 @@ mod brotli {
 }
 
 #[cfg(feature = "brotli")]
-pub use brotli::*;
+pub use brotli::Brotli;

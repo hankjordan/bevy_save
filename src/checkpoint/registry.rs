@@ -17,53 +17,53 @@ where
     }
 }
 
-/// The global registry of types that should be included in [`Rollbacks`](crate::Rollbacks).
+/// The registry of types that should be included in [`Checkpoints`](crate::checkpoint::Checkpoints).
 ///
-/// Only types that are registered in here and [`AppTypeRegistry`] are included in rollbacks.
+/// Only types that are registered in here and [`AppTypeRegistry`] are included in checkpoints.
 #[derive(Resource, Default)]
-pub struct RollbackRegistry {
+pub struct CheckpointRegistry {
     types: SceneFilter,
 }
 
-impl RollbackRegistry {
-    /// Allow all types to roll back.
+impl CheckpointRegistry {
+    /// Allow all types to be included in checkpoints.
     pub fn allow_all(&mut self) {
         self.types = SceneFilter::allow_all();
     }
 
-    /// Deny all types from rolling back.
+    /// Deny all types from being included in checkpoints.
     pub fn deny_all(&mut self) {
         self.types = SceneFilter::deny_all();
     }
 
-    /// Include a type in rollbacks.
+    /// Include a type in checkpoints.
     pub fn allow<T: Any>(&mut self) {
         take(&mut self.types, |types| types.allow::<T>());
     }
 
-    /// Exclude a type from rollback.
+    /// Exclude a type from checkpoints.
     ///
     /// The type is still included in normal snapshots.
     pub fn deny<T: Any>(&mut self) {
         take(&mut self.types, |types| types.deny::<T>());
     }
 
-    /// Check if a type is allowed to roll back.
+    /// Check if a type is allowed to be included in checkpoints.
     pub fn is_allowed<T: Any>(&self) -> bool {
         self.types.is_allowed::<T>()
     }
 
-    /// Check if a type is allowed to roll back by id.
+    /// Check if a type is allowed to be included in checkpoints by id.
     pub fn is_allowed_by_id(&self, type_id: TypeId) -> bool {
         self.types.is_allowed_by_id(type_id)
     }
 
-    /// Check if a type is denied from rolling back.
+    /// Check if a type is denied from being included in checkpoints.
     pub fn is_denied<T: Any>(&self) -> bool {
         self.types.is_denied::<T>()
     }
 
-    /// Check if a type is denied from rolling back by id.
+    /// Check if a type is denied from being included in checkpoints by id.
     pub fn is_denied_by_id(&self, type_id: TypeId) -> bool {
         self.types.is_denied_by_id(type_id)
     }

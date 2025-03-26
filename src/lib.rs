@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
@@ -8,61 +9,67 @@
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
 
-#[allow(unused_imports)]
+pub mod backend;
+pub mod checkpoint;
+mod clone;
+pub mod commands;
+pub mod dir;
+mod error;
+pub mod ext;
+pub mod format;
+pub mod middleware;
+pub mod pipeline;
+pub mod plugins;
+pub mod serde;
+pub mod snapshot;
+
 pub use crate::{
-    app::*,
-    applier::*,
-    backend::*,
-    builder::*,
-    clone::*,
-    dir::*,
-    error::*,
-    format::*,
-    middleware::*,
-    pipeline::*,
-    plugins::*,
-    registry::*,
-    rollbacks::*,
-    serde::*,
-    snapshot::*,
-    world::*,
+    clone::CloneReflect,
+    error::Error,
 };
 
-mod app;
-mod applier;
-mod backend;
-mod builder;
-mod clone;
-mod dir;
-mod error;
-mod format;
-mod middleware;
-mod pipeline;
-mod plugins;
-mod registry;
-mod rollbacks;
-mod serde;
-mod snapshot;
-mod world;
-
-/// Prelude: convenient import for all the user-facing APIs provided by the crate
+/// Prelude: convenient import for commonly used items provided by the crate.
 #[allow(unused_imports)]
 pub mod prelude {
+    #[doc(inline)]
     pub use crate::{
-        app::*,
-        applier::*,
-        backend::*,
-        builder::*,
-        clone::*,
-        dir::*,
-        format::*,
+        backend::{
+            Backend,
+            DefaultBackend,
+            DefaultDebugBackend,
+        },
+        clone::CloneReflect,
+        dir::{
+            get_save_file,
+            SAVE_DIR,
+            WORKSPACE,
+        },
+        error::Error,
+        ext::{
+            AppCheckpointExt,
+            AppSaveableExt,
+            CommandsCheckpointExt,
+            CommandsSaveableExt,
+            WorldCheckpointExt,
+            WorldSaveableExt,
+        },
+        format::{
+            DefaultDebugFormat,
+            DefaultFormat,
+            Format,
+        },
         middleware::*,
-        pipeline::*,
-        plugins::*,
-        registry::*,
-        rollbacks::*,
-        serde::*,
-        snapshot::*,
-        world::*,
+        pipeline::Pipeline,
+        plugins::{
+            SavePlugin,
+            SavePlugins,
+            SaveablesPlugin,
+        },
+        snapshot::{
+            Hook,
+            Snapshot,
+            SnapshotApplier,
+            SnapshotBuilder,
+        },
     };
 }

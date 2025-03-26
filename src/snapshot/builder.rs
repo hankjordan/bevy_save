@@ -14,21 +14,22 @@ use bevy::{
 };
 
 use crate::{
-    CloneReflect,
-    RollbackRegistry,
-    Rollbacks,
-    Snapshot,
+    checkpoint::{
+        CheckpointRegistry,
+        Checkpoints,
+    },
+    prelude::*,
 };
 
-/// A snapshot builder that can extract entities, resources, and [`Rollbacks`] from a [`World`].
+/// A snapshot builder that can extract entities, resources, and rollback [`Checkpoints`] from a [`World`].
 pub struct SnapshotBuilder<'a> {
     world: &'a World,
     type_registry: Option<&'a TypeRegistry>,
     entities: BTreeMap<Entity, DynamicEntity>,
     resources: BTreeMap<ComponentId, Box<dyn PartialReflect>>,
     filter: SceneFilter,
-    rollbacks: Option<Rollbacks>,
-    is_rollback: bool,
+    checkpoints: Option<Checkpoints>,
+    is_checkpoint: bool,
 }
 
 impl<'a> SnapshotBuilder<'a> {
@@ -61,14 +62,14 @@ impl<'a> SnapshotBuilder<'a> {
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
-            rollbacks: None,
-            is_rollback: false,
+            checkpoints: None,
+            is_checkpoint: false,
         }
     }
 
     /// Create a new [`SnapshotBuilder`] from the [`World`].
     ///
-    /// Types extracted by this builder will respect the [`RollbackRegistry`](crate::RollbackRegistry).
+    /// Types extracted by this builder will respect the [`CheckpointRegistry`](crate::checkpoint::CheckpointRegistry).
     ///
     /// You must call at least one of the `extract` methods or the built snapshot will be empty.
     ///
@@ -80,7 +81,7 @@ impl<'a> SnapshotBuilder<'a> {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = app.world_mut();
-    /// SnapshotBuilder::rollback(world)
+    /// SnapshotBuilder::checkpoint(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
     ///     
@@ -90,15 +91,15 @@ impl<'a> SnapshotBuilder<'a> {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn rollback(world: &'a World) -> Self {
+    pub fn checkpoint(world: &'a World) -> Self {
         Self {
             world,
             type_registry: None,
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
-            rollbacks: None,
-            is_rollback: true,
+            checkpoints: None,
+            is_checkpoint: true,
         }
     }
 }
@@ -194,7 +195,7 @@ impl SnapshotBuilder<'_> {
             .or(app_type_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
 
-        let rollbacks = self.world.get_resource::<RollbackRegistry>();
+        let checkpoints = self.world.get_resource::<CheckpointRegistry>();
 
         for entity in entities.filter_map(|e| self.world.get_entity(e).ok()) {
             let id = entity.id();
@@ -211,8 +212,8 @@ impl SnapshotBuilder<'_> {
                     .and_then(|info| info.type_id())
                     .filter(|id| self.filter.is_allowed_by_id(*id))
                     .filter(|id| {
-                        if self.is_rollback {
-                            rollbacks.is_none_or(|rb| rb.is_allowed_by_id(*id))
+                        if self.is_checkpoint {
+                            checkpoints.is_none_or(|rb| rb.is_allowed_by_id(*id))
                         } else {
                             true
                         }
@@ -313,14 +314,14 @@ impl SnapshotBuilder<'_> {
             .or(app_type_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
 
-        let rollbacks = self.world.get_resource::<RollbackRegistry>();
+        let checkpoints = self.world.get_resource::<CheckpointRegistry>();
 
         type_ids
             .filter_map(|id| type_registry.get(id))
             .filter(|r| self.filter.is_allowed_by_id((*r).type_id()))
             .filter(|r| {
-                if self.is_rollback {
-                    rollbacks.is_none_or(|rb| rb.is_allowed_by_id((*r).type_id()))
+                if self.is_checkpoint {
+                    checkpoints.is_none_or(|rb| rb.is_allowed_by_id((*r).type_id()))
                 } else {
                     true
                 }
@@ -362,11 +363,11 @@ impl SnapshotBuilder<'_> {
         self.extract_resources_by_type_id(resources)
     }
 
-    /// Extract [`Rollbacks`] from the builder's [`World`].
+    /// Extract [`Checkpoints`] from the builder's [`World`].
     ///
     /// # Panics
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
-    pub fn extract_rollbacks(mut self) -> Self {
+    pub fn extract_checkpoints(mut self) -> Self {
         let app_type_registry = self
             .world
             .get_resource::<AppTypeRegistry>()
@@ -377,9 +378,9 @@ impl SnapshotBuilder<'_> {
             .or(app_type_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
 
-        self.rollbacks = self
+        self.checkpoints = self
             .world
-            .get_resource::<Rollbacks>()
+            .get_resource::<Checkpoints>()
             .map(|r| r.clone_reflect(type_registry));
 
         self
@@ -390,9 +391,9 @@ impl SnapshotBuilder<'_> {
         self.extract_all_entities().extract_all_resources()
     }
 
-    /// Extract all entities, resources, and [`Rollbacks`] from the builder's [`World`].
-    pub fn extract_all_with_rollbacks(self) -> Self {
-        self.extract_all().extract_rollbacks()
+    /// Extract all entities, resources, and [`Checkpoints`] from the builder's [`World`].
+    pub fn extract_all_with_checkpoints(self) -> Self {
+        self.extract_all().extract_checkpoints()
     }
 }
 
@@ -415,9 +416,9 @@ impl SnapshotBuilder<'_> {
         self
     }
 
-    /// Clear [`Rollbacks`] from the snapshot.
-    pub fn clear_rollbacks(mut self) -> Self {
-        self.rollbacks = None;
+    /// Clear [`Checkpoints`] from the snapshot.
+    pub fn clear_checkpoints(mut self) -> Self {
+        self.checkpoints = None;
         self
     }
 
@@ -433,7 +434,7 @@ impl SnapshotBuilder<'_> {
         Snapshot {
             entities: self.entities.into_values().collect(),
             resources: self.resources.into_values().collect(),
-            rollbacks: self.rollbacks,
+            checkpoints: self.checkpoints,
         }
     }
 }

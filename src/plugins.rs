@@ -1,9 +1,21 @@
+//! Bevy plugins necessary for the crate to function.
+
 use bevy::{
     app::PluginGroupBuilder,
     prelude::*,
 };
 
-use crate::prelude::*;
+use crate::{
+    checkpoint::{
+        CheckpointRegistry,
+        Checkpoints,
+    },
+    pipeline::{
+        DefaultDebugPipeline,
+        DefaultPipeline,
+    },
+    prelude::*,
+};
 
 /// Default plugins for `bevy_save`.
 pub struct SavePlugins;
@@ -19,32 +31,25 @@ impl PluginGroup for SavePlugins {
 /// `bevy_save` core functionality.
 pub struct SavePlugin;
 
-#[rustfmt::skip]
 impl Plugin for SavePlugin {
     fn build(&self, app: &mut App) {
-        app
-            .init_pipeline::<&str>()
-            .init_pipeline::<DebugPipeline>()
-            
-            .init_resource::<RollbackRegistry>()
-            .init_resource::<Rollbacks>();
+        app.init_pipeline::<DefaultPipeline>()
+            .init_pipeline::<DefaultDebugPipeline>()
+            .init_resource::<CheckpointRegistry>()
+            .init_resource::<Checkpoints>();
     }
 }
 
 /// Saveable registrations for common types.
 pub struct SaveablesPlugin;
 
-#[rustfmt::skip]
 impl Plugin for SaveablesPlugin {
     fn build(&self, app: &mut App) {
-        
         #[cfg(feature = "bevy_render")]
-        app
-            .register_type::<Color>();
+        app.register_type::<Color>();
 
         #[cfg(feature = "bevy_sprite")]
-        app
-            .register_type::<Option<Vec2>>()
+        app.register_type::<Option<Vec2>>()
             .register_type::<Option<Rect>>();
     }
 }

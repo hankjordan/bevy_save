@@ -21,7 +21,13 @@ use bevy::{
     },
     winit::WinitPlugin,
 };
-use bevy_save::prelude::*;
+use bevy_save::{
+    prelude::*,
+    serde::{
+        SnapshotDeserializer,
+        SnapshotSerializer,
+    },
+};
 use serde::{
     de::DeserializeSeed,
     Deserialize,

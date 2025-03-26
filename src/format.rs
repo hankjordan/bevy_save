@@ -1,3 +1,5 @@
+//! [`Format`] handles serialization and deserialization of application types.
+
 use std::io::{
     Read,
     Write,
@@ -8,9 +10,7 @@ use serde::{
     Serialize,
 };
 
-use crate::Error;
-
-// Trait |-------------------------------------------------------------------------------------------------------------
+use crate::error::Error;
 
 /// Handles serialization and deserialization of save data.
 pub trait Format {
@@ -36,8 +36,6 @@ pub trait Format {
         seed: S,
     ) -> Result<T, Error>;
 }
-
-// Implementations |---------------------------------------------------------------------------------------------------
 
 /// An implementation of [`Format`] that uses [`rmp_serde`].
 pub struct RMPFormat;
@@ -83,10 +81,8 @@ impl Format for JSONFormat {
     }
 }
 
-// Defaults |----------------------------------------------------------------------------------------------------------
-
-/// The [`Format`] the default [`Pipeline`](crate::Pipeline) will use.
+/// The [`Format`] the [`DefaultPipeline`](crate::pipeline::DefaultPipeline) will use.
 pub type DefaultFormat = RMPFormat;
 
-/// The [`Format`] the default [`Pipeline`](crate::Pipeline) will use.
+/// The [`Format`] the [`DefaultDebugPipeline`](crate::pipeline::DefaultDebugPipeline) will use.
 pub type DefaultDebugFormat = JSONFormat;

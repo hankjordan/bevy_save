@@ -5,17 +5,16 @@ use bevy::{
 };
 
 use crate::{
+    checkpoint::Checkpoints,
+    error::Error,
+    prelude::*,
+    serde::SnapshotSerializer,
     CloneReflect,
-    Error,
-    Rollbacks,
-    SnapshotApplier,
-    SnapshotBuilder,
-    SnapshotSerializer,
 };
 
 /// A collection of serializable entities and resources.
 ///
-/// Can be serialized via [`SnapshotSerializer`](crate::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::SnapshotDeserializer).
+/// Can be serialized via [`SnapshotSerializer`](crate::serde::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::serde::SnapshotDeserializer).
 pub struct Snapshot {
     /// Entities contained in the snapshot.
     pub entities: Vec<DynamicEntity>,
@@ -23,13 +22,13 @@ pub struct Snapshot {
     /// Resources contained in the snapshot.
     pub resources: Vec<Box<dyn PartialReflect>>,
 
-    pub(crate) rollbacks: Option<Rollbacks>,
+    pub(crate) checkpoints: Option<Checkpoints>,
 }
 
 impl Snapshot {
     /// Returns a complete [`Snapshot`] of the current [`World`] state.
     ///
-    /// Contains all saveable entities and resources, including [`Rollbacks`].
+    /// Contains all saveable entities, resources, and [`Checkpoints`].
     ///
     /// # Shortcut for
     /// ```
@@ -40,10 +39,10 @@ impl Snapshot {
     /// # app.add_plugins(SavePlugins);
     /// # let world = app.world_mut();
     /// Snapshot::builder(world)
-    ///     .extract_all_with_rollbacks()
+    ///     .extract_all_with_checkpoints()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
-        Self::builder(world).extract_all_with_rollbacks().build()
+        Self::builder(world).extract_all_with_checkpoints().build()
     }
 
     /// Create a [`SnapshotBuilder`] from the [`World`], allowing you to create partial or filtered snapshots.
@@ -118,29 +117,10 @@ impl Snapshot {
 
 impl CloneReflect for Snapshot {
     fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        #[allow(clippy::borrowed_box)]
-        let clone_from_reflect = |value: &Box<dyn PartialReflect>| {
-            registry
-                .get(value.get_represented_type_info().unwrap().type_id())
-                .and_then(|r| {
-                    r.data::<ReflectFromReflect>()
-                        .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
-                        .map(|fr| fr.into_partial_reflect())
-                })
-                .unwrap_or_else(|| value.clone_value())
-        };
-
         Self {
-            entities: self
-                .entities
-                .iter()
-                .map(|d| DynamicEntity {
-                    entity: d.entity,
-                    components: d.components.iter().map(&clone_from_reflect).collect(),
-                })
-                .collect(),
-            resources: self.resources.iter().map(&clone_from_reflect).collect(),
-            rollbacks: self.rollbacks.as_ref().map(|r| r.clone_reflect(registry)),
+            entities: self.entities.clone_reflect(registry),
+            resources: self.resources.clone_reflect(registry),
+            checkpoints: self.checkpoints.clone_reflect(registry),
         }
     }
 }

@@ -25,7 +25,21 @@ use serde::{
     Deserializer,
 };
 
-use crate::prelude::*;
+use crate::{
+    checkpoint::Checkpoints,
+    prelude::*,
+    serde::{
+        CHECKPOINTS_ACTIVE,
+        CHECKPOINTS_SNAPSHOTS,
+        CHECKPOINTS_STRUCT,
+        ENTITY_COMPONENTS,
+        ENTITY_STRUCT,
+        SNAPSHOT_CHECKPOINTS,
+        SNAPSHOT_ENTITIES,
+        SNAPSHOT_RESOURCES,
+        SNAPSHOT_STRUCT,
+    },
+};
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
@@ -37,7 +51,7 @@ enum SnapshotField {
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
-enum RollbacksField {
+enum CheckpointsField {
     Checkpoints,
     Active,
 }
@@ -63,7 +77,7 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
     {
         deserializer.deserialize_struct(
             SNAPSHOT_STRUCT,
-            &[SNAPSHOT_ENTITIES, SNAPSHOT_RESOURCES, SNAPSHOT_ROLLBACKS],
+            &[SNAPSHOT_ENTITIES, SNAPSHOT_RESOURCES, SNAPSHOT_CHECKPOINTS],
             SnapshotVisitor {
                 registry: self.registry,
             },
@@ -88,7 +102,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
     {
         let mut entities = None;
         let mut resources = None;
-        let mut rollbacks = None;
+        let mut checkpoints = None;
 
         while let Some(key) = map.next_key()? {
             match key {
@@ -109,10 +123,10 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
                     })?);
                 }
                 SnapshotField::Rollbacks => {
-                    if rollbacks.is_some() {
-                        return Err(Error::duplicate_field(SNAPSHOT_ROLLBACKS));
+                    if checkpoints.is_some() {
+                        return Err(Error::duplicate_field(SNAPSHOT_CHECKPOINTS));
                     }
-                    rollbacks = Some(map.next_value_seed(RollbacksDeserializer {
+                    checkpoints = Some(map.next_value_seed(CheckpointsDeserializer {
                         registry: self.registry,
                     })?);
                 }
@@ -125,7 +139,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
         Ok(Snapshot {
             entities,
             resources,
-            rollbacks,
+            checkpoints,
         })
     }
 
@@ -145,105 +159,99 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
             })?
             .ok_or_else(|| Error::missing_field(SNAPSHOT_RESOURCES))?;
 
-        let rollbacks = seq.next_element_seed(RollbacksDeserializer {
+        let checkpoints = seq.next_element_seed(CheckpointsDeserializer {
             registry: self.registry,
         })?;
 
         Ok(Snapshot {
             entities,
             resources,
-            rollbacks,
+            checkpoints,
         })
     }
 }
 
-/// Handles rollbacks deserialization.
-pub struct RollbacksDeserializer<'a> {
-    /// Type registry in which the components and resources types used to deserialize the rollbacks are registered.
+/// Handles checkpoints deserialization.
+pub struct CheckpointsDeserializer<'a> {
+    /// Type registry in which the components and resources types used to deserialize the checkpoints are registered.
     pub registry: &'a TypeRegistry,
 }
 
-impl<'de> DeserializeSeed<'de> for RollbacksDeserializer<'_> {
-    type Value = Rollbacks;
+impl<'de> DeserializeSeed<'de> for CheckpointsDeserializer<'_> {
+    type Value = Checkpoints;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_struct(
-            ROLLBACKS_STRUCT,
-            &[ROLLBACKS_CHECKPOINTS, ROLLBACKS_ACTIVE],
-            RollbacksVisitor {
+            CHECKPOINTS_STRUCT,
+            &[CHECKPOINTS_SNAPSHOTS, CHECKPOINTS_ACTIVE],
+            CheckpointsVisitor {
                 registry: self.registry,
             },
         )
     }
 }
 
-struct RollbacksVisitor<'a> {
+struct CheckpointsVisitor<'a> {
     registry: &'a TypeRegistry,
 }
 
-impl<'de> Visitor<'de> for RollbacksVisitor<'_> {
-    type Value = Rollbacks;
+impl<'de> Visitor<'de> for CheckpointsVisitor<'_> {
+    type Value = Checkpoints;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("rollbacks struct")
+        formatter.write_str("checkpoints struct")
     }
 
     fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
     {
-        let mut checkpoints = None;
+        let mut snapshots = None;
         let mut active = None;
 
         while let Some(key) = map.next_key()? {
             match key {
-                RollbacksField::Checkpoints => {
-                    if checkpoints.is_some() {
-                        return Err(Error::duplicate_field(ROLLBACKS_CHECKPOINTS));
+                CheckpointsField::Checkpoints => {
+                    if snapshots.is_some() {
+                        return Err(Error::duplicate_field(CHECKPOINTS_SNAPSHOTS));
                     }
-                    checkpoints = Some(map.next_value_seed(SnapshotListDeserializer {
+                    snapshots = Some(map.next_value_seed(SnapshotListDeserializer {
                         registry: self.registry,
                     })?);
                 }
-                RollbacksField::Active => {
+                CheckpointsField::Active => {
                     if active.is_some() {
-                        return Err(Error::duplicate_field(ROLLBACKS_ACTIVE));
+                        return Err(Error::duplicate_field(CHECKPOINTS_ACTIVE));
                     }
                     active = Some(map.next_value()?);
                 }
             }
         }
 
-        let checkpoints = checkpoints.ok_or_else(|| Error::missing_field(ROLLBACKS_CHECKPOINTS))?;
-        let active = active.ok_or_else(|| Error::missing_field(ROLLBACKS_ACTIVE))?;
+        let snapshots = snapshots.ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
+        let active = active.ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
 
-        Ok(Rollbacks {
-            checkpoints,
-            active,
-        })
+        Ok(Checkpoints { snapshots, active })
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        let checkpoints = seq
+        let snapshots = seq
             .next_element_seed(SnapshotListDeserializer {
                 registry: self.registry,
             })?
-            .ok_or_else(|| Error::missing_field(ROLLBACKS_CHECKPOINTS))?;
+            .ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
 
         let active = seq
             .next_element()?
-            .ok_or_else(|| Error::missing_field(ROLLBACKS_ACTIVE))?;
+            .ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
 
-        Ok(Rollbacks {
-            checkpoints,
-            active,
-        })
+        Ok(Checkpoints { snapshots, active })
     }
 }
 

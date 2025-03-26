@@ -12,7 +12,7 @@ A framework for saving and loading application state in Bevy.
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [any platform](#platforms) it can run on.
 
-- [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
+- [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
 - These methods accept a [`Pipeline`], a strongly typed representation of how you are going to be saving and loading.
 - The [`Pipeline`] trait uses the [`Backend`] trait as an interface between disk / database and `bevy_save`.
 - The [`Backend`] trait uses the [`Format`] trait to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
@@ -38,7 +38,7 @@ On WASM, snapshots are saved to [`LocalStorage`](https://docs.rs/web-sys/latest/
 WORKSPACE.KEY
 ```
 
-### Snapshots and Rollback
+### Snapshots and rollback
 
 `bevy_save` is not just about save files, it is about total control over application state.
 
@@ -46,22 +46,22 @@ This crate introduces a snapshot type which may be used directly:
 
 - [`Snapshot`] is a serializable snapshot of all saveable resources, entities, and components.
 
-Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html) and [`WorldRollbackExt`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html):
+Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html) and [`WorldRollbackExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html):
 
-- [`World::snapshot()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldSaveableExt.html#tymethod.snapshot) captures a snapshot of the current application state, including resources.
-- [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
-- [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/trait.WorldRollbackExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
+- [`World::snapshot()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.snapshot) captures a snapshot of the current application state, including resources.
+- [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
+- [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
 
-The [`Rollbacks`] resource also gives you fine-tuned control of the currently stored rollbacks.
+The [`Checkpoints`] resource also gives you fine-tuned control of the currently stored rollback checkpoints.
 
 ### Type registration
 
 `bevy_save` adds methods to Bevy's [`App`] for registering types that should be saved.
 As long as the type implements [`Reflect`], it can be registered and used with `bevy_save`.
 
-- [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
-- [`App.allow_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/trait.AppRollbackExt.html#tymethod.allow_rollback) allows a type to roll back.
-- [`App.deny_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/trait.AppRollbackExt.html#tymethod.deny_rollback) denies a type from rolling back.
+- [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
+- [`App.allow_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.allow_rollback) allows a type to roll back.
+- [`App.deny_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.deny_rollback) denies a type from rolling back.
 
 ### Type filtering
 
@@ -73,8 +73,8 @@ As Entity ids are not intended to be used as unique identifiers, `bevy_save` sup
 
 First, you'll need to get a [`SnapshotApplier`]:
 
-- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/struct.Snapshot.html#method.applier)
-- [`SnapshotApplier::new()`](https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotApplier.html#method.new)
+- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
+- [`SnapshotApplier::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.new)
 
 The [`SnapshotApplier`] will then allow you to configure the entity map (and other settings) before applying:
 
@@ -208,7 +208,7 @@ Expect Bevy or other crate updates to break your save file format.
 It should be possible to mitigate this by overriding [`ReflectDeserialize`] for any offending types.
 
 Changing what entities have what components or how you use your entities or resources in your logic can also result in broken saves.
-While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`SnapshotApplier::hook`](https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotApplier.html#method.hook) to account for changes while applying a snapshot.
+While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`SnapshotApplier::hook`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.hook) to account for changes while applying a snapshot.
 
 If your application has specific migration requirements, please [open an issue](https://github.com/hankjordan/bevy_save/issues/new).
 
@@ -280,15 +280,15 @@ If your application has specific migration requirements, please [open an issue](
 [doc]: https://docs.rs/bevy_save
 [license]: https://github.com/hankjordan/bevy_save#license
 [tracking]: https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking
-[`Snapshot`]: https://docs.rs/bevy_save/latest/bevy_save/struct.Snapshot.html
-[`SnapshotBuilder`]: https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotBuilder.html
-[`SnapshotApplier`]: https://docs.rs/bevy_save/latest/bevy_save/struct.SnapshotApplier.html
-[`Rollbacks`]: https://docs.rs/bevy_save/latest/bevy_save/struct.Rollbacks.html
-[`Pipeline`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Pipeline.html
-[`Backend`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Backend.html
-[`Format`]: https://docs.rs/bevy_save/latest/bevy_save/trait.Format.html
-[`FileIO`]: https://docs.rs/bevy_save/latest/bevy_save/struct.FileIO.html
-[`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/constant.WORKSPACE.html
+[`Snapshot`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html
+[`SnapshotBuilder`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotBuilder.html
+[`SnapshotApplier`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html
+[`Checkpoints`]: https://docs.rs/bevy_save/latest/bevy_save/checkpoint/struct.Checkpoints.html
+[`Pipeline`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Pipeline.html
+[`Backend`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Backend.html
+[`Format`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Format.html
+[`FileIO`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.FileIO.html
+[`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/dir/constant.WORKSPACE.html
 [`App`]: https://docs.rs/bevy/latest/bevy/prelude/struct.App.html
 [`Component`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Component.html
 [`DynamicSceneBuilder`]: https://docs.rs/bevy/latest/bevy/prelude/struct.DynamicSceneBuilder.html

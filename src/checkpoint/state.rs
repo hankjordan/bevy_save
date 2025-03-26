@@ -5,32 +5,32 @@ use bevy::{
 
 use crate::prelude::*;
 
-/// The global registry of snapshots used for rollback / rollforward.
+/// Currently stored snapshots used for rollback / rollforward.
 #[derive(Resource, Default)]
-pub struct Rollbacks {
-    pub(crate) checkpoints: Vec<Snapshot>,
+pub struct Checkpoints {
+    pub(crate) snapshots: Vec<Snapshot>,
     pub(crate) active: Option<usize>,
 }
 
-impl Rollbacks {
+impl Checkpoints {
     /// Returns true if no checkpoints have been created.
     pub fn is_empty(&self) -> bool {
-        self.checkpoints.is_empty()
+        self.snapshots.is_empty()
     }
 
-    /// Given a new rollback [`Snapshot`], insert it and set it as the currently active rollback.
+    /// Given a new checkpoint [`Snapshot`], insert it and set it as the currently active checkpoint.
     ///
     /// If you rollback and then insert a checkpoint, it will erase all rollforward snapshots.
-    pub fn checkpoint(&mut self, mut rollback: Snapshot) {
+    pub fn checkpoint(&mut self, mut checkpoint: Snapshot) {
         let active = self.active.unwrap_or(0);
 
-        // Force conversion into rollback snapshot
-        rollback.rollbacks = None;
+        // Force conversion into checkpoint
+        checkpoint.checkpoints = None;
 
-        self.checkpoints.truncate(active + 1);
-        self.checkpoints.push(rollback);
+        self.snapshots.truncate(active + 1);
+        self.snapshots.push(checkpoint);
 
-        self.active = Some(self.checkpoints.len() - 1);
+        self.active = Some(self.snapshots.len() - 1);
     }
 
     /// Rolls back the given number of checkpoints.
@@ -44,24 +44,20 @@ impl Rollbacks {
     pub fn rollback(&mut self, checkpoints: isize) -> Option<&Snapshot> {
         if let Some(active) = self.active {
             let raw = active as isize - checkpoints;
-            let new = raw.clamp(0, self.checkpoints.len() as isize - 1) as usize;
+            let new = raw.clamp(0, self.snapshots.len() as isize - 1) as usize;
 
             self.active = Some(new);
-            Some(&self.checkpoints[new])
+            Some(&self.snapshots[new])
         } else {
             None
         }
     }
 }
 
-impl CloneReflect for Rollbacks {
+impl CloneReflect for Checkpoints {
     fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
         Self {
-            checkpoints: self
-                .checkpoints
-                .iter()
-                .map(|r| r.clone_reflect(registry))
-                .collect(),
+            snapshots: self.snapshots.clone_reflect(registry),
             active: self.active,
         }
     }

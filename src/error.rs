@@ -1,16 +1,16 @@
 use bevy::prelude::*;
 use thiserror::Error;
 
-/// An error that may occur when loading saves or rollbacks.
+/// An error that may occur when loading saves, snapshots, or checkpoints.
 #[derive(Error, Debug)]
 pub enum Error {
     /// Saving or serialization error.
-    #[error("error occurred while saving")]
-    Saving,
+    #[error("saving error: {0}")]
+    Saving(Box<dyn std::error::Error>),
 
     /// Loading or deserialization error.
-    #[error("error occurred while loading")]
-    Loading,
+    #[error("loading error: {0}")]
+    Loading(Box<dyn std::error::Error>),
 
     /// Scene spawning error.
     #[error("scene spawn error: {0}")]
@@ -31,17 +31,13 @@ pub enum Error {
 
 impl Error {
     /// Saving or serialization error.
-    pub fn saving(err: impl std::error::Error) -> Self {
-        // TODO
-        error!("Saving error: {err:?}");
-        Self::Saving
+    pub fn saving(err: impl std::error::Error + 'static) -> Self {
+        Self::Saving(Box::new(err))
     }
 
     /// Loading or deserialization error.
-    pub fn loading(err: impl std::error::Error) -> Self {
-        // TODO
-        error!("Loading error: {err:?}");
-        Self::Loading
+    pub fn loading(err: impl std::error::Error + 'static) -> Self {
+        Self::Loading(Box::new(err))
     }
 
     /// Other error.

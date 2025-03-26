@@ -20,8 +20,8 @@ use bevy::{
 };
 
 use crate::{
-    Error,
-    Snapshot,
+    error::Error,
+    prelude::*,
 };
 
 /// A [`Hook`] runs on each entity when applying a snapshot.

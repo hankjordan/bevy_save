@@ -1,12 +1,22 @@
+//! [`Pipeline`] connects all of the pieces together, defining how your application state is captured, applied, saved, and loaded.
+
 use bevy::prelude::*;
 
 use crate::{
+    backend::{
+        DefaultBackend,
+        DefaultDebugBackend,
+    },
+    error::Error,
+    format::{
+        DefaultDebugFormat,
+        DefaultFormat,
+    },
     prelude::*,
-    Error,
 };
 
 /// Trait that defines how exactly your app saves and loads.
-pub trait Pipeline: Sized {
+pub trait Pipeline: Send + Sized + 'static {
     /// The interface between the saver / loader and data storage.
     type Backend: for<'a> Backend<Self::Key<'a>> + Resource + Default;
     /// The format used for serializing and deserializing data.
@@ -27,7 +37,7 @@ pub trait Pipeline: Sized {
     ///
     /// This is where you would do any special filtering you might need.
     ///
-    /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
+    /// You must extract [`Checkpoints`](crate::checkpoint::Checkpoints) if you want this pipeline to handle checkpoints properly.
     fn capture(builder: SnapshotBuilder) -> Snapshot {
         builder.build()
     }
@@ -38,7 +48,7 @@ pub trait Pipeline: Sized {
     ///
     /// This is where you would do any special filtering you might need.
     ///
-    /// You must extract [`Rollbacks`] if you want this pipeline to handle rollbacks properly.
+    /// You must extract [`Checkpoints`](crate::checkpoint::Checkpoints) if you want this pipeline to handle checkpoints properly.
     fn capture_seed(&self, builder: SnapshotBuilder) -> Snapshot {
         Self::capture(builder)
     }
@@ -66,27 +76,30 @@ pub trait Pipeline: Sized {
     }
 }
 
-impl Pipeline for &str {
+/// Uses [`DefaultFormat`] and saves with [`DefaultBackend`].
+pub struct DefaultPipeline(pub String);
+
+impl Pipeline for DefaultPipeline {
     type Backend = DefaultBackend;
     type Format = DefaultFormat;
 
     type Key<'k> = &'k str;
 
     fn key(&self) -> Self::Key<'_> {
-        self
+        &self.0
     }
 }
 
-/// Uses `JSON` and saves to the given local path.
-pub struct DebugPipeline<'a>(pub &'a str);
+/// Uses [`DefaultDebugFormat`] and saves with [`DefaultDebugBackend`].
+pub struct DefaultDebugPipeline(pub String);
 
-impl Pipeline for DebugPipeline<'_> {
+impl Pipeline for DefaultDebugPipeline {
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 
     type Key<'k> = &'k str;
 
     fn key(&self) -> Self::Key<'_> {
-        self.0
+        &self.0
     }
 }

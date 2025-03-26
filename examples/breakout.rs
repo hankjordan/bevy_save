@@ -604,7 +604,7 @@ impl Pipeline for BreakoutPipeline {
                 e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>()
             })
             .extract_resource::<Score>()
-            .extract_rollbacks()
+            .extract_checkpoints()
             .build()
     }
 

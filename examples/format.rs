@@ -7,6 +7,7 @@ use bevy_save::{
     prelude::*,
     Error,
 };
+use io_adapters::WriteExtension;
 use serde::{
     de::DeserializeSeed,
     Serialize,
@@ -20,8 +21,11 @@ impl Format for RONFormat {
     }
 
     fn serialize<W: Write, T: Serialize>(writer: W, value: &T) -> Result<(), Error> {
-        let mut ser = ron::Serializer::new(writer, Some(ron::ser::PrettyConfig::default()))
-            .map_err(Error::saving)?;
+        let mut ser = ron::Serializer::new(
+            writer.write_adapter(),
+            Some(ron::ser::PrettyConfig::default()),
+        )
+        .map_err(Error::saving)?;
 
         value.serialize(&mut ser).map_err(Error::saving)
     }

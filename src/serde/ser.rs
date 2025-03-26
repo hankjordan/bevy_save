@@ -14,7 +14,19 @@ use serde::{
     Serializer,
 };
 
-use crate::prelude::*;
+use crate::{
+    checkpoint::Checkpoints,
+    prelude::*,
+    serde::{
+        CHECKPOINTS_ACTIVE,
+        CHECKPOINTS_SNAPSHOTS,
+        CHECKPOINTS_STRUCT,
+        SNAPSHOT_CHECKPOINTS,
+        SNAPSHOT_ENTITIES,
+        SNAPSHOT_RESOURCES,
+        SNAPSHOT_STRUCT,
+    },
+};
 
 /// Handles serialization of a snapshot as a struct containing its entities and resources.
 pub struct SnapshotSerializer<'a> {
@@ -38,7 +50,7 @@ impl Serialize for SnapshotSerializer<'_> {
     {
         let mut state = serializer.serialize_struct(
             SNAPSHOT_STRUCT,
-            if self.snapshot.rollbacks.is_some() {
+            if self.snapshot.checkpoints.is_some() {
                 3
             } else {
                 2
@@ -53,9 +65,9 @@ impl Serialize for SnapshotSerializer<'_> {
             registry: self.registry,
         })?;
 
-        if let Some(rollbacks) = &self.snapshot.rollbacks {
-            state.serialize_field(SNAPSHOT_ROLLBACKS, &RollbacksSerializer {
-                rollbacks,
+        if let Some(checkpoints) = &self.snapshot.checkpoints {
+            state.serialize_field(SNAPSHOT_CHECKPOINTS, &CheckpointsSerializer {
+                checkpoints,
                 registry: self.registry,
             })?;
         }
@@ -87,26 +99,26 @@ impl Serialize for SnapshotListSerializer<'_> {
     }
 }
 
-/// Handles serialization of the global rollbacks store.
-pub struct RollbacksSerializer<'a> {
-    /// The rollbacks to serialize.
-    pub rollbacks: &'a Rollbacks,
-    /// Type registry in which the components and resources types used in the rollbacks are registered.
+/// Handles serialization of the checkpoints store.
+pub struct CheckpointsSerializer<'a> {
+    /// The checkpoints to serialize.
+    pub checkpoints: &'a Checkpoints,
+    /// Type registry in which the components and resources types used in the checkpoints are registered.
     pub registry: &'a TypeRegistry,
 }
 
-impl Serialize for RollbacksSerializer<'_> {
+impl Serialize for CheckpointsSerializer<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct(ROLLBACKS_STRUCT, 2)?;
+        let mut state = serializer.serialize_struct(CHECKPOINTS_STRUCT, 2)?;
 
-        state.serialize_field(ROLLBACKS_CHECKPOINTS, &SnapshotListSerializer {
-            snapshots: &self.rollbacks.checkpoints,
+        state.serialize_field(CHECKPOINTS_SNAPSHOTS, &SnapshotListSerializer {
+            snapshots: &self.checkpoints.snapshots,
             registry: self.registry,
         })?;
-        state.serialize_field(ROLLBACKS_ACTIVE, &self.rollbacks.active)?;
+        state.serialize_field(CHECKPOINTS_ACTIVE, &self.checkpoints.active)?;
 
         state.end()
     }
