@@ -1,7 +1,5 @@
 //! Bevy commands for deferring mutation.
 
-use std::marker::PhantomData;
-
 use bevy::prelude::*;
 
 use crate::prelude::*;
@@ -9,7 +7,7 @@ use crate::prelude::*;
 /// Save using the [`Pipeline`].
 pub struct SaveCommand<P>(pub P);
 
-impl<P: Pipeline> Command for SaveCommand<P> {
+impl<P: Pipeline + Send + 'static> Command for SaveCommand<P> {
     fn apply(self, world: &mut World) {
         if let Err(e) = world.save(self.0) {
             warn!("Failed to save world: {:?}", e);
@@ -20,7 +18,7 @@ impl<P: Pipeline> Command for SaveCommand<P> {
 /// Load using the [`Pipeline`].
 pub struct LoadCommand<P>(pub P);
 
-impl<P: Pipeline> Command for LoadCommand<P> {
+impl<P: Pipeline + Send + 'static> Command for LoadCommand<P> {
     fn apply(self, world: &mut World) {
         if let Err(e) = world.load(self.0) {
             warn!("Failed to load world: {:?}", e);
@@ -30,50 +28,61 @@ impl<P: Pipeline> Command for LoadCommand<P> {
 
 /// Create a checkpoint using the [`Pipeline`].
 pub struct CheckpointCommand<P> {
-    _marker: PhantomData<P>,
-}
-
-impl<P> Default for CheckpointCommand<P> {
-    fn default() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
-    }
+    pipeline: P,
 }
 
 impl<P> CheckpointCommand<P> {
     /// Create a [`CheckpointCommand`] from the [`Pipeline`].
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(pipeline: P) -> Self {
+        Self { pipeline }
     }
 }
 
-impl<P: Pipeline> Command for CheckpointCommand<P> {
+impl<P: Pipeline + Send + 'static> Command for CheckpointCommand<P> {
     fn apply(self, world: &mut World) {
-        world.checkpoint::<P>();
+        world.checkpoint(self.pipeline);
     }
 }
 
 /// Rollback the specified amount using the [`Pipeline`].
 pub struct RollbackCommand<P> {
+    pipeline: P,
     checkpoints: isize,
-    _marker: PhantomData<P>,
 }
 
 impl<P> RollbackCommand<P> {
     /// Create a [`RollbackCommand`] from the [`Pipeline`] and checkpoint count.
-    pub fn new(checkpoints: isize) -> Self {
+    pub fn new(pipeline: P, checkpoints: isize) -> Self {
         Self {
+            pipeline,
             checkpoints,
-            _marker: PhantomData,
         }
     }
 }
 
-impl<P: Pipeline> Command for RollbackCommand<P> {
+impl<P: Pipeline + Send + 'static> Command for RollbackCommand<P> {
     fn apply(self, world: &mut World) {
-        if let Err(e) = world.rollback::<P>(self.checkpoints) {
+        if let Err(e) = world.rollback(self.pipeline, self.checkpoints) {
             warn!("Failed to rollback world: {:?}", e);
         }
+    }
+}
+
+/// Spawn an instance of the [`Prefab`].
+pub struct SpawnPrefabCommand<P> {
+    target: Entity,
+    prefab: P,
+}
+
+impl<P> SpawnPrefabCommand<P> {
+    /// Create a [`SpawnPrefabCommand`] from the target entity and [`Prefab`].
+    pub fn new(target: Entity, prefab: P) -> Self {
+        Self { target, prefab }
+    }
+}
+
+impl<P: Prefab + Send + 'static> Command for SpawnPrefabCommand<P> {
+    fn apply(self, world: &mut World) {
+        self.prefab.spawn(self.target, world);
     }
 }

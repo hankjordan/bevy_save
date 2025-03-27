@@ -3,13 +3,15 @@
 mod de;
 mod ser;
 
-pub use de::{
-    CheckpointsDeserializer,
-    SnapshotDeserializer,
-};
-pub use ser::{
-    CheckpointsSerializer,
-    SnapshotSerializer,
+pub use self::{
+    de::{
+        CheckpointsDeserializer,
+        SnapshotDeserializer,
+    },
+    ser::{
+        CheckpointsSerializer,
+        SnapshotSerializer,
+    },
 };
 
 pub(super) const SNAPSHOT_STRUCT: &str = "Snapshot";

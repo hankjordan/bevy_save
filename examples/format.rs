@@ -3,6 +3,8 @@ use std::io::{
     Write,
 };
 
+use bevy::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::{
     prelude::*,
     Error,
@@ -40,5 +42,65 @@ impl Format for RONFormat {
     }
 }
 
-// TODO
-fn main() {}
+pub struct RONPipeline;
+
+impl Pipeline for RONPipeline {
+    type Backend = DefaultDebugBackend;
+    type Format = RONFormat;
+
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/format"
+    }
+
+    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
+        builder
+            .allow::<Transform>()
+            .allow::<ExampleComponent>()
+            .extract_all_entities()
+            .clear_empty()
+            .build()
+    }
+
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
+        snapshot.apply(world)
+    }
+}
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct ExampleComponent {
+    float: f32,
+    string: String,
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn_empty();
+    commands.spawn((Transform::from_xyz(1.0, 2.0, 3.0),));
+    commands.spawn((Transform::from_xyz(4.0, 5.0, 6.0), ExampleComponent {
+        float: 64.0,
+        string: "Hello, world!".into(),
+    }));
+}
+
+fn extract(mut commands: Commands) {
+    commands.save(RONPipeline);
+}
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.build().set(AssetPlugin {
+            file_path: "examples/assets".to_owned(),
+            ..default()
+        }))
+        // Inspector
+        .add_plugins(WorldInspectorPlugin::new())
+        // Bevy Save
+        .add_plugins(SavePlugins)
+        // Register types
+        .register_type::<ExampleComponent>()
+        // Systems
+        .add_systems(Startup, (setup, extract))
+        .run();
+}

@@ -12,15 +12,7 @@ A framework for saving and loading application state in Bevy.
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [any platform](#platforms) it can run on.
 
-- [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
-- These methods accept a [`Pipeline`], a strongly typed representation of how you are going to be saving and loading.
-- The [`Pipeline`] trait uses the [`Backend`] trait as an interface between disk / database and `bevy_save`.
-- The [`Backend`] trait uses the [`Format`] trait to determine what format should be used in the actual save files (MessagePack / RON / JSON / etc)
-  - The default [`Pipeline`] uses the [`FileIO`] backend which saves each snapshot to an individual file on the disk by the given key.
-    - Many applications have different requirements like saving to multiple directories, to a database, or to WebStorage.
-    - You can use a different [`Backend`] by implementing your own [`Pipeline`] with a custom [`Backend`].
-  - The default [`Pipeline`] is set up to use [`rmp-serde`](https://docs.rs/rmp-serde/latest/rmp_serde/) as the file format.
-    - You can use to a different [`Format`] by implementing your own [`Pipeline`] with a custom [`Format`].
+By default, [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
 
 #### Save directory location
 
@@ -32,11 +24,7 @@ With the default [`FileIO`] backend, your save directory is managed for you.
 | --------------------------------------------------- | -------------------------------- | ----------------------------------------------- |
 | `C:\Users\%USERNAME%\AppData\Local\WORKSPACE\saves` | `~/.local/share/WORKSPACE/saves` | `~/Library/Application Support/WORKSPACE/saves` |
 
-On WASM, snapshots are saved to [`LocalStorage`](https://docs.rs/web-sys/latest/web_sys/struct.Storage.html), with the key:
-
-```ignore
-WORKSPACE.KEY
-```
+On WASM, snapshots are saved to [`LocalStorage`], with the key `WORKSPACE.KEY`.
 
 ### Snapshots and rollback
 
@@ -56,89 +44,167 @@ The [`Checkpoints`] resource also gives you fine-tuned control of the currently 
 
 ### Type registration
 
-`bevy_save` adds methods to Bevy's [`App`] for registering types that should be saved.
+No special traits or NewTypes necessary, `bevy_save` takes full advantage of Bevy's built-in reflection.
 As long as the type implements [`Reflect`], it can be registered and used with `bevy_save`.
+
+`bevy_save` provides extension traits for [`App`] allowing you to do so.
 
 - [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
 - [`App.allow_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.allow_rollback) allows a type to roll back.
 - [`App.deny_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.deny_rollback) denies a type from rolling back.
 
-### Type filtering
+### Backend
 
-`bevy_save` allows you to explicitly filter types when creating a snapshot.
+The [`Backend`] is the interface between your application and persistent storage.
 
-### Entity mapping
-
-As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
-
-First, you'll need to get a [`SnapshotApplier`]:
-
-- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
-- [`SnapshotApplier::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.new)
-
-The [`SnapshotApplier`] will then allow you to configure the entity map (and other settings) before applying:
+Some example backends may include [`FileIO`], sqlite, [`LocalStorage`], or network storage.
 
 ```rust,ignore
-let snapshot = Snapshot::from_world(world);
+#[derive(Default, Resource)]
+pub struct FileIO;
 
-snapshot
-    .applier(world)
+impl<K: std::fmt::Display + Send> Backend<K> for FileIO {
+    async fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error> {
+        let path = get_save_file(format!("{key}{}", F::extension()));
+        let dir = path.parent().expect("Invalid save directory");
+        create_dir_all(dir).await?;
+        let mut buf = Vec::new();
+        F::serialize(&mut buf, value)?;
+        let mut file = File::create(path).await?;
+        Ok(file.write_all(&buf).await?)
+    }
 
-    // Your entity map
-    .entity_map(HashMap::default())
-
-    // Despawn all entities matching (With<A>, Without<B>)
-    .despawn::<(With<A>, Without<B>)>()
-
-    .apply();
+    async fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
+        &self,
+        key: K,
+        seed: S,
+    ) -> Result<T, Error> {
+        let path = get_save_file(format!("{key}{}", F::extension()));
+        let mut file = File::open(path).await?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).await?;
+        F::deserialize(&*buf, seed)
+    }
+}
 ```
 
-#### MapEntities
+### Format
 
-`bevy_save` also supports [`MapEntities`](https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html) via reflection to allow you to update entity ids within components and resources.
+[`Format`] is how your application serializes and deserializes your data.
 
-See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
-
-### Entity hooks
-
-You are also able to add hooks when applying snapshots, similar to `bevy-scene-hook`.
-
-This can be used for many things, like spawning the snapshot as a child of an entity:
+[`Format`]s can either be human-readable like [`JSON`] or binary like [`MessagePack`].
 
 ```rust,ignore
-let snapshot = Snapshot::from_world(world);
+pub struct RONFormat;
 
-snapshot
-    .applier(world)
+impl Format for RONFormat {
+    fn extension() -> &'static str {
+        ".ron"
+    }
 
-    // This will be run for every Entity in the snapshot
-    // It runs after the Entity's Components are loaded
-    .hook(move |entity, cmds| {
-        // You can use the hook to add, get, or remove Components
-        if !entity.contains::<Parent>() {
-            cmds.set_parent(parent);
-        }
-    })
+    fn serialize<W: Write, T: Serialize>(writer: W, value: &T) -> Result<(), Error> {
+        let mut ser = ron::Serializer::new(
+            writer.write_adapter(),
+            Some(ron::ser::PrettyConfig::default()),
+        )
+        .map_err(Error::saving)?;
 
-    .apply();
+        value.serialize(&mut ser).map_err(Error::saving)
+    }
+
+    fn deserialize<R: Read, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
+        reader: R,
+        seed: S,
+    ) -> Result<T, Error> {
+        ron::options::Options::default()
+            .from_reader_seed(reader, seed)
+            .map_err(Error::loading)
+    }
+}
 ```
 
-Hooks may also despawn entities:
+### Pipeline
+
+The [`Pipeline`] trait allows you to use multiple different configurations of [`Backend`] and [`Format`] in the same [`App`].
+
+Using [`Pipeline`] also lets you re-use [`Snapshot`] appliers and builders.
 
 ```rust,ignore
-let snapshot = Snapshot::from_world(world);
+struct HeirarchyPipeline;
 
-snapshot
-    .applier(world)
+impl Pipeline for HeirarchyPipeline {
+    type Backend = DefaultDebugBackend;
+    type Format = DefaultDebugFormat;
 
-    .hook(|entity, cmds| {
-        if entity.contains::<A>() {
-            cmds.despawn();
-        }
-    })
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/heirarchy"
+    }
+
+    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
+        builder
+            .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
+            .build()
+    }
+
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+        snapshot
+            .applier(world)
+            .despawn::<Or<(With<Player>, With<Head>)>>()
+            .apply()
+    }
+}
 ```
 
-### Partial Snapshots
+### Prefabs
+
+The [`Prefab`] trait allows you to easily spawn entities from a blueprint.
+
+```rust,ignore
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct Ball;
+
+#[derive(Reflect)]
+struct BallPrefab {
+    position: Vec3,
+}
+
+impl Prefab for BallPrefab {
+    type Marker = Ball;
+
+    fn spawn(self, target: Entity, world: &mut World) {
+        // Some entities will need initialization from world state, such as mesh assets.
+        // We can do that here.
+        let mesh = world.resource_mut::<Assets<Mesh>>().add(Circle::default());
+        let material = world
+            .resource_mut::<Assets<ColorMaterial>>()
+            .add(BALL_COLOR);
+
+        world.entity_mut(target).insert((
+            Mesh2d(mesh),
+            MeshMaterial2d(material),
+            Transform::from_translation(self.position)
+                .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
+            Ball,
+            Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
+        ));
+    }
+
+    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+        // We don't actually need to save all of those runtime components.
+        // Only save the translation of the Ball.
+        builder.extract_prefab(|entity| {
+            Some(BallPrefab {
+                position: entity.get::<Transform>()?.translation,
+            })
+        })
+    }
+}
+```
+
+### Type Filtering and Partial Snapshots
 
 While `bevy_save` aims to make it as easy as possible to save your entire world, some applications also need to be able to save only parts of the world.
 
@@ -193,11 +259,76 @@ Snapshot::builder(world)
     .build()
 ```
 
-### Pipeline
+### Entity hooks
 
-Pipelines allow you to use multiple different configurations of [`Backend`] and [`Format`] in the same [`App`].
+You are also able to add hooks when applying snapshots, similar to `bevy-scene-hook`.
 
-Pipelines also let you re-use [`Snapshot`] appliers and extractors.
+This can be used for many things, like spawning the snapshot as a child of an entity:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    // This will be run for every Entity in the snapshot
+    // It runs after the Entity's Components are loaded
+    .hook(move |entity, cmds| {
+        // You can use the hook to add, get, or remove Components
+        if !entity.contains::<Parent>() {
+            cmds.set_parent(parent);
+        }
+    })
+
+    .apply();
+```
+
+Hooks may also despawn entities:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    .hook(|entity, cmds| {
+        if entity.contains::<A>() {
+            cmds.despawn();
+        }
+    })
+```
+
+### Entity mapping
+
+As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
+
+First, you'll need to get a [`SnapshotApplier`]:
+
+- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
+- [`SnapshotApplier::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.new)
+
+The [`SnapshotApplier`] will then allow you to configure the entity map (and other settings) before applying:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    // Your entity map
+    .entity_map(HashMap::default())
+
+    // Despawn all entities matching (With<A>, Without<B>)
+    .despawn::<(With<A>, Without<B>)>()
+
+    .apply();
+```
+
+#### MapEntities
+
+`bevy_save` also supports [`MapEntities`](https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html) via reflection to allow you to update entity ids within components and resources.
+
+See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ## Stability warning
 
@@ -224,7 +355,7 @@ If your application has specific migration requirements, please [open an issue](
 
 ### Stabilization
 
-`bevy_save` will become a candidate for stabilization once [save versioning and migration](https://github.com/hankjordan/bevy_save/issues/5) is finished.
+`bevy_save` will become a candidate for stabilization once [all stabilization tasks](https://github.com/hankjordan/bevy_save/milestone/2) have been completed.
 
 ## Compatibility
 
@@ -287,7 +418,10 @@ If your application has specific migration requirements, please [open an issue](
 [`Pipeline`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Pipeline.html
 [`Backend`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Backend.html
 [`Format`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Format.html
-[`FileIO`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.FileIO.html
+[`FileIO`]: https://docs.rs/bevy_save/latest/bevy_save/backend/struct.FileIO.html
+[`JSON`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.JSONFormat.html
+[`MessagePack`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.RMPFormat.html
+[`Prefab`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Prefab.html
 [`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/dir/constant.WORKSPACE.html
 [`App`]: https://docs.rs/bevy/latest/bevy/prelude/struct.App.html
 [`Component`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Component.html
@@ -297,3 +431,4 @@ If your application has specific migration requirements, please [open an issue](
 [`Reflect`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Reflect.html
 [`ReflectDeserialize`]: https://docs.rs/bevy/latest/bevy/prelude/struct.ReflectDeserialize.html
 [`World`]: https://docs.rs/bevy/latest/bevy/prelude/struct.World.html
+[`LocalStorage`]: https://docs.rs/web-sys/latest/web_sys/struct.Storage.html

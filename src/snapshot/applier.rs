@@ -1,4 +1,7 @@
-use std::marker::PhantomData;
+use std::{
+    any::TypeId,
+    marker::PhantomData,
+};
 
 use bevy::{
     ecs::{
@@ -17,6 +20,7 @@ use bevy::{
     prelude::*,
     reflect::TypeRegistry,
     scene::SceneSpawnError,
+    utils::HashMap,
 };
 
 use crate::{
@@ -53,6 +57,8 @@ impl<T> Hook for T where T: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + 
 /// A boxed [`Hook`].
 pub type BoxedHook = Box<dyn Hook>;
 
+type SpawnPrefabFn = fn(Box<dyn PartialReflect>, Entity, &mut World);
+
 /// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
 pub struct SnapshotApplier<'a, F = ()> {
     snapshot: &'a Snapshot,
@@ -61,6 +67,7 @@ pub struct SnapshotApplier<'a, F = ()> {
     type_registry: Option<&'a TypeRegistry>,
     despawn: Option<PhantomData<F>>,
     hook: Option<BoxedHook>,
+    prefabs: HashMap<TypeId, SpawnPrefabFn>,
 }
 
 impl<'a> SnapshotApplier<'a> {
@@ -73,6 +80,7 @@ impl<'a> SnapshotApplier<'a> {
             type_registry: None,
             despawn: None,
             hook: None,
+            prefabs: HashMap::new(),
         }
     }
 }
@@ -101,12 +109,31 @@ impl<'a, A> SnapshotApplier<'a, A> {
             type_registry: self.type_registry,
             despawn: Some(PhantomData),
             hook: self.hook,
+            prefabs: self.prefabs,
         }
     }
 
     /// Add a [`Hook`] that will run for each entity after applying.
     pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
         self.hook = Some(Box::new(hook));
+        self
+    }
+
+    /// Handle loading for a [`Prefab`].
+    #[allow(clippy::missing_panics_doc)]
+    pub fn prefab<P: Prefab + FromReflect>(mut self) -> Self {
+        self.prefabs.insert(
+            std::any::TypeId::of::<P>(),
+            |this: Box<dyn PartialReflect>, target: Entity, world: &mut World| {
+                world.entity_mut(target).insert(P::Marker::default());
+
+                P::spawn(
+                    <P as FromReflect>::from_reflect(&*this).unwrap(),
+                    target,
+                    world,
+                );
+            },
+        );
         self
     }
 }
@@ -132,6 +159,8 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
         let mut default_entity_map = EntityHashMap::default();
 
         let entity_map = self.entity_map.unwrap_or(&mut default_entity_map);
+
+        let mut prefab_entities = HashMap::new();
 
         // Despawn entities
         if self.despawn.is_some() {
@@ -171,7 +200,18 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                         type_path: component.reflect_type_path().to_string(),
                     }
                 })?;
-                let registration = type_registry.get(type_info.type_id()).ok_or_else(|| {
+
+                let type_id = type_info.type_id();
+                if self.prefabs.contains_key(&type_id) {
+                    prefab_entities
+                        .entry(type_id)
+                        .or_insert_with(Vec::new)
+                        .push((entity, component));
+
+                    continue;
+                }
+
+                let registration = type_registry.get(type_id).ok_or_else(|| {
                     SceneSpawnError::UnregisteredButReflectedType {
                         type_path: type_info.type_path().to_string(),
                     }
@@ -235,6 +275,17 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                 resource.as_partial_reflect(),
                 type_registry,
             );
+        }
+
+        // Prefab hooks
+        for (type_id, entities) in prefab_entities {
+            let Some(hook) = self.prefabs.get(&type_id) else {
+                continue;
+            };
+
+            for (entity, component) in entities {
+                hook(component, entity, self.world);
+            }
         }
 
         // Entity hook

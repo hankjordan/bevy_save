@@ -3,7 +3,7 @@
     "4294967301": {
       "components": {
         "bevy_hierarchy::components::children::Children": [
-          4294967302
+          4294967303
         ],
         "bevy_render::view::visibility::InheritedVisibility": true,
         "bevy_render::view::visibility::ViewVisibility": false,
@@ -43,7 +43,7 @@
         "heirarchy::Player": {}
       }
     },
-    "4294967302": {
+    "4294967303": {
       "components": {
         "bevy_hierarchy::components::parent::Parent": 4294967301,
         "heirarchy::Head": {}

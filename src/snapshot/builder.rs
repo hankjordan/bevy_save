@@ -246,6 +246,7 @@ impl SnapshotBuilder<'_> {
 
     /// Extract the entities matching the given filter from the builder’s [`World`].
     pub fn extract_entities_matching<F: Fn(&EntityRef) -> bool>(self, filter: F) -> Self {
+        // TODO: We should be using Query and caching the lookup
         let entities = self.world.iter_entities().filter(filter).map(|e| e.id());
         self.extract_entities(entities)
     }
@@ -254,6 +255,54 @@ impl SnapshotBuilder<'_> {
     pub fn extract_all_entities(self) -> Self {
         let entites = self.world.iter_entities().map(|e| e.id());
         self.extract_entities(entites)
+    }
+
+    /// Extract all entities with a custom extraction function.
+    pub fn extract_entities_manual<F, B>(mut self, func: F) -> Self
+    where
+        F: Fn(&EntityRef) -> Option<Vec<Box<dyn PartialReflect>>>,
+    {
+        for entity in self.world.iter_entities() {
+            let Some(components) = func(&entity) else {
+                continue;
+            };
+
+            self.entities.insert(entity.id(), DynamicEntity {
+                entity: entity.id(),
+                components,
+            });
+        }
+
+        self
+    }
+
+    /// Extract all [`Prefab`] entities with a custom extraction function.
+    pub fn extract_prefab<F, P>(mut self, func: F) -> Self
+    where
+        F: Fn(&EntityRef) -> Option<P>,
+        P: Prefab + PartialReflect,
+    {
+        for entity in self.world.iter_entities() {
+            if !entity.contains::<P::Marker>() {
+                continue;
+            }
+
+            let Some(prefab) = func(&entity) else {
+                continue;
+            };
+
+            self.entities.insert(entity.id(), DynamicEntity {
+                entity: entity.id(),
+                components: vec![Box::new(prefab).into_partial_reflect()],
+            });
+        }
+
+        self
+    }
+
+    /// Extract all spawned instances of [`Prefab`] from the builder’s [`World`].
+    pub fn extract_all_prefabs<P: Prefab>(self) -> Self {
+        P::extract(self)
     }
 
     /// Extract a single resource from the builder's [`World`].

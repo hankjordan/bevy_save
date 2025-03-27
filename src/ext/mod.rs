@@ -4,15 +4,18 @@ mod app;
 mod commands;
 mod world;
 
-pub use app::{
-    AppCheckpointExt,
-    AppSaveableExt,
-};
-pub use commands::{
-    CommandsCheckpointExt,
-    CommandsSaveableExt,
-};
-pub use world::{
-    WorldCheckpointExt,
-    WorldSaveableExt,
+pub use self::{
+    app::{
+        AppCheckpointExt,
+        AppSaveableExt,
+    },
+    commands::{
+        CommandsCheckpointExt,
+        CommandsPrefabExt,
+        CommandsSaveableExt,
+    },
+    world::{
+        WorldCheckpointExt,
+        WorldSaveableExt,
+    },
 };

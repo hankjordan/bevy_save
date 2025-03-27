@@ -4,9 +4,12 @@ mod applier;
 mod builder;
 mod snapshot;
 
-pub use applier::{
-    Hook,
-    SnapshotApplier,
+pub use self::{
+    applier::{
+        BoxedHook,
+        Hook,
+        SnapshotApplier,
+    },
+    builder::SnapshotBuilder,
+    snapshot::Snapshot,
 };
-pub use builder::SnapshotBuilder;
-pub use snapshot::Snapshot;

@@ -1,10 +1,10 @@
 {
-  "resources": {},
   "entities": {
-    "1": {
+    "4294967301": {
       "components": {
         "pipeline::Tile": "Dirt"
       }
     }
-  }
+  },
+  "resources": {}
 }

@@ -33,7 +33,7 @@ fn main() {
     fs::write(
         dest,
         format!(
-            "/// The name of the project's workspace.\npub const WORKSPACE: &str = {:?};",
+            "/// The name of your application's workspace.\npub const WORKSPACE: &str = {:?};",
             workspace
         ),
     )

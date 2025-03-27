@@ -11,7 +11,7 @@ include!(concat!(env!("OUT_DIR"), "/workspace.rs"));
 
 /// The platform-specific save directory for the app.
 ///
-/// `WORKSPACE` is the name of your project's workspace (parent folder) name.
+/// [`WORKSPACE`] is the name of your project's workspace (parent folder) name.
 ///
 /// | Windows                                             | Linux/*BSD                       | MacOS                                           |
 /// |-----------------------------------------------------|----------------------------------|-------------------------------------------------|

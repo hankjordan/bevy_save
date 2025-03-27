@@ -25,6 +25,7 @@ const GAP_BETWEEN_PADDLE_AND_FLOOR: f32 = 60.0;
 const PADDLE_SPEED: f32 = 500.0;
 // How close can the paddle get to the wall
 const PADDLE_PADDING: f32 = 10.0;
+const PADDLE_OFFSET: f32 = BOTTOM_WALL + GAP_BETWEEN_PADDLE_AND_FLOOR;
 
 // We set the z-value of the ball to 1 so it renders on top in the case of overlapping sprites.
 const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
@@ -97,6 +98,10 @@ fn main() {
         .register_type::<Score>()
         .register_type::<ScoreboardUi>()
         .register_type::<Toast>()
+        // Register prefabs
+        .register_type::<PaddlePrefab>()
+        .register_type::<BallPrefab>()
+        .register_type::<BrickPrefab>()
         // Setup
         .add_systems(Startup, (setup_help, setup_entity_count).after(setup))
         // Systems
@@ -107,11 +112,11 @@ fn main() {
         .run();
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct Paddle;
 
-#[derive(Component, Reflect)]
+#[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct Ball;
 
@@ -126,7 +131,7 @@ struct Collider;
 #[derive(Event, Default)]
 struct CollisionEvent;
 
-#[derive(Component, Reflect)]
+#[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct Brick;
 
@@ -211,13 +216,104 @@ struct Score(usize);
 #[reflect(Component)]
 struct ScoreboardUi;
 
+#[derive(Reflect)]
+struct PaddlePrefab {
+    position: f32,
+}
+
+impl Prefab for PaddlePrefab {
+    type Marker = Paddle;
+
+    fn spawn(self, target: Entity, world: &mut World) {
+        world.entity_mut(target).insert((
+            Sprite::from_color(PADDLE_COLOR, Vec2::ONE),
+            Transform {
+                translation: Vec3::new(self.position, PADDLE_OFFSET, 0.0),
+                scale: PADDLE_SIZE.extend(1.0),
+                ..default()
+            },
+            Collider,
+        ));
+    }
+
+    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+        builder.extract_prefab(|entity| {
+            Some(PaddlePrefab {
+                position: entity.get::<Transform>()?.translation.x,
+            })
+        })
+    }
+}
+
+#[derive(Reflect)]
+struct BallPrefab {
+    position: Vec3,
+}
+
+impl Prefab for BallPrefab {
+    type Marker = Ball;
+
+    fn spawn(self, target: Entity, world: &mut World) {
+        let mesh = world.resource_mut::<Assets<Mesh>>().add(Circle::default());
+        let material = world
+            .resource_mut::<Assets<ColorMaterial>>()
+            .add(BALL_COLOR);
+
+        world.entity_mut(target).insert((
+            Mesh2d(mesh),
+            MeshMaterial2d(material),
+            Transform::from_translation(self.position)
+                .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
+            Ball,
+            Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
+        ));
+    }
+
+    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+        builder.extract_prefab(|entity| {
+            Some(BallPrefab {
+                position: entity.get::<Transform>()?.translation,
+            })
+        })
+    }
+}
+
+#[derive(Reflect)]
+struct BrickPrefab {
+    position: Vec2,
+}
+
+impl Prefab for BrickPrefab {
+    type Marker = Brick;
+
+    fn spawn(self, target: Entity, world: &mut World) {
+        world.entity_mut(target).insert((
+            Sprite {
+                color: BRICK_COLOR,
+                ..default()
+            },
+            Transform {
+                translation: self.position.extend(0.0),
+                scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
+                ..default()
+            },
+            Collider,
+        ));
+    }
+
+    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+        builder.extract_prefab(|entity| {
+            let position = entity.get::<Transform>()?.translation;
+
+            Some(BrickPrefab {
+                position: Vec2::new(position.x, position.y),
+            })
+        })
+    }
+}
+
 // Add the game's entities to our world
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Camera
     commands.spawn(Camera2d);
 
@@ -226,28 +322,13 @@ fn setup(
     commands.insert_resource(CollisionSound(ball_collision_sound));
 
     // Paddle
-    let paddle_y = BOTTOM_WALL + GAP_BETWEEN_PADDLE_AND_FLOOR;
 
-    commands.spawn((
-        Sprite::from_color(PADDLE_COLOR, Vec2::ONE),
-        Transform {
-            translation: Vec3::new(0.0, paddle_y, 0.0),
-            scale: PADDLE_SIZE.extend(1.0),
-            ..default()
-        },
-        Paddle,
-        Collider,
-    ));
+    commands.spawn_prefab(PaddlePrefab { position: 0.0 });
 
     // Ball
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::default())),
-        MeshMaterial2d(materials.add(BALL_COLOR)),
-        Transform::from_translation(BALL_STARTING_POSITION)
-            .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
-        Ball,
-        Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
-    ));
+    commands.spawn_prefab(BallPrefab {
+        position: BALL_STARTING_POSITION,
+    });
 
     // Scoreboard
     commands
@@ -283,7 +364,7 @@ fn setup(
 
     // Bricks
     let total_width_of_bricks = (RIGHT_WALL - LEFT_WALL) - 2. * GAP_BETWEEN_BRICKS_AND_SIDES;
-    let bottom_edge_of_bricks = paddle_y + GAP_BETWEEN_PADDLE_AND_BRICKS;
+    let bottom_edge_of_bricks = PADDLE_OFFSET + GAP_BETWEEN_PADDLE_AND_BRICKS;
     let total_height_of_bricks = TOP_WALL - bottom_edge_of_bricks - GAP_BETWEEN_BRICKS_AND_CEILING;
 
     assert!(total_width_of_bricks > 0.0);
@@ -310,25 +391,13 @@ fn setup(
 
     for row in 0..n_rows {
         for column in 0..n_columns {
-            let brick_position = Vec2::new(
+            let position = Vec2::new(
                 offset_x + column as f32 * (BRICK_SIZE.x + GAP_BETWEEN_BRICKS),
                 offset_y + row as f32 * (BRICK_SIZE.y + GAP_BETWEEN_BRICKS),
             );
 
             // brick
-            commands.spawn((
-                Sprite {
-                    color: BRICK_COLOR,
-                    ..default()
-                },
-                Transform {
-                    translation: brick_position.extend(0.0),
-                    scale: Vec3::new(BRICK_SIZE.x, BRICK_SIZE.y, 1.0),
-                    ..default()
-                },
-                Brick,
-                Collider,
-            ));
+            commands.spawn_prefab(BrickPrefab { position });
         }
     }
 }
@@ -596,32 +665,27 @@ impl Pipeline for BreakoutPipeline {
         "examples/saves/breakout"
     }
 
-    fn capture(builder: SnapshotBuilder) -> Snapshot {
+    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
         builder
-            .deny::<Mesh2d>()
-            .deny::<MeshMaterial2d<ColorMaterial>>()
-            .extract_entities_matching(|e| {
-                e.contains::<Paddle>() || e.contains::<Ball>() || e.contains::<Brick>()
-            })
+            .extract_all_prefabs::<PaddlePrefab>()
+            .extract_all_prefabs::<BallPrefab>()
+            .extract_all_prefabs::<BrickPrefab>()
             .extract_resource::<Score>()
             .extract_checkpoints()
             .build()
     }
 
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
-        let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let mesh = Mesh2d(meshes.add(Circle::default()));
-        let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
-        let material = MeshMaterial2d(materials.add(ColorMaterial::from(BALL_COLOR)));
-
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         snapshot
             .applier(world)
-            .despawn::<Or<(With<Paddle>, With<Ball>, With<Brick>)>>()
-            .hook(move |entity, cmd| {
-                if entity.contains::<Ball>() {
-                    cmd.insert((mesh.clone(), material.clone()));
-                }
-            })
+            .despawn::<Or<(
+                WithPrefab<PaddlePrefab>,
+                WithPrefab<BallPrefab>,
+                WithPrefab<BrickPrefab>,
+            )>>()
+            .prefab::<PaddlePrefab>()
+            .prefab::<BallPrefab>()
+            .prefab::<BrickPrefab>()
             .apply()
     }
 }
@@ -632,7 +696,7 @@ fn handle_save_input(world: &mut World) {
     let mut text = None;
 
     if keys.just_released(KeyCode::Space) {
-        world.checkpoint::<BreakoutPipeline>();
+        world.checkpoint(BreakoutPipeline);
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Enter) {
         world.save(BreakoutPipeline).expect("Failed to save");
@@ -642,12 +706,12 @@ fn handle_save_input(world: &mut World) {
         text = Some("Load");
     } else if keys.just_released(KeyCode::KeyA) {
         world
-            .rollback::<BreakoutPipeline>(1)
+            .rollback(BreakoutPipeline, 1)
             .expect("Failed to rollback");
         text = Some("Rollback");
     } else if keys.just_released(KeyCode::KeyD) {
         world
-            .rollback::<BreakoutPipeline>(-1)
+            .rollback(BreakoutPipeline, -1)
             .expect("Failed to rollforward");
         text = Some("Rollforward");
     }

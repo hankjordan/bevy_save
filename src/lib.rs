@@ -20,6 +20,7 @@ pub mod format;
 pub mod middleware;
 pub mod pipeline;
 pub mod plugins;
+pub mod prefab;
 pub mod serde;
 pub mod snapshot;
 
@@ -49,6 +50,7 @@ pub mod prelude {
             AppCheckpointExt,
             AppSaveableExt,
             CommandsCheckpointExt,
+            CommandsPrefabExt,
             CommandsSaveableExt,
             WorldCheckpointExt,
             WorldSaveableExt,
@@ -65,7 +67,12 @@ pub mod prelude {
             SavePlugins,
             SaveablesPlugin,
         },
+        prefab::{
+            Prefab,
+            WithPrefab,
+        },
         snapshot::{
+            BoxedHook,
             Hook,
             Snapshot,
             SnapshotApplier,

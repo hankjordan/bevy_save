@@ -1,0 +1,27 @@
+(
+    entities: {
+        4294967302: (
+            components: {
+                "bevy_transform::components::transform::Transform": (
+                    translation: (1.0, 2.0, 3.0),
+                    rotation: (0.0, 0.0, 0.0, 1.0),
+                    scale: (1.0, 1.0, 1.0),
+                ),
+            },
+        ),
+        4294967303: (
+            components: {
+                "bevy_transform::components::transform::Transform": (
+                    translation: (4.0, 5.0, 6.0),
+                    rotation: (0.0, 0.0, 0.0, 1.0),
+                    scale: (1.0, 1.0, 1.0),
+                ),
+                "format::ExampleComponent": (
+                    float: 64.0,
+                    string: "Hello, world!",
+                ),
+            },
+        ),
+    },
+    resources: {},
+)

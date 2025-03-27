@@ -42,13 +42,13 @@ impl Pipeline for HeirarchyPipeline {
         "examples/saves/heirarchy"
     }
 
-    fn capture(builder: SnapshotBuilder) -> Snapshot {
+    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
         builder
             .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
             .build()
     }
 
-    fn apply(world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
         snapshot
             .applier(world)
             .despawn::<Or<(With<Player>, With<Head>)>>()

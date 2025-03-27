@@ -92,7 +92,7 @@ mod desktop {
     ///
     /// Each name corresponds to an individual file on the disk.
     ///
-    /// Files are stored in `SAVE_DIR`.
+    /// Files are stored in [`SAVE_DIR`].
     #[derive(Default, Resource)]
     pub struct FileIO;
 
@@ -165,10 +165,10 @@ mod desktop {
 #[cfg(not(target_arch = "wasm32"))]
 pub use desktop::FileIO;
 #[cfg(not(target_arch = "wasm32"))]
-/// The [`Backend`] the default [`Pipeline`] will use.
+/// A reasonable default [`Backend`].
 pub type DefaultBackend = desktop::FileIO;
 #[cfg(not(target_arch = "wasm32"))]
-/// The [`Backend`] the default debug [`Pipeline`] will use.
+/// A reasonable default debug [`Backend`].
 pub type DefaultDebugBackend = desktop::DebugFileIO;
 
 #[cfg(target_arch = "wasm32")]
@@ -242,8 +242,8 @@ mod wasm {
 #[cfg(target_arch = "wasm32")]
 pub use wasm::WebStorage;
 #[cfg(target_arch = "wasm32")]
-/// The [`Backend`] the default [`Pipeline`] will use.
+/// A reasonable default [`Backend`].
 pub type DefaultBackend = wasm::WebStorage;
 #[cfg(target_arch = "wasm32")]
-/// The [`Backend`] the default debug [`Pipeline`] will use.
+/// A reasonable default debug [`Backend`].
 pub type DefaultDebugBackend = wasm::WebStorage;

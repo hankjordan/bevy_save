@@ -81,8 +81,8 @@ impl Format for JSONFormat {
     }
 }
 
-/// The [`Format`] the [`DefaultPipeline`](crate::pipeline::DefaultPipeline) will use.
+/// A reasonable default [`Format`].
 pub type DefaultFormat = RMPFormat;
 
-/// The [`Format`] the [`DefaultDebugPipeline`](crate::pipeline::DefaultDebugPipeline) will use.
+/// A reasonable default debug [`Format`], human-readable.
 pub type DefaultDebugFormat = JSONFormat;

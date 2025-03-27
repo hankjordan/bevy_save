@@ -10,10 +10,6 @@ use crate::{
         CheckpointRegistry,
         Checkpoints,
     },
-    pipeline::{
-        DefaultDebugPipeline,
-        DefaultPipeline,
-    },
     prelude::*,
 };
 
@@ -33,8 +29,8 @@ pub struct SavePlugin;
 
 impl Plugin for SavePlugin {
     fn build(&self, app: &mut App) {
-        app.init_pipeline::<DefaultPipeline>()
-            .init_pipeline::<DefaultDebugPipeline>()
+        app.init_resource::<DefaultBackend>()
+            .init_resource::<DefaultDebugBackend>()
             .init_resource::<CheckpointRegistry>()
             .init_resource::<Checkpoints>();
     }

@@ -17,7 +17,7 @@ use crate::{
 /// Extension trait that adds save-related methods to Bevy's [`World`].
 pub trait WorldSaveableExt: Sized {
     /// Captures a [`Snapshot`] from the current [`World`] state.
-    fn snapshot<P: Pipeline>(&self) -> Snapshot;
+    fn snapshot<P: Pipeline>(&self, pipeline: P) -> Snapshot;
 
     /// Saves the application state with the given [`Pipeline`].
     ///
@@ -46,8 +46,8 @@ pub trait WorldSaveableExt: Sized {
 }
 
 impl WorldSaveableExt for World {
-    fn snapshot<P: Pipeline>(&self) -> Snapshot {
-        P::capture(Snapshot::builder(self))
+    fn snapshot<P: Pipeline>(&self, pipeline: P) -> Snapshot {
+        pipeline.capture(Snapshot::builder(self))
     }
 
     fn save<P: Pipeline>(&self, pipeline: P) -> Result<(), Error> {
@@ -57,7 +57,7 @@ impl WorldSaveableExt for World {
 
     fn save_with<P: Pipeline>(&self, pipeline: P, registry: &TypeRegistry) -> Result<(), Error> {
         let backend = self.resource::<P::Backend>();
-        let snapshot = pipeline.capture_seed(Snapshot::builder(self));
+        let snapshot = pipeline.capture(Snapshot::builder(self));
         let ser = SnapshotSerializer::new(&snapshot, registry);
 
         block_on(backend.save::<P::Format, _>(pipeline.key(), &ser))
@@ -78,20 +78,20 @@ impl WorldSaveableExt for World {
         let de = SnapshotDeserializer { registry };
         let snapshot = block_on(backend.load::<P::Format, _, _>(pipeline.key(), de))?;
 
-        pipeline.apply_seed(self, &snapshot)
+        pipeline.apply(self, &snapshot)
     }
 }
 
 /// Extension trait that adds rollback checkpoint-related methods to Bevy's [`World`].
 pub trait WorldCheckpointExt {
     /// Creates a checkpoint for rollback and stores it in [`Checkpoints`].
-    fn checkpoint<P: Pipeline>(&mut self);
+    fn checkpoint<P: Pipeline>(&mut self, pipeline: P);
 
     /// Rolls back / forward the [`World`] state.
     ///
     /// # Errors
     /// - See [`Error`]
-    fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error>;
+    fn rollback<P: Pipeline>(&mut self, pipeline: P, checkpoints: isize) -> Result<(), Error>;
 
     /// Rolls back / forward the [`World`] state using the given [`TypeRegistry`].
     ///
@@ -99,26 +99,28 @@ pub trait WorldCheckpointExt {
     /// - See [`Error`]
     fn rollback_with<P: Pipeline>(
         &mut self,
+        pipeline: P,
         checkpoints: isize,
         registry: &TypeRegistry,
     ) -> Result<(), Error>;
 }
 
 impl WorldCheckpointExt for World {
-    fn checkpoint<P: Pipeline>(&mut self) {
-        let rollback = P::capture(SnapshotBuilder::checkpoint(self));
+    fn checkpoint<P: Pipeline>(&mut self, pipeline: P) {
+        let rollback = pipeline.capture(SnapshotBuilder::checkpoint(self));
         self.resource_mut::<Checkpoints>().checkpoint(rollback);
     }
 
-    fn rollback<P: Pipeline>(&mut self, checkpoints: isize) -> Result<(), Error> {
+    fn rollback<P: Pipeline>(&mut self, pipeline: P, checkpoints: isize) -> Result<(), Error> {
         let app_type_registry = self.resource::<AppTypeRegistry>().clone();
         let type_registry = app_type_registry.read();
 
-        self.rollback_with::<P>(checkpoints, &type_registry)
+        self.rollback_with(pipeline, checkpoints, &type_registry)
     }
 
     fn rollback_with<P: Pipeline>(
         &mut self,
+        pipeline: P,
         checkpoints: isize,
         registry: &TypeRegistry,
     ) -> Result<(), Error> {
@@ -127,7 +129,7 @@ impl WorldCheckpointExt for World {
             .rollback(checkpoints)
             .map(|r| r.clone_reflect(registry))
         {
-            P::apply(self, &rollback)
+            pipeline.apply(self, &rollback)
         } else {
             Ok(())
         }

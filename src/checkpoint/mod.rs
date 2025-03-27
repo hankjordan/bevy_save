@@ -3,5 +3,7 @@
 mod registry;
 mod state;
 
-pub use registry::CheckpointRegistry;
-pub use state::Checkpoints;
+pub use self::{
+    registry::CheckpointRegistry,
+    state::Checkpoints,
+};
