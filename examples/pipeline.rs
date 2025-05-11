@@ -2,10 +2,13 @@
 
 use bevy::{
     ecs::entity::EntityHashMap,
+    platform::collections::HashMap,
     prelude::*,
-    utils::HashMap,
 };
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{
+    bevy_egui::EguiPlugin,
+    quick::WorldInspectorPlugin,
+};
 use bevy_save::prelude::*;
 
 #[derive(Clone, Debug, Default, Resource, Reflect)]
@@ -171,6 +174,9 @@ fn main() {
                 ..default()
             }),
             // Inspector
+            EguiPlugin {
+                enable_multipass_for_primary_context: true,
+            },
             WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,

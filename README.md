@@ -363,6 +363,7 @@ If your application has specific migration requirements, please [open an issue](
 
 | Bevy Version              | Crate Version                     |
 | ------------------------- | --------------------------------- |
+| `0.16`                    | `0.18`                            |
 | `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17` |
 | `0.14`<sup> [1](#1)</sup> | `0.15`                            |
 | `0.13`                    | `0.14`                            |

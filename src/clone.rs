@@ -43,7 +43,7 @@ impl CloneReflect for Box<dyn PartialReflect> {
                     .and_then(|fr| fr.from_reflect(self.as_partial_reflect()))
                     .map(|fr| fr.into_partial_reflect())
             })
-            .unwrap_or_else(|| self.clone_value())
+            .unwrap_or_else(|| self.to_dynamic())
     }
 }
 

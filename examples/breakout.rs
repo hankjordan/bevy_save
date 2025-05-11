@@ -12,10 +12,13 @@ use bevy::{
         BoundingVolume,
         IntersectsVolume,
     },
+    platform::time::Instant,
     prelude::*,
-    utils::Instant,
 };
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{
+    bevy_egui::EguiPlugin,
+    quick::WorldInspectorPlugin,
+};
 use bevy_save::prelude::*;
 
 // These constants are defined in `Transform` units.
@@ -85,6 +88,9 @@ fn main() {
         .add_systems(Update, (update_scoreboard, close_on_esc))
         .add_plugins((
             // Inspector
+            EguiPlugin {
+                enable_multipass_for_primary_context: true,
+            },
             WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,
@@ -464,7 +470,7 @@ fn check_for_collisions(
 
         if let Some(collision) = collision {
             // Sends a collision event so that other systems can react to the collision
-            collision_events.send_default();
+            collision_events.write_default();
 
             // Bricks should be despawned and increment the scoreboard on collision
             if maybe_brick.is_some() {
@@ -596,7 +602,7 @@ fn setup_entity_count(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn update_entity_count(entities: Query<Entity>, mut counters: Query<&mut Text, With<EntityCount>>) {
-    let mut text = counters.single_mut();
+    let mut text = counters.single_mut().unwrap();
     text.0 = format!("Entities: {:?}", entities.iter().len());
 }
 
@@ -631,7 +637,7 @@ struct Toaster<'w, 's> {
 impl Toaster<'_, '_> {
     fn show(&mut self, text: &str) {
         for entity in &self.toasts {
-            self.commands.entity(entity).despawn_recursive();
+            self.commands.entity(entity).despawn();
         }
 
         self.commands.spawn((

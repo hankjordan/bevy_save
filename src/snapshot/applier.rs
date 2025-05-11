@@ -17,10 +17,10 @@ use bevy::{
             EntityRef,
         },
     },
+    platform::collections::HashMap,
     prelude::*,
     reflect::TypeRegistry,
     scene::SceneSpawnError,
-    utils::HashMap,
 };
 
 use crate::{
@@ -44,8 +44,8 @@ use crate::{
 /// snapshot
 ///     .applier(world)
 ///     .hook(move |entity, cmds| {
-///         if !entity.contains::<Parent>() {
-///             cmds.set_parent(parent);
+///         if !entity.contains::<ChildOf>() {
+///             cmds.insert(ChildOf(parent));
 ///         }
 ///     })
 ///     .apply();
@@ -194,7 +194,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
 
             // Apply/ add each component to the given entity.
             for component in &scene_entity.components {
-                let mut component = component.clone_value();
+                let mut component = component.to_dynamic();
                 let type_info = component.get_represented_type_info().ok_or_else(|| {
                     SceneSpawnError::NoRepresentedType {
                         type_path: component.reflect_type_path().to_string(),
@@ -243,7 +243,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
         // Insert resources after all entities have been added to the world.
         // This ensures the entities are available for the resources to reference during mapping.
         for resource in &self.snapshot.resources {
-            let mut resource = resource.clone_value();
+            let mut resource = resource.to_dynamic();
             let type_info = resource.get_represented_type_info().ok_or_else(|| {
                 SceneSpawnError::NoRepresentedType {
                     type_path: resource.reflect_type_path().to_string(),

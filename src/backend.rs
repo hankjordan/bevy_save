@@ -1,6 +1,6 @@
 //! [`Backend`] acts as an interface between [`Format`] and storage for persisting values.
 
-use bevy::utils::{
+use bevy::tasks::{
     ConditionalSend,
     ConditionalSendFuture,
 };
@@ -19,7 +19,7 @@ use crate::{
 /// # Implementation
 /// The preferred style for implementing this method is an `async fn` returning a result.
 /// ```
-/// # use bevy::utils::ConditionalSend;
+/// # use bevy::tasks::ConditionalSend;
 /// # use serde::{de::DeserializeSeed, Serialize};
 /// # use bevy_save::prelude::*;
 /// #

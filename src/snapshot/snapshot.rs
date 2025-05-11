@@ -96,8 +96,8 @@ impl Snapshot {
     ///     .applier(world)
     ///     .hook(move |entity, cmds| {
     ///         // You can use the hook to add, get, or remove Components
-    ///         if !entity.contains::<Parent>() {
-    ///             cmds.set_parent(parent);
+    ///         if !entity.contains::<ChildOf>() {
+    ///             cmds.insert(ChildOf(parent));
     ///         }
     ///     })
     ///     .apply();
