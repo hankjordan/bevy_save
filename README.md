@@ -34,11 +34,11 @@ This crate introduces a snapshot type which may be used directly:
 
 - [`Snapshot`] is a serializable snapshot of all saveable resources, entities, and components.
 
-Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html) and [`WorldRollbackExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html):
+Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html) and [`WorldCheckpointExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html):
 
 - [`World::snapshot()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.snapshot) captures a snapshot of the current application state, including resources.
-- [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
-- [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldRollbackExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
+- [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
+- [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
 
 The [`Checkpoints`] resource also gives you fine-tuned control of the currently stored rollback checkpoints.
 
@@ -50,8 +50,8 @@ As long as the type implements [`Reflect`], it can be registered and used with `
 `bevy_save` provides extension traits for [`App`] allowing you to do so.
 
 - [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
-- [`App.allow_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.allow_rollback) allows a type to roll back.
-- [`App.deny_rollback::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppRollbackExt.html#tymethod.deny_rollback) denies a type from rolling back.
+- [`App.allow_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.allow_checkpoint) allows a type to roll back.
+- [`App.deny_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.deny_checkpoint) denies a type from rolling back.
 
 ### Backend
 
