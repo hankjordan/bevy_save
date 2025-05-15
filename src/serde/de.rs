@@ -1,6 +1,7 @@
 use std::fmt::Formatter;
 
 use bevy::{
+    platform::collections::HashSet,
     prelude::*,
     reflect::{
         serde::{
@@ -11,7 +12,6 @@ use bevy::{
         TypeRegistry,
     },
     scene::DynamicEntity,
-    utils::HashSet,
 };
 use serde::{
     de::{

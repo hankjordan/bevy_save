@@ -4,7 +4,10 @@ use std::io::{
 };
 
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{
+    bevy_egui::EguiPlugin,
+    quick::WorldInspectorPlugin,
+};
 use bevy_save::{
     prelude::*,
     Error,
@@ -95,7 +98,12 @@ fn main() {
             ..default()
         }))
         // Inspector
-        .add_plugins(WorldInspectorPlugin::new())
+        .add_plugins((
+            EguiPlugin {
+                enable_multipass_for_primary_context: true,
+            },
+            WorldInspectorPlugin::new(),
+        ))
         // Bevy Save
         .add_plugins(SavePlugins)
         // Register types

@@ -1,6 +1,9 @@
 //! Bevy commands for deferring mutation.
 
-use bevy::prelude::*;
+use bevy::{
+    log::prelude::*,
+    prelude::*,
+};
 
 use crate::prelude::*;
 

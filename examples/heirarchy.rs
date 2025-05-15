@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::{
+    bevy_egui::EguiPlugin,
+    quick::WorldInspectorPlugin,
+};
 use bevy_save::prelude::*;
 
 #[derive(Component, Reflect, Default)]
@@ -80,16 +83,16 @@ fn interact(world: &mut World) {
 
 fn handle_keys(
     keys: Res<ButtonInput<KeyCode>>,
-    head_query: Query<(Entity, &Parent)>,
+    head_query: Query<(Entity, &ChildOf)>,
     despawn_query: Query<Entity, With<Player>>,
     mut commands: Commands,
 ) {
     // Print head debug info, check that all heads have a valid parent
     if keys.just_released(KeyCode::KeyP) {
         println!("{} Heads", head_query.iter().len());
-        for (entity, parent) in &head_query {
-            println!("  Head {:?} has parent: {:?}", entity, parent.get());
-            if commands.get_entity(parent.get()).is_none() {
+        for (entity, child_of) in &head_query {
+            println!("  Head {:?} has parent: {:?}", entity, child_of.parent());
+            if commands.get_entity(child_of.parent()).is_err() {
                 println!("    X - Head parent does not exist!");
             } else {
                 println!("    Ok - Head parent exists, all good")
@@ -100,7 +103,7 @@ fn handle_keys(
     // Reset, delete all entities
     if keys.just_released(KeyCode::KeyR) {
         for entity in &despawn_query {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
     }
 }
@@ -112,7 +115,12 @@ fn main() {
             ..default()
         }))
         // Inspector
-        .add_plugins(WorldInspectorPlugin::new())
+        .add_plugins((
+            EguiPlugin {
+                enable_multipass_for_primary_context: true,
+            },
+            WorldInspectorPlugin::new(),
+        ))
         // Bevy Save
         .add_plugins(SavePlugins)
         // Register types

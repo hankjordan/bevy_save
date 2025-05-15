@@ -48,10 +48,10 @@ impl<'a> SnapshotBuilder<'a> {
     /// SnapshotBuilder::snapshot(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
-    ///     
+    ///
     ///     // Clear all extracted entities without any components
     ///     .clear_empty()
-    ///     
+    ///
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
@@ -84,10 +84,10 @@ impl<'a> SnapshotBuilder<'a> {
     /// SnapshotBuilder::checkpoint(world)
     ///     // Extract all matching entities and resources
     ///     .extract_all()
-    ///     
+    ///
     ///     // Clear all extracted entities without any components
     ///     .clear_empty()
-    ///     
+    ///
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
@@ -226,7 +226,7 @@ impl SnapshotBuilder<'_> {
                             .data::<ReflectFromReflect>()
                             .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
                             .map_or_else(
-                                || reflect.clone_value(),
+                                || reflect.to_dynamic(),
                                 PartialReflect::into_partial_reflect,
                             );
 
@@ -376,13 +376,13 @@ impl SnapshotBuilder<'_> {
                 }
             })
             .filter_map(|r| {
-                let reflect = r.data::<ReflectResource>()?.reflect(self.world)?;
+                let reflect = r.data::<ReflectResource>()?.reflect(self.world).ok()?;
 
                 let reflect = r
                     .data::<ReflectFromReflect>()
                     .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
                     .map_or_else(
-                        || reflect.clone_value(),
+                        || reflect.to_dynamic(),
                         PartialReflect::into_partial_reflect,
                     );
 
