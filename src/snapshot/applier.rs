@@ -1,21 +1,12 @@
-use std::{
-    any::TypeId,
-    marker::PhantomData,
-};
+use std::{any::TypeId, marker::PhantomData};
 
 use bevy::{
     ecs::{
-        entity::{
-            EntityHashMap,
-            SceneEntityMapper,
-        },
+        entity::{EntityHashMap, SceneEntityMapper},
         query::QueryFilter,
         reflect::ReflectMapEntities,
         system::EntityCommands,
-        world::{
-            CommandQueue,
-            EntityRef,
-        },
+        world::{CommandQueue, EntityRef},
     },
     platform::collections::HashMap,
     prelude::*,
@@ -23,10 +14,7 @@ use bevy::{
     scene::SceneSpawnError,
 };
 
-use crate::{
-    error::Error,
-    prelude::*,
-};
+use crate::{error::Error, prelude::*};
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
 ///
@@ -57,7 +45,7 @@ impl<T> Hook for T where T: for<'a> Fn(&'a EntityRef, &'a mut EntityCommands) + 
 /// A boxed [`Hook`].
 pub type BoxedHook = Box<dyn Hook>;
 
-type SpawnPrefabFn = fn(Box<dyn PartialReflect>, Entity, &mut World);
+type SpawnPrefabFn = fn(Box<dyn PartialReflect>, Entity, &mut World, Option<Entity>);
 
 /// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
 pub struct SnapshotApplier<'a, F = ()> {
@@ -124,13 +112,17 @@ impl<'a, A> SnapshotApplier<'a, A> {
     pub fn prefab<P: Prefab + FromReflect>(mut self) -> Self {
         self.prefabs.insert(
             std::any::TypeId::of::<P>(),
-            |this: Box<dyn PartialReflect>, target: Entity, world: &mut World| {
+            |this: Box<dyn PartialReflect>,
+             target: Entity,
+             world: &mut World,
+             target_original: Option<Entity>| {
                 world.entity_mut(target).insert(P::Marker::default());
 
                 P::spawn(
                     <P as FromReflect>::from_reflect(&*this).unwrap(),
                     target,
                     world,
+                    target_original,
                 );
             },
         );
@@ -206,7 +198,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                     prefab_entities
                         .entry(type_id)
                         .or_insert_with(Vec::new)
-                        .push((entity, component));
+                        .push((entity, (component, scene_entity.entity)));
 
                     continue;
                 }
@@ -283,8 +275,8 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                 continue;
             };
 
-            for (entity, component) in entities {
-                hook(component, entity, self.world);
+            for (entity, (component, entity_original)) in entities {
+                hook(component, entity, self.world, Some(entity_original));
             }
         }
 

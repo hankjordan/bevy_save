@@ -1,13 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    commands::{
-        CheckpointCommand,
-        LoadCommand,
-        RollbackCommand,
-        SaveCommand,
-        SpawnPrefabCommand,
-    },
+    commands::{CheckpointCommand, LoadCommand, RollbackCommand, SaveCommand, SpawnPrefabCommand},
     prelude::*,
 };
 
@@ -58,7 +52,7 @@ pub trait CommandsPrefabExt {
 impl CommandsPrefabExt for Commands<'_, '_> {
     fn spawn_prefab<P: Prefab + Send + 'static>(&mut self, prefab: P) -> EntityCommands {
         let target = self.spawn(P::Marker::default()).id();
-        self.queue(SpawnPrefabCommand::new(target, prefab));
+        self.queue(SpawnPrefabCommand::new(target, prefab, None));
         self.entity(target)
     }
 }

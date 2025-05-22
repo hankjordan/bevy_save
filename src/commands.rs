@@ -1,9 +1,6 @@
 //! Bevy commands for deferring mutation.
 
-use bevy::{
-    log::prelude::*,
-    prelude::*,
-};
+use bevy::{log::prelude::*, prelude::*};
 
 use crate::prelude::*;
 
@@ -75,17 +72,22 @@ impl<P: Pipeline + Send + 'static> Command for RollbackCommand<P> {
 pub struct SpawnPrefabCommand<P> {
     target: Entity,
     prefab: P,
+    target_original: Option<Entity>,
 }
 
 impl<P> SpawnPrefabCommand<P> {
     /// Create a [`SpawnPrefabCommand`] from the target entity and [`Prefab`].
-    pub fn new(target: Entity, prefab: P) -> Self {
-        Self { target, prefab }
+    pub fn new(target: Entity, prefab: P, target_original: Option<Entity>) -> Self {
+        Self {
+            target,
+            prefab,
+            target_original,
+        }
     }
 }
 
 impl<P: Prefab + Send + 'static> Command for SpawnPrefabCommand<P> {
     fn apply(self, world: &mut World) {
-        self.prefab.spawn(self.target, world);
+        self.prefab.spawn(self.target, world, self.target_original);
     }
 }
