@@ -16,7 +16,7 @@ pub trait Prefab: 'static {
     type Marker: Component + Default;
 
     /// Create a single instance of the prefab
-    fn spawn(self, target: Entity, world: &mut World);
+    fn spawn(self, target: Entity, world: &mut World, target_original: Option<Entity>);
 
     /// Extract the prefab entities from the [`World`]
     fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
