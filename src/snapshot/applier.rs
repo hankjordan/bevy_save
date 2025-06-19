@@ -5,12 +5,14 @@ use std::{
 
 use bevy::{
     ecs::{
+        component::ComponentCloneBehavior,
         entity::{
             EntityHashMap,
             SceneEntityMapper,
         },
         query::QueryFilter,
         reflect::ReflectMapEntities,
+        relationship::RelationshipHookMode,
         system::EntityCommands,
         world::{
             CommandQueue,
@@ -24,6 +26,7 @@ use bevy::{
 };
 
 use crate::{
+    clone_reflect_value,
     error::Error,
     prelude::*,
 };
@@ -194,28 +197,29 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
 
             // Apply/ add each component to the given entity.
             for component in &scene_entity.components {
-                let mut component = component.to_dynamic();
                 let type_info = component.get_represented_type_info().ok_or_else(|| {
                     SceneSpawnError::NoRepresentedType {
                         type_path: component.reflect_type_path().to_string(),
                     }
                 })?;
-
                 let type_id = type_info.type_id();
                 if self.prefabs.contains_key(&type_id) {
                     prefab_entities
                         .entry(type_id)
                         .or_insert_with(Vec::new)
-                        .push((entity, component));
+                        .push((
+                            entity,
+                            clone_reflect_value(component.as_partial_reflect(), type_registry),
+                        ));
 
                     continue;
                 }
-
                 let registration = type_registry.get(type_id).ok_or_else(|| {
                     SceneSpawnError::UnregisteredButReflectedType {
                         type_path: type_info.type_path().to_string(),
                     }
                 })?;
+
                 let reflect_component =
                     registration.data::<ReflectComponent>().ok_or_else(|| {
                         SceneSpawnError::UnregisteredComponent {
@@ -223,27 +227,37 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                         }
                     })?;
 
-                if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
-                    SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
-                        map_entities.map_entities(component.as_partial_reflect_mut(), mapper);
-                    });
+                {
+                    let component_id = reflect_component.register_component(self.world);
+                    // SAFETY: we registered the component above. the info exists
+                    let component_info =
+                        unsafe { self.world.components().get_info_unchecked(component_id) };
+                    if *component_info.clone_behavior() == ComponentCloneBehavior::Ignore {
+                        continue;
+                    }
                 }
 
-                // If the entity already has the given component attached,
-                // just apply the (possibly) new value, otherwise add the
-                // component to the entity.
-                reflect_component.insert(
-                    &mut self.world.entity_mut(entity),
-                    component.as_partial_reflect(),
-                    type_registry,
-                );
+                SceneEntityMapper::world_scope(entity_map, self.world, |world, mapper| {
+                    let entity_mut = &mut world.entity_mut(entity);
+
+                    // WORKAROUND: apply_or_insert doesn't actually apply
+                    reflect_component.remove(entity_mut);
+
+                    reflect_component.apply_or_insert_mapped(
+                        entity_mut,
+                        component.as_partial_reflect(),
+                        type_registry,
+                        mapper,
+                        RelationshipHookMode::Skip,
+                    );
+                });
             }
         }
 
         // Insert resources after all entities have been added to the world.
-        // This ensures the entities are available for the resources to reference during mapping.
+        // This ensures the entities are available for the resources to reference during
+        // mapping.
         for resource in &self.snapshot.resources {
-            let mut resource = resource.to_dynamic();
             let type_info = resource.get_represented_type_info().ok_or_else(|| {
                 SceneSpawnError::NoRepresentedType {
                     type_path: resource.reflect_type_path().to_string(),
@@ -262,19 +276,28 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
 
             // If this resource references entities in the scene, update
             // them to the entities in the world.
-            if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
+            let mut cloned_resource;
+            let partial_reflect_resource = if let Some(map_entities) =
+                registration.data::<ReflectMapEntities>()
+            {
+                cloned_resource = clone_reflect_value(resource.as_partial_reflect(), type_registry);
                 SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
-                    map_entities.map_entities(resource.as_partial_reflect_mut(), mapper);
+                    map_entities.map_entities(cloned_resource.as_partial_reflect_mut(), mapper);
                 });
-            }
+                cloned_resource.as_partial_reflect()
+            } else {
+                resource.as_partial_reflect()
+            };
 
             // If the world already contains an instance of the given resource
             // just apply the (possibly) new value, otherwise insert the resource
-            reflect_resource.apply_or_insert(
-                self.world,
-                resource.as_partial_reflect(),
-                type_registry,
-            );
+            reflect_resource.apply_or_insert(self.world, partial_reflect_resource, type_registry);
+        }
+
+        // Apply checkpoints from snapshot
+        if let Some(checkpoints) = &self.snapshot.checkpoints {
+            self.world
+                .insert_resource(checkpoints.clone_reflect(type_registry));
         }
 
         // Prefab hooks
