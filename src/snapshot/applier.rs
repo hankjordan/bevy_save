@@ -203,22 +203,29 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                     }
                 })?;
                 let type_id = type_info.type_id();
-                if self.prefabs.contains_key(&type_id) {
-                    prefab_entities
-                        .entry(type_id)
-                        .or_insert_with(Vec::new)
-                        .push((
-                            entity,
-                            clone_reflect_value(component.as_partial_reflect(), type_registry),
-                        ));
-
-                    continue;
-                }
                 let registration = type_registry.get(type_id).ok_or_else(|| {
                     SceneSpawnError::UnregisteredButReflectedType {
                         type_path: type_info.type_path().to_string(),
                     }
                 })?;
+
+                if self.prefabs.contains_key(&type_id) {
+                    let mut prefab =
+                        clone_reflect_value(component.as_partial_reflect(), type_registry);
+
+                    if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
+                        SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
+                            map_entities.map_entities(prefab.as_partial_reflect_mut(), mapper);
+                        });
+                    }
+
+                    prefab_entities
+                        .entry(type_id)
+                        .or_insert_with(Vec::new)
+                        .push((entity, prefab));
+
+                    continue;
+                }
 
                 let reflect_component =
                     registration.data::<ReflectComponent>().ok_or_else(|| {
