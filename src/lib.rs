@@ -25,7 +25,10 @@ pub mod serde;
 pub mod snapshot;
 
 pub use crate::{
-    clone::CloneReflect,
+    clone::{
+        clone_reflect_value,
+        CloneReflect,
+    },
     error::Error,
 };
 
