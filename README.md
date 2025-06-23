@@ -401,13 +401,13 @@ If your application has specific migration requirements, please [open an issue](
 
 `bevy_save` is dual-licensed under MIT and Apache-2.0.
 
-[img_bevy]: https://img.shields.io/badge/Bevy-0.15-blue
+[img_bevy]: https://img.shields.io/badge/Bevy-0.16-blue
 [img_version]: https://img.shields.io/crates/v/bevy_save.svg
 [img_doc]: https://docs.rs/bevy_save/badge.svg
 [img_license]: https://img.shields.io/badge/license-MIT%2FApache-blue.svg
 [img_downloads]: https://img.shields.io/crates/d/bevy_save.svg
 [img_tracking]: https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue
-[bevy]: https://crates.io/crates/bevy/0.15.0
+[bevy]: https://crates.io/crates/bevy/0.16.1
 [crates]: https://crates.io/crates/bevy_save
 [doc]: https://docs.rs/bevy_save
 [license]: https://github.com/hankjordan/bevy_save#license
