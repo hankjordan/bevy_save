@@ -1,23 +1,12 @@
 use std::{
-    any::{
-        Any,
-        TypeId,
-    },
+    any::{Any, TypeId},
     collections::BTreeMap,
 };
 
-use bevy::{
-    ecs::component::ComponentId,
-    prelude::*,
-    reflect::TypeRegistry,
-    scene::DynamicEntity,
-};
+use bevy::{ecs::component::ComponentId, prelude::*, reflect::TypeRegistry, scene::DynamicEntity};
 
 use crate::{
-    checkpoint::{
-        CheckpointRegistry,
-        Checkpoints,
-    },
+    checkpoint::{CheckpointRegistry, Checkpoints},
     prelude::*,
 };
 
@@ -176,12 +165,14 @@ impl SnapshotBuilder<'_> {
 
 impl SnapshotBuilder<'_> {
     /// Extract a single entity from the builder’s [`World`].
+    /// The components to be extracted must implement Reflect and #[reflect(Component)]
     pub fn extract_entity(self, entity: Entity) -> Self {
         self.extract_entities([entity].into_iter())
     }
 
     /// Extract the given entities from the builder’s [`World`].
     ///
+    /// The components to be extracted must implement Reflect and #[reflect(Component)]
     /// # Panics
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     pub fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
@@ -245,6 +236,7 @@ impl SnapshotBuilder<'_> {
     }
 
     /// Extract the entities matching the given filter from the builder’s [`World`].
+    /// The components to be extracted must implement Reflect and #[reflect(Component)]
     pub fn extract_entities_matching<F: Fn(&EntityRef) -> bool>(self, filter: F) -> Self {
         // TODO: We should be using Query and caching the lookup
         let entities = self.world.iter_entities().filter(filter).map(|e| e.id());
@@ -252,6 +244,7 @@ impl SnapshotBuilder<'_> {
     }
 
     /// Extract all entities from the builder’s [`World`].
+    /// The components to be extracted must implement Reflect and #[reflect(Component)]
     pub fn extract_all_entities(self) -> Self {
         let entites = self.world.iter_entities().map(|e| e.id());
         self.extract_entities(entites)
@@ -267,10 +260,13 @@ impl SnapshotBuilder<'_> {
                 continue;
             };
 
-            self.entities.insert(entity.id(), DynamicEntity {
-                entity: entity.id(),
-                components,
-            });
+            self.entities.insert(
+                entity.id(),
+                DynamicEntity {
+                    entity: entity.id(),
+                    components,
+                },
+            );
         }
 
         self
@@ -291,10 +287,13 @@ impl SnapshotBuilder<'_> {
                 continue;
             };
 
-            self.entities.insert(entity.id(), DynamicEntity {
-                entity: entity.id(),
-                components: vec![Box::new(prefab).into_partial_reflect()],
-            });
+            self.entities.insert(
+                entity.id(),
+                DynamicEntity {
+                    entity: entity.id(),
+                    components: vec![Box::new(prefab).into_partial_reflect()],
+                },
+            );
         }
 
         self
