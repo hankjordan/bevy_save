@@ -1,4 +1,7 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+// `rustdoc_internals` is needed for `#[doc(fake_variadics)]`
+#![allow(unexpected_cfgs)]
+#![allow(internal_features)]
+#![cfg_attr(any(docsrs, docsrs_dep), feature(doc_auto_cfg, rustdoc_internals))]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
@@ -8,10 +11,6 @@
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::too_many_lines)]
 #![doc = include_str!("../README.md")]
-// `rustdoc_internals` is needed for `#[doc(fake_variadics)]`
-#![allow(unexpected_cfgs)]
-#![allow(internal_features)]
-#![cfg_attr(any(docsrs, docsrs_dep), feature(doc_auto_cfg, rustdoc_internals))]
 
 pub mod backend;
 pub mod dir;
