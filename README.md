@@ -8,11 +8,92 @@ A framework for saving and loading application state in Bevy.
 
 ## Features
 
+### [NEW]: Flows
+
+When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
+
+[`Flows`] are chains of systems used to modularize this process, allowing you to build snapshots and apply them in stages.
+
+They are defined similar to Bevy systems, but they require an input and an output.
+
+Additionally, the introduction of [`Flows`] allows reflection to become optional - bring your own serialization if you so wish!
+
+```rust,ignore
+fn main() {
+    App::new()
+        .add_flows(CaptureFlow, (capture_tiles, capture_players, capture_cameras))
+        .add_flows(ApplyFlow, (apply_tiles, apply_monsters));
+}
+
+// User-defined captures make reflection unnecessary
+#[derive(Serialize, Deserialize)]
+struct MyCapture {
+    // ... but then you'll need to specify everything you extract
+    tiles: Vec<(Entity, Tile)>,
+    players: Vec<(Entity, Transform, Visibility)>,
+    cameras: Vec<(Entity, Camera)>,
+}
+
+// Flow systems have full access to the ECS (even write access)
+fn capture_tiles(In(cap): In<MyCapture>, tiles: Query<(Entity, &Tile)>) -> MyCapture {
+    cap.tiles.extend(query.iter().map(|(e, t)| (e, t.clone())));
+    cap
+}
+
+// Flow systems can be added to flows from anywhere, not just in one location
+struct PluginA;
+
+impl Plugin for PluginA {
+    fn build(&self, app: &mut App) {
+        app.add_flows(CaptureFlow, another_capture);
+    }
+}
+```
+
+#### [NEW]: Pathway
+
+[`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flows`].
+
+```rust,ignore
+// Pathways look very similar to pipelines, but there are a few key differences
+pub struct RONPathway;
+
+impl Pathway for RONPathway {
+    // The capture type allows you to save anything you want to disk, even without using reflection
+    type Capture = Snapshot;
+
+    type Backend = DefaultDebugBackend;
+    type Format = RONFormat;
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/flows"
+    }
+
+    // Instead of capturing and applying directly, now these methods just return labels to user-defined flows
+    // This allows for better dependency injection and reduces code complexity
+    fn capture(&self, _world: &World) -> impl FlowLabel {
+        CaptureFlow
+    }
+
+    fn apply(&self, _world: &World) -> impl FlowLabel {
+        ApplyFlow
+    }
+}
+
+// Flow labels don't encode any behavior by themselves, only point to flows
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct CaptureFlow;
+
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct ApplyFlow;
+```
+
 ### Save file management
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [any platform](#platforms) it can run on.
 
-By default, [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
+By default, [`World::save()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.save) and [`World::load()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.load) uses the managed save file location to save and load your application state, handling all serialization and deserialization for you.
 
 #### Save directory location
 
@@ -26,32 +107,168 @@ With the default [`FileIO`] backend, your save directory is managed for you.
 
 On WASM, snapshots are saved to [`LocalStorage`], with the key `WORKSPACE.KEY`.
 
-### Snapshots and rollback
+### Reflection-based Snapshots
 
 `bevy_save` is not just about save files, it is about total control over application state.
 
-This crate introduces a snapshot type which may be used directly:
+With the `"reflect"` feature enabled, this crate introduces a snapshot type which may be used directly:
 
 - [`Snapshot`] is a serializable snapshot of all saveable resources, entities, and components.
 
-Or via the [`World`] extension methods [`WorldSaveableExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html) and [`WorldCheckpointExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html):
+Or via the [`World`] extension method [`WorldPathwayExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html) and [`WorldCheckpointExt`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html):
 
-- [`World::snapshot()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldSaveableExt.html#tymethod.snapshot) captures a snapshot of the current application state, including resources.
+- [`World::capture()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.capture) captures a snapshot of the current application state, including resources.
+- [`World::apply()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.apply) applies a snapshot to the [`World`].
+
+#### Rollbacks and checkpoints
+
+With the `"checkpoints"` feature enabled, this crate provides methods for creating checkpoints which are ordered and can be rolled back / forwards through.
+
 - [`World::checkpoint()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html#tymethod.checkpoint) captures a snapshot for later rollback / rollforward.
 - [`World::rollback()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldCheckpointExt.html#tymethod.rollback) rolls the application state backwards or forwards through any checkpoints you have created.
 
 The [`Checkpoints`] resource also gives you fine-tuned control of the currently stored rollback checkpoints.
 
-### Type registration
+#### Type registration
 
 No special traits or NewTypes necessary, `bevy_save` takes full advantage of Bevy's built-in reflection.
 As long as the type implements [`Reflect`], it can be registered and used with `bevy_save`.
 
 `bevy_save` provides extension traits for [`App`] allowing you to do so.
 
-- [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppSaveableExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
+- [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppPipelineExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
 - [`App.allow_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.allow_checkpoint) allows a type to roll back.
 - [`App.deny_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.deny_checkpoint) denies a type from rolling back.
+
+#### Pipeline
+
+The [`Pipeline`] trait allows you to use multiple different configurations of [`Backend`] and [`Format`] in the same [`App`].
+
+Using [`Pipeline`] also lets you re-use [`Snapshot`] appliers and builders.
+
+```rust,ignore
+struct HeirarchyPipeline;
+
+impl Pipeline for HeirarchyPipeline {
+    type Backend = DefaultDebugBackend;
+    type Format = DefaultDebugFormat;
+
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/heirarchy"
+    }
+
+    fn capture(&self, builder: BuilderRef) -> Snapshot {
+        builder
+            .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
+            .build()
+    }
+
+    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+        snapshot
+            .applier(world)
+            .despawn::<Or<(With<Player>, With<Head>)>>()
+            .apply()
+    }
+}
+```
+
+#### Type Filtering and Partial Snapshots
+
+While `bevy_save` aims to make it as easy as possible to save your entire world, some applications also need to be able to save only parts of the world.
+
+[`Builder`] allows you to manually create snapshots like [`DynamicSceneBuilder`]:
+
+```rust,ignore
+fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
+    Snapshot::builder(world)
+        // Extract all resources
+        .extract_all_resources()
+
+        // Extract all descendants of `target`
+        // This will include all components not denied by the builder's filter
+        .extract_entities(children.iter_descendants(target))
+
+        // Entities without any components will also be extracted
+        // You can use `clear_empty` to remove them
+        .clear_empty()
+
+        // Build the `Snapshot`
+        .build()
+}
+```
+
+#### Entity hooks
+
+You are also able to add hooks when applying snapshots, similar to `bevy-scene-hook`.
+
+This can be used for many things, like spawning the snapshot as a child of an entity:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    // This will be run for every Entity in the snapshot
+    // It runs after the Entity's Components are loaded
+    .hook(move |entity, cmds| {
+        // You can use the hook to add, get, or remove Components
+        if !entity.contains::<Parent>() {
+            cmds.set_parent(parent);
+        }
+    })
+
+    .apply();
+```
+
+Hooks may also despawn entities:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    .hook(|entity, cmds| {
+        if entity.contains::<A>() {
+            cmds.despawn();
+        }
+    })
+```
+
+#### Entity mapping
+
+As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
+
+First, you'll need to get a [`ApplierRef`]:
+
+- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
+- [`ApplierRef::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ApplierRef.html#method.new)
+
+The [`ApplierRef`] will then allow you to configure the entity map (and other settings) before applying:
+
+```rust,ignore
+let snapshot = Snapshot::from_world(world);
+
+snapshot
+    .applier(world)
+
+    // Your entity map
+    .entity_map(HashMap::default())
+
+    // Despawn all entities matching (With<A>, Without<B>)
+    .despawn::<(With<A>, Without<B>)>()
+
+    .apply();
+```
+
+#### MapEntities
+
+`bevy_save` also supports [`MapEntities`](https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html) via reflection to allow you to update entity ids within components and resources.
+
+See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ### Backend
 
@@ -123,40 +340,6 @@ impl Format for RONFormat {
 }
 ```
 
-### Pipeline
-
-The [`Pipeline`] trait allows you to use multiple different configurations of [`Backend`] and [`Format`] in the same [`App`].
-
-Using [`Pipeline`] also lets you re-use [`Snapshot`] appliers and builders.
-
-```rust,ignore
-struct HeirarchyPipeline;
-
-impl Pipeline for HeirarchyPipeline {
-    type Backend = DefaultDebugBackend;
-    type Format = DefaultDebugFormat;
-
-    type Key<'a> = &'a str;
-
-    fn key(&self) -> Self::Key<'_> {
-        "examples/saves/heirarchy"
-    }
-
-    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
-        builder
-            .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
-            .build()
-    }
-
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
-        snapshot
-            .applier(world)
-            .despawn::<Or<(With<Player>, With<Head>)>>()
-            .apply()
-    }
-}
-```
-
 ### Prefabs
 
 The [`Prefab`] trait allows you to easily spawn entities from a blueprint.
@@ -192,7 +375,7 @@ impl Prefab for BallPrefab {
         ));
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         // We don't actually need to save all of those runtime components.
         // Only save the translation of the Ball.
         builder.extract_prefab(|entity| {
@@ -201,31 +384,6 @@ impl Prefab for BallPrefab {
             })
         })
     }
-}
-```
-
-### Type Filtering and Partial Snapshots
-
-While `bevy_save` aims to make it as easy as possible to save your entire world, some applications also need to be able to save only parts of the world.
-
-[`SnapshotBuilder`] allows you to manually create snapshots like [`DynamicSceneBuilder`]:
-
-```rust,ignore
-fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
-    Snapshot::builder(world)
-        // Extract all resources
-        .extract_all_resources()
-
-        // Extract all descendants of `target`
-        // This will include all components not denied by the builder's filter
-        .extract_entities(children.iter_descendants(target))
-
-        // Entities without any components will also be extracted
-        // You can use `clear_empty` to remove them
-        .clear_empty()
-
-        // Build the `Snapshot`
-        .build()
 }
 ```
 
@@ -242,7 +400,7 @@ Snapshot::builder(world)
     .build()
 ```
 
-Additionally, explicit type filtering like [`SnapshotApplier`] is available when building snapshots:
+Additionally, explicit type filtering like [`ApplierRef`] is available when building snapshots:
 
 ```rust,ignore
 Snapshot::builder(world)
@@ -259,77 +417,6 @@ Snapshot::builder(world)
     .build()
 ```
 
-### Entity hooks
-
-You are also able to add hooks when applying snapshots, similar to `bevy-scene-hook`.
-
-This can be used for many things, like spawning the snapshot as a child of an entity:
-
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
-
-snapshot
-    .applier(world)
-
-    // This will be run for every Entity in the snapshot
-    // It runs after the Entity's Components are loaded
-    .hook(move |entity, cmds| {
-        // You can use the hook to add, get, or remove Components
-        if !entity.contains::<Parent>() {
-            cmds.set_parent(parent);
-        }
-    })
-
-    .apply();
-```
-
-Hooks may also despawn entities:
-
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
-
-snapshot
-    .applier(world)
-
-    .hook(|entity, cmds| {
-        if entity.contains::<A>() {
-            cmds.despawn();
-        }
-    })
-```
-
-### Entity mapping
-
-As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
-
-First, you'll need to get a [`SnapshotApplier`]:
-
-- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
-- [`SnapshotApplier::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.new)
-
-The [`SnapshotApplier`] will then allow you to configure the entity map (and other settings) before applying:
-
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
-
-snapshot
-    .applier(world)
-
-    // Your entity map
-    .entity_map(HashMap::default())
-
-    // Despawn all entities matching (With<A>, Without<B>)
-    .despawn::<(With<A>, Without<B>)>()
-
-    .apply();
-```
-
-#### MapEntities
-
-`bevy_save` also supports [`MapEntities`](https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html) via reflection to allow you to update entity ids within components and resources.
-
-See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
-
 ## Stability warning
 
 `bevy_save` does not _yet_ provide any stability guarantees for save file format between crate versions.
@@ -339,7 +426,7 @@ Expect Bevy or other crate updates to break your save file format.
 It should be possible to mitigate this by overriding [`ReflectDeserialize`] for any offending types.
 
 Changing what entities have what components or how you use your entities or resources in your logic can also result in broken saves.
-While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`SnapshotApplier::hook`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html#method.hook) to account for changes while applying a snapshot.
+While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`ApplierRef::hook`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ApplierRef.html#method.hook) to account for changes while applying a snapshot.
 
 If your application has specific migration requirements, please [open an issue](https://github.com/hankjordan/bevy_save/issues/new).
 
@@ -377,6 +464,16 @@ If your application has specific migration requirements, please [open an issue](
 1. <a id="1"></a> `bevy` changed [`Entity`]'s on-disk representation
 2. <a id="2"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
 
+### Migration
+
+#### `0.18` - `0.19`
+
+This version introduced [`Pathway`], which is effectively a superset of [`Pipeline`].
+
+- In `World::capture`, `World:apply`, `World::save`, `World::load` methods and similar, add a `&` before your existing pipeline
+- Previously provided `Commands` extension traits and associated commands have been removed (since [`Pathway`] operates on references), you'll need to write your own or use events instead
+- If you're using `default-features = false`, you'll need to add the `reflect` and `checkpoints` features in order to get parity with the last version
+
 ### Platforms
 
 | Platform | Support |
@@ -392,6 +489,8 @@ If your application has specific migration requirements, please [open an issue](
 
 | Feature flag  | Description                             | Default? |
 | ------------- | --------------------------------------- | -------- |
+| `reflect`     | Enables reflection-based snapshots      | Yes      |
+| `checkpoints` | Enables reflection-based checkpoints    | Yes      |
 | `bevy_asset`  | Enables `bevy_asset` type registration  | Yes      |
 | `bevy_render` | Enables `bevy_render` type registration | Yes      |
 | `bevy_sprite` | Enables `bevy_sprite` type registration | Yes      |
@@ -413,8 +512,9 @@ If your application has specific migration requirements, please [open an issue](
 [license]: https://github.com/hankjordan/bevy_save#license
 [tracking]: https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking
 [`Snapshot`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html
-[`SnapshotBuilder`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotBuilder.html
-[`SnapshotApplier`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.SnapshotApplier.html
+[`Builder`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Builder.html
+[`BuilderRef`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.BuilderRef.html
+[`ApplierRef`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ApplierRef.html
 [`Checkpoints`]: https://docs.rs/bevy_save/latest/bevy_save/checkpoint/struct.Checkpoints.html
 [`Pipeline`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Pipeline.html
 [`Backend`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Backend.html

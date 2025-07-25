@@ -4,34 +4,34 @@ use bevy::{
     diagnostic::DiagnosticsPlugin,
     prelude::*,
     reflect::{
+        TypeRegistry,
         serde::{
             ReflectDeserializer,
             ReflectSerializer,
             TypedReflectDeserializer,
             TypedReflectSerializer,
         },
-        TypeRegistry,
     },
     render::{
+        RenderPlugin,
         settings::{
             RenderCreation,
             WgpuSettings,
         },
-        RenderPlugin,
     },
     winit::WinitPlugin,
 };
 use bevy_save::{
     prelude::*,
-    serde::{
+    reflect::{
         SnapshotDeserializer,
         SnapshotSerializer,
     },
 };
 use serde::{
-    de::DeserializeSeed,
     Deserialize,
     Serialize,
+    de::DeserializeSeed,
 };
 
 fn init_app() -> (App, Vec<u64>) {
@@ -140,7 +140,6 @@ where
         let type_path = ty.type_info().type_path();
 
         let Some(reflect_default) = ty.data::<ReflectDefault>() else {
-            //println!("No default for {:?}", type_path);
             continue;
         };
 
@@ -164,11 +163,10 @@ where
             S::de(seed, &data)
         }
         .expect(&format!(
-            "Failed to deserialize {:?}\n{}\n",
-            type_path, data
+            "Failed to deserialize {:?} (erased: {:?}) \n{}\n",
+            type_path, erased, data,
         ));
 
-        //println!("{:?}: {data}", type_path);
         assert!(default.reflect_partial_eq(&*output).unwrap_or(true));
     }
 }
@@ -181,6 +179,7 @@ fn build_registry_app() -> App {
             .build()
             .disable::<WinitPlugin>()
             .disable::<DiagnosticsPlugin>()
+            .disable::<WindowPlugin>()
             .set(RenderPlugin {
                 render_creation: RenderCreation::Automatic(WgpuSettings {
                     backends: None,

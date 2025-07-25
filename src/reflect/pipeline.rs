@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::{
+    backend::AppBackend,
     error::Error,
     prelude::*,
 };
@@ -10,16 +11,17 @@ use crate::{
 /// Trait that defines how exactly your app saves and loads.
 pub trait Pipeline {
     /// The interface between the saver / loader and data storage.
-    type Backend: for<'a> Backend<Self::Key<'a>> + Resource + Default;
+    type Backend: for<'a> Backend<Self::Key<'a>> + FromWorld + Send + Sync + 'static;
     /// The format used for serializing and deserializing data.
     type Format: Format;
 
     /// Used to uniquely identify each saved [`Snapshot`].
     type Key<'a>;
 
-    /// Called when the pipeline is initialized with [`App::init_pipeline`](`AppSaveableExt::init_pipeline`).
+    /// Called when the pipeline is initialized with [`App::init_pipeline`](`AppPipelineExt::init_pipeline`).
     fn build(app: &mut App) {
-        app.world_mut().insert_resource(Self::Backend::default());
+        let backend = Self::Backend::from_world(app.world_mut());
+        app.world_mut().insert_resource(AppBackend(backend));
     }
 
     /// Retrieve the unique identifier for the [`Snapshot`] being processed by the [`Pipeline`].
@@ -30,7 +32,7 @@ pub trait Pipeline {
     /// This is where you would do any special filtering you might need.
     ///
     /// You must extract [`Checkpoints`](crate::checkpoint::Checkpoints) if you want this pipeline to handle checkpoints properly.
-    fn capture(&self, builder: SnapshotBuilder) -> Snapshot;
+    fn capture(&self, builder: BuilderRef) -> Snapshot;
 
     /// Apply a [`Snapshot`] to the [`World`].
     ///
@@ -39,4 +41,17 @@ pub trait Pipeline {
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error>;
+}
+
+/// Extension trait that adds pipeline-related methods to Bevy's [`App`].
+pub trait AppPipelineExt {
+    /// Initialize a [`Pipeline`], allowing it to be used with [`WorldSaveableExt`] methods.
+    fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self;
+}
+
+impl AppPipelineExt for App {
+    fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self {
+        P::build(self);
+        self
+    }
 }

@@ -6,10 +6,14 @@ mod snapshot;
 
 pub use self::{
     applier::{
+        Applier,
+        ApplierRef,
         BoxedHook,
         Hook,
-        SnapshotApplier,
     },
-    builder::SnapshotBuilder,
+    builder::{
+        Builder,
+        BuilderRef,
+    },
     snapshot::Snapshot,
 };

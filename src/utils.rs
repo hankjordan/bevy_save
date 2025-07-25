@@ -1,0 +1,94 @@
+/// Borrowed or owned value
+#[derive(Debug)]
+pub enum MaybeRef<'a, T> {
+    /// Owned value
+    Owned(T),
+    /// Reference to value
+    Borrowed(&'a T),
+}
+
+impl<T> MaybeRef<'static, T> {
+    /// Converts the [`MaybeRef`] into an owned value.
+    ///
+    /// # Errors
+    /// - If the value is not owned
+    pub fn try_into_owned(self) -> Result<T, Self> {
+        if let Self::Owned(value) = self {
+            Ok(value)
+        } else {
+            Err(self)
+        }
+    }
+}
+
+impl<T> std::ops::Deref for MaybeRef<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(value) => value,
+            Self::Borrowed(value) => value,
+        }
+    }
+}
+
+impl<T> From<T> for MaybeRef<'static, T> {
+    fn from(value: T) -> Self {
+        Self::Owned(value)
+    }
+}
+
+impl<'a, T> From<&'a T> for MaybeRef<'a, T> {
+    fn from(value: &'a T) -> Self {
+        Self::Borrowed(value)
+    }
+}
+
+/// Mutably borrowed or owned value
+pub enum MaybeMut<'a, T> {
+    /// Owned value
+    Owned(T),
+    /// Mutable reference to value
+    Mut(&'a mut T),
+}
+
+impl<T> std::ops::Deref for MaybeMut<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(value) => value,
+            Self::Mut(value) => value,
+        }
+    }
+}
+
+impl<T> std::ops::DerefMut for MaybeMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Owned(value) => value,
+            Self::Mut(value) => value,
+        }
+    }
+}
+
+impl<T> Default for MaybeMut<'_, T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self::Owned(T::default())
+    }
+}
+
+impl<T> From<T> for MaybeMut<'static, T> {
+    fn from(value: T) -> Self {
+        Self::Owned(value)
+    }
+}
+
+impl<'a, T> From<&'a mut T> for MaybeMut<'a, T> {
+    fn from(value: &'a mut T) -> Self {
+        Self::Mut(value)
+    }
+}

@@ -1,0 +1,18 @@
+[package]
+name = "bevy_save_macros"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+bevy_macro_utils.workspace = true
+syn = "2.0"
+quote = "1.0"
+proc-macro2 = "1.0"

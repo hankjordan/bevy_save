@@ -51,6 +51,7 @@ fn test_collect() {
         Some(&Collect { data: vec![1, 2] })
     );
 
+    #[expect(clippy::needless_borrows_for_generic_args)]
     snapshot
         .applier(world)
         .entity_map(&mut [(entity, entity)].into_iter().collect())
@@ -100,6 +101,7 @@ fn test_basic() {
         Some(&Basic { data: 2 })
     );
 
+    #[expect(clippy::needless_borrows_for_generic_args)]
     snapshot
         .applier(world)
         .entity_map(&mut [(entity, entity)].into_iter().collect())

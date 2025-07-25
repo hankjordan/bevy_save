@@ -6,8 +6,8 @@ use std::io::{
 };
 
 use serde::{
-    de::DeserializeSeed,
     Serialize,
+    de::DeserializeSeed,
 };
 
 use crate::error::Error;

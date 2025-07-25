@@ -16,9 +16,9 @@
                     rotation: (0.0, 0.0, 0.0, 1.0),
                     scale: (1.0, 1.0, 1.0),
                 ),
-                "format::ExampleComponent": (
+                "flows::ExampleComponent": (
                     float: 64.0,
-                    string: "Example",
+                    string: "Hello, world!",
                 ),
             },
         ),

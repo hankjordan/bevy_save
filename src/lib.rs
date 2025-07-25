@@ -10,53 +10,91 @@
 #![doc = include_str!("../README.md")]
 
 pub mod backend;
-pub mod checkpoint;
-mod clone;
-pub mod commands;
 pub mod dir;
 mod error;
-pub mod ext;
+pub mod flows;
 pub mod format;
 pub mod middleware;
-pub mod pipeline;
 pub mod plugins;
-pub mod prefab;
-pub mod serde;
-pub mod snapshot;
+mod utils;
 
+#[cfg(feature = "reflect")]
+pub mod reflect;
+
+#[cfg(feature = "reflect")]
+pub use crate::reflect::{
+    CloneReflect,
+    clone_reflect_value,
+};
 pub use crate::{
-    clone::{
-        clone_reflect_value,
-        CloneReflect,
-    },
     error::Error,
+    utils::{
+        MaybeMut,
+        MaybeRef,
+    },
 };
 
 /// Prelude: convenient import for commonly used items provided by the crate.
 #[allow(unused_imports)]
 pub mod prelude {
+    pub use bevy_save_macros::FlowLabel;
+
+    #[cfg(all(feature = "reflect", feature = "checkpoints"))]
+    #[doc(inline)]
+    pub use crate::reflect::checkpoint::{
+        AppCheckpointExt,
+        WorldCheckpointExt,
+    };
+    #[cfg(feature = "reflect")]
+    #[doc(inline)]
+    pub use crate::reflect::{
+        CloneReflect,
+        Pipeline,
+        prefab::{
+            CommandsPrefabExt,
+            Prefab,
+            WithPrefab,
+        },
+        snapshot::{
+            Applier,
+            ApplierRef,
+            BoxedHook,
+            Builder,
+            BuilderRef,
+            Hook,
+            Snapshot,
+        },
+    };
     #[doc(inline)]
     pub use crate::{
         backend::{
+            AppBackendExt,
             Backend,
             DefaultBackend,
             DefaultDebugBackend,
         },
-        clone::CloneReflect,
         dir::{
-            get_save_file,
             SAVE_DIR,
             WORKSPACE,
+            get_save_file,
         },
         error::Error,
-        ext::{
-            AppCheckpointExt,
-            AppSaveableExt,
-            CommandsCheckpointExt,
-            CommandsPrefabExt,
-            CommandsSaveableExt,
-            WorldCheckpointExt,
-            WorldSaveableExt,
+        flows::{
+            AppFlowExt,
+            Flow,
+            FlowLabel,
+            FlowSystem,
+            Flows,
+            IntoFlowSystems,
+            pathway::{
+                AppPathwayExt,
+                CaptureDeserialize,
+                CaptureInput,
+                CaptureOutput,
+                CaptureSerialize,
+                Pathway,
+                WorldPathwayExt,
+            },
         },
         format::{
             DefaultDebugFormat,
@@ -64,22 +102,10 @@ pub mod prelude {
             Format,
         },
         middleware::*,
-        pipeline::Pipeline,
         plugins::{
             SavePlugin,
             SavePlugins,
             SaveablesPlugin,
-        },
-        prefab::{
-            Prefab,
-            WithPrefab,
-        },
-        snapshot::{
-            BoxedHook,
-            Hook,
-            Snapshot,
-            SnapshotApplier,
-            SnapshotBuilder,
         },
     };
 }

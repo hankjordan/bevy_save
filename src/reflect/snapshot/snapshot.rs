@@ -5,11 +5,10 @@ use bevy::{
 };
 
 use crate::{
-    checkpoint::Checkpoints,
+    CloneReflect,
     error::Error,
     prelude::*,
-    serde::SnapshotSerializer,
-    CloneReflect,
+    reflect::serde::SnapshotSerializer,
 };
 
 /// A collection of serializable entities and resources.
@@ -22,7 +21,36 @@ pub struct Snapshot {
     /// Resources contained in the snapshot.
     pub resources: Vec<Box<dyn PartialReflect>>,
 
-    pub(crate) checkpoints: Option<Checkpoints>,
+    #[cfg(feature = "checkpoints")]
+    pub(crate) checkpoints: Option<crate::reflect::checkpoint::Checkpoints>,
+}
+
+impl std::fmt::Debug for Snapshot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        struct DebugEntity<'a>(&'a DynamicEntity);
+
+        impl std::fmt::Debug for DebugEntity<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct("DynamicEntity")
+                    .field("entity", &self.0.entity)
+                    .field("components", &self.0.components)
+                    .finish()
+            }
+        }
+
+        let mut f = f.debug_struct("Snapshot");
+
+        f.field(
+            "entities",
+            &self.entities.iter().map(DebugEntity).collect::<Vec<_>>(),
+        )
+        .field("resources", &self.resources);
+
+        #[cfg(feature = "checkpoints")]
+        f.field("checkpoints", &self.checkpoints);
+
+        f.finish()
+    }
 }
 
 impl Snapshot {
@@ -42,10 +70,15 @@ impl Snapshot {
     ///     .extract_all_with_checkpoints()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
-        Self::builder(world).extract_all_with_checkpoints().build()
+        let b = Self::builder(world).extract_all();
+
+        #[cfg(feature = "checkpoints")]
+        let b = b.extract_checkpoints();
+
+        b.build()
     }
 
-    /// Create a [`SnapshotBuilder`] from the [`World`], allowing you to create partial or filtered snapshots.
+    /// Create a [`BuilderRef`] from the [`World`], allowing you to create partial or filtered snapshots.
     ///
     /// # Example
     /// ```
@@ -65,8 +98,8 @@ impl Snapshot {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn builder(world: &World) -> SnapshotBuilder {
-        SnapshotBuilder::snapshot(world)
+    pub fn builder(world: &World) -> BuilderRef {
+        BuilderRef::new(world)
     }
 
     /// Apply the [`Snapshot`] to the [`World`], using default applier settings.
@@ -102,16 +135,13 @@ impl Snapshot {
     ///     })
     ///     .apply();
     /// ```
-    pub fn applier<'a>(&'a self, world: &'a mut World) -> SnapshotApplier<'a> {
-        SnapshotApplier::new(self, world)
+    pub fn applier<'w, 'i>(&'i self, world: &'w mut World) -> ApplierRef<'w, 'i> {
+        ApplierRef::new(self, world)
     }
 
     /// Create a [`SnapshotSerializer`] from the [`Snapshot`] and the [`TypeRegistry`].
     pub fn serializer<'a>(&'a self, registry: &'a TypeRegistry) -> SnapshotSerializer<'a> {
-        SnapshotSerializer {
-            snapshot: self,
-            registry,
-        }
+        SnapshotSerializer::new(self, registry)
     }
 }
 
@@ -120,6 +150,7 @@ impl CloneReflect for Snapshot {
         Self {
             entities: self.entities.clone_reflect(registry),
             resources: self.resources.clone_reflect(registry),
+            #[cfg(feature = "checkpoints")]
             checkpoints: self.checkpoints.clone_reflect(registry),
         }
     }
