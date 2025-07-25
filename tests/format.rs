@@ -4,14 +4,14 @@ use bevy::{
 };
 use bevy_save::{
     prelude::*,
-    serde::{
+    reflect::{
         SnapshotDeserializer,
         SnapshotSerializer,
     },
 };
 use serde::{
-    de::DeserializeSeed,
     Serialize,
+    de::DeserializeSeed,
 };
 
 #[derive(Component, Reflect, Default)]

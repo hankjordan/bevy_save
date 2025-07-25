@@ -2,8 +2,8 @@
   "entities": {
     "4294967301": {
       "components": {
-        "bevy_hierarchy::components::children::Children": [
-          4294967303
+        "bevy_ecs::hierarchy::Children": [
+          4294967302
         ],
         "bevy_render::view::visibility::InheritedVisibility": true,
         "bevy_render::view::visibility::ViewVisibility": false,
@@ -40,12 +40,13 @@
             1.0
           ]
         },
+        "bevy_transform::components::transform::TransformTreeChanged": null,
         "heirarchy::Player": {}
       }
     },
-    "4294967303": {
+    "4294967302": {
       "components": {
-        "bevy_hierarchy::components::parent::Parent": 4294967301,
+        "bevy_ecs::hierarchy::ChildOf": 4294967301,
         "heirarchy::Head": {}
       }
     }

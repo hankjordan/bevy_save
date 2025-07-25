@@ -1,7 +1,6 @@
 //! An example of how to implement your own `Pipeline`.
 
 use bevy::{
-    ecs::entity::EntityHashMap,
     platform::collections::HashMap,
     prelude::*,
 };
@@ -10,15 +9,18 @@ use bevy_inspector_egui::{
     quick::WorldInspectorPlugin,
 };
 use bevy_save::prelude::*;
+use bevy_save_macros::FlowLabel;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-#[derive(Clone, Debug, Default, Resource, Reflect)]
-#[reflect(Resource)]
+#[derive(Clone, Debug, Default, Resource, Serialize, Deserialize)]
 pub struct TileMap {
     map: HashMap<TilePosition, Entity>,
 }
 
-#[derive(Clone, Copy, Component, Debug, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Clone, Copy, Component, Debug, Default, Serialize, Deserialize)]
 pub enum Tile {
     #[default]
     Empty,
@@ -28,8 +30,7 @@ pub enum Tile {
     IronOre,
 }
 
-#[derive(Clone, Copy, Component, Debug, Default, Hash, PartialEq, Eq, Reflect)]
-#[reflect(Component, Hash)]
+#[derive(Clone, Copy, Component, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TilePosition {
     x: i32,
     y: i32,
@@ -105,71 +106,118 @@ fn handle_save_input(world: &mut World) {
 
         for position in positions {
             world
-                .save(&TilePipeline::new(position))
+                .save(&TilePathway::new(position))
                 .expect("Failed to save");
         }
     } else if keys.just_released(KeyCode::Backspace) {
         // For ease of implementation, let's just load the origin.
         world
-            .load(&TilePipeline::new(TilePosition { x: 0, y: 0 }))
+            .load(&TilePathway::new(TilePosition { x: 0, y: 0 }))
             .expect("Failed to load");
     }
 }
 
-pub struct TilePipeline {
+#[derive(Serialize, Deserialize)]
+pub struct Capture {
     position: TilePosition,
-    key: String,
+    data: Option<Tile>,
 }
 
-impl TilePipeline {
-    pub fn new(position: TilePosition) -> Self {
-        Self {
-            position,
-            key: format!("examples/saves/pipeline/{}.{}", position.x, position.y),
+impl CaptureInput<TilePathway> for Capture {
+    type Builder = Capture;
+
+    fn builder(pathway: &TilePathway, _world: &World) -> Self::Builder {
+        Capture {
+            position: pathway.position,
+            data: None,
         }
+    }
+
+    fn build(builder: Self::Builder, _pathway: &TilePathway, _world: &World) -> Self {
+        builder
     }
 }
 
-impl Pipeline for TilePipeline {
+impl CaptureOutput<TilePathway> for Capture {
+    type Builder = Capture;
+    type Error = ();
+
+    fn builder(self, _pathway: &TilePathway, _world: &mut World) -> Self::Builder {
+        self
+    }
+
+    fn build(
+        builder: Self::Builder,
+        _pathway: &TilePathway,
+        _world: &mut World,
+    ) -> Result<Self, Self::Error> {
+        Ok(builder)
+    }
+}
+
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct CaptureFlow;
+
+fn capture_tile(In(mut cap): In<Capture>, map: Res<TileMap>, tiles: Query<&Tile>) -> Capture {
+    cap.data = map
+        .map
+        .get(&cap.position)
+        .and_then(|e| tiles.get(*e).ok())
+        .copied();
+
+    cap
+}
+
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct ApplyFlow;
+
+fn apply_tile(In(cap): In<Capture>, mut commands: Commands, mut map: ResMut<TileMap>) -> Capture {
+    if let Some(data) = cap.data {
+        let entity = *map
+            .map
+            .entry(cap.position)
+            .or_insert_with(|| commands.spawn_empty().id());
+
+        commands.entity(entity).insert((cap.position, data));
+    } else if let Some(old) = map.map.remove(&cap.position) {
+        if let Ok(mut cmds) = commands.get_entity(old) {
+            cmds.try_despawn();
+        }
+    }
+
+    cap
+}
+
+pub struct TilePathway {
+    position: TilePosition,
+}
+
+impl TilePathway {
+    pub fn new(position: TilePosition) -> Self {
+        Self { position }
+    }
+}
+
+impl Pathway for TilePathway {
+    type Capture = Capture;
     type Backend = DefaultDebugBackend;
     type Format = DefaultDebugFormat;
 
-    type Key<'a> = &'a str;
+    type Key<'a> = String;
 
     fn key(&self) -> Self::Key<'_> {
-        &self.key
+        format!(
+            "examples/saves/pathway/{}.{}",
+            self.position.x, self.position.y
+        )
     }
 
-    fn capture(&self, builder: BuilderRef) -> Snapshot {
-        let world = builder.world();
-
-        builder
-            .extract_entity(
-                *world
-                    .resource::<TileMap>()
-                    .map
-                    .get(&self.position)
-                    .expect("Could not find tile"),
-            )
-            .build()
+    fn capture(&self, _world: &World) -> impl bevy_save::prelude::FlowLabel {
+        CaptureFlow
     }
 
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
-        let mut mapper = EntityHashMap::default();
-
-        world.resource_scope(|world, mut tiles: Mut<TileMap>| {
-            for saved in &snapshot.entities {
-                if let Some(existing) = tiles.map.get(&self.position) {
-                    mapper.insert(saved.entity, *existing);
-                } else {
-                    let new = world.spawn_empty().id();
-                    mapper.insert(saved.entity, new);
-                    tiles.map.insert(self.position, new);
-                }
-            }
-        });
-
-        snapshot.applier(world).entity_map(&mut mapper).apply()
+    fn apply(&self, _world: &World) -> impl bevy_save::prelude::FlowLabel {
+        ApplyFlow
     }
 }
 
@@ -188,15 +236,13 @@ fn main() {
             // Bevy Save
             SavePlugins,
         ))
-        // Register our types
-        .register_type::<TileMap>()
-        .register_type::<TilePosition>()
-        .register_type::<Tile>()
-        // Bevy's reflection requires we register each generic instance of a type individually
-        // Note that we only need to register it in the AppTypeRegistry for it to be included in saves
-        .register_type::<HashMap<TilePosition, Entity>>()
         // Resources
         .init_resource::<TileMap>()
+        // Pathway
+        .init_pathway::<TilePathway>()
+        // Flows
+        .add_flows(CaptureFlow, capture_tile)
+        .add_flows(ApplyFlow, apply_tile)
         // Systems
         .add_systems(Startup, setup_world)
         .add_systems(

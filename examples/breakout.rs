@@ -242,7 +242,7 @@ impl Prefab for PaddlePrefab {
         ));
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         builder.extract_prefab(|entity| {
             Some(PaddlePrefab {
                 position: entity.get::<Transform>()?.translation.x,
@@ -275,7 +275,7 @@ impl Prefab for BallPrefab {
         ));
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         builder.extract_prefab(|entity| {
             Some(BallPrefab {
                 position: entity.get::<Transform>()?.translation,
@@ -307,7 +307,7 @@ impl Prefab for BrickPrefab {
         ));
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         builder.extract_prefab(|entity| {
             let position = entity.get::<Transform>()?.translation;
 
@@ -671,7 +671,7 @@ impl Pipeline for BreakoutPipeline {
         "examples/saves/breakout"
     }
 
-    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
+    fn capture(&self, builder: BuilderRef) -> Snapshot {
         builder
             .extract_all_prefabs::<PaddlePrefab>()
             .extract_all_prefabs::<BallPrefab>()
@@ -702,22 +702,22 @@ fn handle_save_input(world: &mut World) {
     let mut text = None;
 
     if keys.just_released(KeyCode::Space) {
-        world.checkpoint(BreakoutPipeline);
+        world.checkpoint(&BreakoutPipeline);
         text = Some("Checkpoint");
     } else if keys.just_released(KeyCode::Enter) {
-        world.save(BreakoutPipeline).expect("Failed to save");
+        world.save(&BreakoutPipeline).expect("Failed to save");
         text = Some("Save");
     } else if keys.just_released(KeyCode::Backspace) {
-        world.load(BreakoutPipeline).expect("Failed to load");
+        world.load(&BreakoutPipeline).expect("Failed to load");
         text = Some("Load");
     } else if keys.just_released(KeyCode::KeyA) {
         world
-            .rollback(BreakoutPipeline, 1)
+            .rollback(&BreakoutPipeline, 1)
             .expect("Failed to rollback");
         text = Some("Rollback");
     } else if keys.just_released(KeyCode::KeyD) {
         world
-            .rollback(BreakoutPipeline, -1)
+            .rollback(&BreakoutPipeline, -1)
             .expect("Failed to rollforward");
         text = Some("Rollforward");
     }

@@ -11,6 +11,10 @@ use bevy_inspector_egui::{
 use bevy_save::{
     Error,
     prelude::*,
+    reflect::{
+        Applier,
+        Builder,
+    },
 };
 use io_adapters::WriteExtension;
 use serde::{
@@ -45,30 +49,50 @@ impl Format for RONFormat {
     }
 }
 
-pub struct RONPipeline;
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct CaptureFlow;
 
-impl Pipeline for RONPipeline {
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct ApplyFlow;
+
+pub struct RONPathway;
+
+impl Pathway for RONPathway {
+    type Capture = Snapshot;
     type Backend = DefaultDebugBackend;
     type Format = RONFormat;
 
     type Key<'a> = &'a str;
 
     fn key(&self) -> Self::Key<'_> {
-        "examples/saves/format"
+        "examples/saves/flows"
     }
 
-    fn capture(&self, builder: BuilderRef) -> Snapshot {
-        builder
-            .allow::<Transform>()
+    fn capture(&self, _world: &World) -> impl FlowLabel {
+        CaptureFlow
+    }
+
+    fn apply(&self, _world: &World) -> impl FlowLabel {
+        ApplyFlow
+    }
+}
+
+fn capture(In(cap): In<Builder>, world: &World) -> Builder {
+    cap.scope(world, |b| {
+        b.allow::<Transform>()
             .allow::<ExampleComponent>()
             .extract_all_entities()
             .clear_empty()
-            .build()
-    }
+    })
+}
 
-    fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
-        snapshot.applier(world).despawn::<With<Transform>>().apply()
-    }
+fn apply(In(apply): In<Applier<'static>>, world: &mut World) -> Applier<'static> {
+    apply.scope(world, |a| {
+        // Apply is handled automatically for us
+        // a.apply().expect("Failed to apply");
+
+        a.despawn::<With<Transform>>()
+    })
 }
 
 #[derive(Component, Reflect)]
@@ -93,11 +117,12 @@ fn handle_save_input(world: &mut World) {
     // Using DebugPipeline as the argument for save/load, we can save locally with JSON.
 
     if keys.just_released(KeyCode::Enter) {
-        world.save(&RONPipeline).expect("Failed to save");
+        world.save(&RONPathway).expect("Failed to save");
     } else if keys.just_released(KeyCode::Backspace) {
-        world.load(&RONPipeline).expect("Failed to load");
+        world.load(&RONPathway).expect("Failed to load");
     }
 }
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.build().set(AssetPlugin {
@@ -115,6 +140,9 @@ fn main() {
         .add_plugins(SavePlugins)
         // Register types
         .register_type::<ExampleComponent>()
+        // Flows
+        .add_flows(CaptureFlow, capture)
+        .add_flows(ApplyFlow, apply)
         // Systems
         .add_systems(Startup, setup)
         .add_systems(Update, handle_save_input)

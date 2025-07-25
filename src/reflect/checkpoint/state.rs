@@ -6,7 +6,7 @@ use bevy::{
 use crate::prelude::*;
 
 /// Currently stored snapshots used for rollback / rollforward.
-#[derive(Resource, Default)]
+#[derive(Resource, Debug, Default)]
 pub struct Checkpoints {
     pub(crate) snapshots: Vec<Snapshot>,
     pub(crate) active: Option<usize>,

@@ -45,7 +45,7 @@ impl Pipeline for HeirarchyPipeline {
         "examples/saves/heirarchy"
     }
 
-    fn capture(&self, builder: SnapshotBuilder) -> Snapshot {
+    fn capture(&self, builder: BuilderRef) -> Snapshot {
         builder
             .extract_entities_matching(|e| e.contains::<Player>() || e.contains::<Head>())
             .build()
@@ -64,10 +64,10 @@ fn interact(world: &mut World) {
 
     if keys.just_released(KeyCode::Enter) {
         info!("Save");
-        world.save(HeirarchyPipeline).expect("Failed to save");
+        world.save(&HeirarchyPipeline).expect("Failed to save");
     } else if keys.just_released(KeyCode::Backspace) {
         info!("Load");
-        world.load(HeirarchyPipeline).expect("Failed to load");
+        world.load(&HeirarchyPipeline).expect("Failed to load");
     } else if keys.just_pressed(KeyCode::KeyE) {
         info!("Info");
         for entity in world.iter_entities() {

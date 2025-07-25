@@ -1,0 +1,12 @@
+{
+  "controls": {
+    "forwards": "KeyW",
+    "backwards": "KeyS",
+    "jump": "Space"
+  },
+  "display": {
+    "screen_x": 1600.0,
+    "screen_y": 1410.0,
+    "scale": 1.45
+  }
+}

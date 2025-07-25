@@ -1,7 +1,4 @@
-use std::{
-    any::TypeId,
-    marker::PhantomData,
-};
+use std::any::TypeId;
 
 use bevy::{
     ecs::{
@@ -29,6 +26,10 @@ use crate::{
     clone_reflect_value,
     error::Error,
     prelude::*,
+    utils::{
+        MaybeMut,
+        MaybeRef,
+    },
 };
 
 /// A [`Hook`] runs on each entity when applying a snapshot.
@@ -62,70 +63,118 @@ pub type BoxedHook = Box<dyn Hook>;
 
 type SpawnPrefabFn = fn(Box<dyn PartialReflect>, Entity, &mut World);
 
-/// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
-pub struct SnapshotApplier<'a, F = ()> {
-    snapshot: &'a Snapshot,
-    world: &'a mut World,
-    entity_map: Option<&'a mut EntityHashMap<Entity>>,
-    type_registry: Option<&'a TypeRegistry>,
-    despawn: Option<PhantomData<F>>,
-    hook: Option<BoxedHook>,
+/// Input used for applying [`Snapshot`] to the [`World`].
+pub struct Applier<'a> {
+    pub(crate) snapshot: MaybeRef<'a, Snapshot>,
+    entity_map: Option<MaybeMut<'a, EntityHashMap<Entity>>>,
+    type_registry: Option<MaybeRef<'a, TypeRegistry>>,
+    despawns: Vec<fn(&mut World)>,
+    hooks: Vec<BoxedHook>,
     prefabs: HashMap<TypeId, SpawnPrefabFn>,
 }
 
-impl<'a> SnapshotApplier<'a> {
-    /// Create a new [`SnapshotApplier`] with from the world and snapshot.
-    pub fn new(snapshot: &'a Snapshot, world: &'a mut World) -> Self {
+impl<'a> Applier<'a> {
+    /// Create a new [`SnapshotApplierInput`] from the given borrowed or owned [`Snapshot`]
+    #[must_use]
+    pub fn new(snapshot: impl Into<MaybeRef<'a, Snapshot>>) -> Self {
         Self {
-            snapshot,
-            world,
+            snapshot: snapshot.into(),
             entity_map: None,
             type_registry: None,
-            despawn: None,
-            hook: None,
+            despawns: Vec::new(),
+            hooks: Vec::new(),
             prefabs: HashMap::new(),
         }
     }
 }
 
-impl<'a, A> SnapshotApplier<'a, A> {
+impl<'i> Applier<'i> {
+    /// Creates a temporary, scoped applier from the input.
+    #[must_use]
+    pub fn scope<'w>(
+        self,
+        world: &'w mut World,
+        scope: impl Fn(ApplierRef<'w, 'i>) -> ApplierRef<'w, 'i>,
+    ) -> Self
+    where
+        'i: 'w,
+    {
+        scope(ApplierRef::from_parts(world, self)).input
+    }
+}
+
+/// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
+pub struct ApplierRef<'w, 'i> {
+    world: &'w mut World,
+    input: Applier<'i>,
+}
+
+impl<'w, 'i> ApplierRef<'w, 'i> {
+    /// Create a new [`SnapshotApplier`] from the world and snapshot.
+    #[must_use]
+    pub fn new(snapshot: impl Into<MaybeRef<'i, Snapshot>>, world: &'w mut World) -> Self {
+        Self {
+            world,
+            input: Applier::new(snapshot),
+        }
+    }
+
+    /// Create a new [`SnapshotApplier`] from the world and input.
+    #[must_use]
+    pub fn from_parts(world: &'w mut World, input: Applier<'i>) -> Self {
+        Self { world, input }
+    }
+
+    /// Reduce the applier into its input
+    #[must_use]
+    pub fn into_inner(self) -> Applier<'i> {
+        self.input
+    }
+}
+
+impl<'i> ApplierRef<'_, 'i> {
     /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
-    pub fn entity_map(mut self, entity_map: &'a mut EntityHashMap<Entity>) -> Self {
-        self.entity_map = Some(entity_map);
+    #[must_use]
+    pub fn entity_map(
+        mut self,
+        entity_map: impl Into<MaybeMut<'i, EntityHashMap<Entity>>>,
+    ) -> Self {
+        self.input.entity_map = Some(entity_map.into());
         self
     }
 
     /// Set the [`TypeRegistry`] to be used for reflection.
     ///
     /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
-    pub fn type_registry(mut self, type_registry: &'a TypeRegistry) -> Self {
-        self.type_registry = Some(type_registry);
+    #[must_use]
+    pub fn type_registry(mut self, type_registry: &'i TypeRegistry) -> Self {
+        self.input.type_registry = Some(type_registry.into());
         self
     }
 
-    /// Change how the snapshot affects existing entities while applying.
-    pub fn despawn<F: QueryFilter + 'static>(self) -> SnapshotApplier<'a, F> {
-        SnapshotApplier {
-            snapshot: self.snapshot,
-            world: self.world,
-            entity_map: self.entity_map,
-            type_registry: self.type_registry,
-            despawn: Some(PhantomData),
-            hook: self.hook,
-            prefabs: self.prefabs,
-        }
+    /// Despawn existing entities matching the filter while applying.
+    #[must_use]
+    pub fn despawn<F: QueryFilter + 'static>(mut self) -> Self {
+        self.input.despawns.push(|w| {
+            for entity in w.query_filtered::<Entity, F>().iter(w).collect::<Vec<_>>() {
+                w.despawn(entity);
+            }
+        });
+        self
     }
 
     /// Add a [`Hook`] that will run for each entity after applying.
+    #[must_use]
     pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
-        self.hook = Some(Box::new(hook));
+        self.input.hooks.push(Box::new(hook));
         self
     }
 
     /// Handle loading for a [`Prefab`].
-    #[allow(clippy::missing_panics_doc)]
+    #[expect(clippy::missing_panics_doc)]
+    #[must_use]
     pub fn prefab<P: Prefab + FromReflect>(mut self) -> Self {
-        self.prefabs.insert(
+        self.input.prefabs.insert(
             std::any::TypeId::of::<P>(),
             |this: Box<dyn PartialReflect>, target: Entity, world: &mut World| {
                 world.entity_mut(target).insert(P::Marker::default());
@@ -141,7 +190,7 @@ impl<'a, A> SnapshotApplier<'a, A> {
     }
 }
 
-impl<F: QueryFilter> SnapshotApplier<'_, F> {
+impl ApplierRef<'_, '_> {
     /// Apply the [`Snapshot`] to the [`World`].
     ///
     /// # Panics
@@ -149,38 +198,30 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
     ///
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
-    pub fn apply(self) -> Result<(), Error> {
+    pub fn apply(&mut self) -> Result<(), Error> {
         let app_type_registry_arc = self.world.get_resource::<AppTypeRegistry>().cloned();
 
         let app_type_registry = app_type_registry_arc.as_ref().map(|r| r.read());
 
         let type_registry = self
+            .input
             .type_registry
+            .as_deref()
             .or(app_type_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to apply.");
 
-        let mut default_entity_map = EntityHashMap::default();
-
-        let entity_map = self.entity_map.unwrap_or(&mut default_entity_map);
+        let entity_map = self.input.entity_map.get_or_insert_default();
 
         let mut prefab_entities = HashMap::new();
 
         // Despawn entities
-        if self.despawn.is_some() {
-            let invalid = self
-                .world
-                .query_filtered::<Entity, F>()
-                .iter(self.world)
-                .collect::<Vec<_>>();
-
-            for entity in invalid {
-                self.world.despawn(entity);
-            }
+        for despawn in &self.input.despawns {
+            despawn(self.world);
         }
 
         // First ensure that every entity in the snapshot has a corresponding world
         // entity in the entity map.
-        for scene_entity in &self.snapshot.entities {
+        for scene_entity in &self.input.snapshot.entities {
             // Fetch the entity with the given entity id from the `entity_map`
             // or spawn a new entity with a transiently unique id if there is
             // no corresponding entry.
@@ -189,7 +230,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                 .or_insert_with(|| self.world.spawn_empty().id());
         }
 
-        for scene_entity in &self.snapshot.entities {
+        for scene_entity in &self.input.snapshot.entities {
             // Fetch the entity with the given entity id from the `entity_map`.
             let entity = *entity_map
                 .get(&scene_entity.entity)
@@ -209,7 +250,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
                     }
                 })?;
 
-                if self.prefabs.contains_key(&type_id) {
+                if self.input.prefabs.contains_key(&type_id) {
                     let mut prefab =
                         clone_reflect_value(component.as_partial_reflect(), type_registry);
 
@@ -264,7 +305,7 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
         // Insert resources after all entities have been added to the world.
         // This ensures the entities are available for the resources to reference during
         // mapping.
-        for resource in &self.snapshot.resources {
+        for resource in &self.input.snapshot.resources {
             let type_info = resource.get_represented_type_info().ok_or_else(|| {
                 SceneSpawnError::NoRepresentedType {
                     type_path: resource.reflect_type_path().to_string(),
@@ -302,14 +343,15 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
         }
 
         // Apply checkpoints from snapshot
-        if let Some(checkpoints) = &self.snapshot.checkpoints {
+        #[cfg(feature = "checkpoints")]
+        if let Some(checkpoints) = &self.input.snapshot.checkpoints {
             self.world
                 .insert_resource(checkpoints.clone_reflect(type_registry));
         }
 
         // Prefab hooks
         for (type_id, entities) in prefab_entities {
-            let Some(hook) = self.prefabs.get(&type_id) else {
+            let Some(hook) = self.input.prefabs.get(&type_id) else {
                 continue;
             };
 
@@ -318,16 +360,18 @@ impl<F: QueryFilter> SnapshotApplier<'_, F> {
             }
         }
 
-        // Entity hook
-        if let Some(hook) = &self.hook {
+        // Entity hooks
+        if !self.input.hooks.is_empty() {
             let mut queue = CommandQueue::default();
             let mut commands = Commands::new(&mut queue, self.world);
 
-            for (_, entity) in entity_map {
-                let entity_ref = self.world.entity(*entity);
-                let mut entity_mut = commands.entity(*entity);
+            for hook in &self.input.hooks {
+                for (_, entity) in entity_map.iter() {
+                    let entity_ref = self.world.entity(*entity);
+                    let mut entity_mut = commands.entity(*entity);
 
-                hook(&entity_ref, &mut entity_mut);
+                    hook(&entity_ref, &mut entity_mut);
+                }
             }
 
             queue.apply(self.world);

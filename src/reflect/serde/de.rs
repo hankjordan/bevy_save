@@ -4,16 +4,19 @@ use bevy::{
     platform::collections::HashSet,
     prelude::*,
     reflect::{
+        TypeRegistry,
+        TypeRegistryArc,
         serde::{
             ReflectDeserializer,
             TypeRegistrationDeserializer,
             TypedReflectDeserializer,
         },
-        TypeRegistry,
     },
     scene::DynamicEntity,
 };
 use serde::{
+    Deserialize,
+    Deserializer,
     de::{
         DeserializeSeed,
         Error,
@@ -21,17 +24,11 @@ use serde::{
         SeqAccess,
         Visitor,
     },
-    Deserialize,
-    Deserializer,
 };
 
 use crate::{
-    checkpoint::Checkpoints,
     prelude::*,
-    serde::{
-        CHECKPOINTS_ACTIVE,
-        CHECKPOINTS_SNAPSHOTS,
-        CHECKPOINTS_STRUCT,
+    reflect::serde::{
         ENTITY_COMPONENTS,
         ENTITY_STRUCT,
         SNAPSHOT_CHECKPOINTS,
@@ -46,11 +43,13 @@ use crate::{
 enum SnapshotField {
     Entities,
     Resources,
+    #[cfg(feature = "checkpoints")]
     Rollbacks,
 }
 
 #[derive(Deserialize)]
 #[serde(field_identifier, rename_all = "lowercase")]
+#[cfg(feature = "checkpoints")]
 enum CheckpointsField {
     Checkpoints,
     Active,
@@ -60,6 +59,26 @@ enum CheckpointsField {
 #[serde(field_identifier, rename_all = "lowercase")]
 enum EntityField {
     Components,
+}
+
+/// Owned deserializer that handles snapshot deserialization.
+pub struct SnapshotDeserializerArc {
+    /// Type registry in which the components and resources types used in the snapshot to deserialize are registered.
+    pub registry: TypeRegistryArc,
+}
+
+impl<'de> DeserializeSeed<'de> for SnapshotDeserializerArc {
+    type Value = Snapshot;
+
+    fn deserialize<D>(self, deserializer: D) -> std::result::Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        SnapshotDeserializer {
+            registry: &self.registry.read(),
+        }
+        .deserialize(deserializer)
+    }
 }
 
 /// Handles snapshot deserialization.
@@ -102,6 +121,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
     {
         let mut entities = None;
         let mut resources = None;
+        #[cfg(feature = "checkpoints")]
         let mut checkpoints = None;
 
         while let Some(key) = map.next_key()? {
@@ -122,6 +142,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
                         registry: self.registry,
                     })?);
                 }
+                #[cfg(feature = "checkpoints")]
                 SnapshotField::Rollbacks => {
                     if checkpoints.is_some() {
                         return Err(Error::duplicate_field(SNAPSHOT_CHECKPOINTS));
@@ -139,6 +160,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
         Ok(Snapshot {
             entities,
             resources,
+            #[cfg(feature = "checkpoints")]
             checkpoints,
         })
     }
@@ -159,6 +181,7 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
             })?
             .ok_or_else(|| Error::missing_field(SNAPSHOT_RESOURCES))?;
 
+        #[cfg(feature = "checkpoints")]
         let checkpoints = seq.next_element_seed(CheckpointsDeserializer {
             registry: self.registry,
         })?;
@@ -166,136 +189,9 @@ impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
         Ok(Snapshot {
             entities,
             resources,
+            #[cfg(feature = "checkpoints")]
             checkpoints,
         })
-    }
-}
-
-/// Handles checkpoints deserialization.
-pub struct CheckpointsDeserializer<'a> {
-    /// Type registry in which the components and resources types used to deserialize the checkpoints are registered.
-    pub registry: &'a TypeRegistry,
-}
-
-impl<'de> DeserializeSeed<'de> for CheckpointsDeserializer<'_> {
-    type Value = Checkpoints;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_struct(
-            CHECKPOINTS_STRUCT,
-            &[CHECKPOINTS_SNAPSHOTS, CHECKPOINTS_ACTIVE],
-            CheckpointsVisitor {
-                registry: self.registry,
-            },
-        )
-    }
-}
-
-struct CheckpointsVisitor<'a> {
-    registry: &'a TypeRegistry,
-}
-
-impl<'de> Visitor<'de> for CheckpointsVisitor<'_> {
-    type Value = Checkpoints;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("checkpoints struct")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut snapshots = None;
-        let mut active = None;
-
-        while let Some(key) = map.next_key()? {
-            match key {
-                CheckpointsField::Checkpoints => {
-                    if snapshots.is_some() {
-                        return Err(Error::duplicate_field(CHECKPOINTS_SNAPSHOTS));
-                    }
-                    snapshots = Some(map.next_value_seed(SnapshotListDeserializer {
-                        registry: self.registry,
-                    })?);
-                }
-                CheckpointsField::Active => {
-                    if active.is_some() {
-                        return Err(Error::duplicate_field(CHECKPOINTS_ACTIVE));
-                    }
-                    active = Some(map.next_value()?);
-                }
-            }
-        }
-
-        let snapshots = snapshots.ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
-        let active = active.ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
-
-        Ok(Checkpoints { snapshots, active })
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let snapshots = seq
-            .next_element_seed(SnapshotListDeserializer {
-                registry: self.registry,
-            })?
-            .ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
-
-        let active = seq
-            .next_element()?
-            .ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
-
-        Ok(Checkpoints { snapshots, active })
-    }
-}
-
-struct SnapshotListDeserializer<'a> {
-    registry: &'a TypeRegistry,
-}
-
-impl<'de> DeserializeSeed<'de> for SnapshotListDeserializer<'_> {
-    type Value = Vec<Snapshot>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(SnapshotListVisitor {
-            registry: self.registry,
-        })
-    }
-}
-
-struct SnapshotListVisitor<'a> {
-    registry: &'a TypeRegistry,
-}
-
-impl<'de> Visitor<'de> for SnapshotListVisitor<'_> {
-    type Value = Vec<Snapshot>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("sequence of snapshots")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let mut result = Vec::new();
-
-        while let Some(next) = seq.next_element_seed(SnapshotDeserializer {
-            registry: self.registry,
-        })? {
-            result.push(next);
-        }
-
-        Ok(result)
     }
 }
 
@@ -494,3 +390,159 @@ impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
         Ok(dynamic_properties)
     }
 }
+
+#[cfg(feature = "checkpoints")]
+mod checkpoints {
+    use bevy::reflect::TypeRegistry;
+    use serde::{
+        Deserializer,
+        de::{
+            DeserializeSeed,
+            Error,
+            MapAccess,
+            SeqAccess,
+            Visitor,
+        },
+    };
+
+    use crate::reflect::{
+        Snapshot,
+        checkpoint::Checkpoints,
+        serde::{
+            CHECKPOINTS_ACTIVE,
+            CHECKPOINTS_SNAPSHOTS,
+            CHECKPOINTS_STRUCT,
+        },
+    };
+
+    struct CheckpointsVisitor<'a> {
+        registry: &'a TypeRegistry,
+    }
+
+    impl<'de> Visitor<'de> for CheckpointsVisitor<'_> {
+        type Value = Checkpoints;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("checkpoints struct")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut snapshots = None;
+            let mut active = None;
+
+            while let Some(key) = map.next_key()? {
+                match key {
+                    super::CheckpointsField::Checkpoints => {
+                        if snapshots.is_some() {
+                            return Err(Error::duplicate_field(CHECKPOINTS_SNAPSHOTS));
+                        }
+                        snapshots = Some(map.next_value_seed(SnapshotListDeserializer {
+                            registry: self.registry,
+                        })?);
+                    }
+                    super::CheckpointsField::Active => {
+                        if active.is_some() {
+                            return Err(Error::duplicate_field(CHECKPOINTS_ACTIVE));
+                        }
+                        active = Some(map.next_value()?);
+                    }
+                }
+            }
+
+            let snapshots = snapshots.ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
+            let active = active.ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
+
+            Ok(Checkpoints { snapshots, active })
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let snapshots = seq
+                .next_element_seed(SnapshotListDeserializer {
+                    registry: self.registry,
+                })?
+                .ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
+
+            let active = seq
+                .next_element()?
+                .ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
+
+            Ok(Checkpoints { snapshots, active })
+        }
+    }
+
+    /// Handles checkpoints deserialization.
+    pub struct CheckpointsDeserializer<'a> {
+        /// Type registry in which the components and resources types used to deserialize the checkpoints are registered.
+        pub registry: &'a TypeRegistry,
+    }
+
+    impl<'de> DeserializeSeed<'de> for CheckpointsDeserializer<'_> {
+        type Value = Checkpoints;
+
+        fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer.deserialize_struct(
+                CHECKPOINTS_STRUCT,
+                &[CHECKPOINTS_SNAPSHOTS, CHECKPOINTS_ACTIVE],
+                CheckpointsVisitor {
+                    registry: self.registry,
+                },
+            )
+        }
+    }
+
+    struct SnapshotListDeserializer<'a> {
+        registry: &'a TypeRegistry,
+    }
+
+    impl<'de> DeserializeSeed<'de> for SnapshotListDeserializer<'_> {
+        type Value = Vec<Snapshot>;
+
+        fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_seq(SnapshotListVisitor {
+                registry: self.registry,
+            })
+        }
+    }
+
+    struct SnapshotListVisitor<'a> {
+        registry: &'a TypeRegistry,
+    }
+
+    impl<'de> Visitor<'de> for SnapshotListVisitor<'_> {
+        type Value = Vec<Snapshot>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("sequence of snapshots")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let mut result = Vec::new();
+
+            while let Some(next) = seq.next_element_seed(super::SnapshotDeserializer {
+                registry: self.registry,
+            })? {
+                result.push(next);
+            }
+
+            Ok(result)
+        }
+    }
+}
+
+#[cfg(feature = "checkpoints")]
+pub use checkpoints::*;

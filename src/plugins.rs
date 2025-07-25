@@ -5,38 +5,57 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{
-    checkpoint::{
-        CheckpointRegistry,
-        Checkpoints,
-    },
-    prelude::*,
-};
+use crate::prelude::*;
 
 /// Default plugins for `bevy_save`.
 pub struct SavePlugins;
 
 impl PluginGroup for SavePlugins {
     fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>()
-            .add(SavePlugin)
-            .add(SaveablesPlugin)
+        let b = PluginGroupBuilder::start::<Self>().add(SavePlugin);
+
+        #[cfg(feature = "checkpoints")]
+        let b = b.add(SaveCheckpointsPlugin);
+
+        #[cfg(feature = "reflect")]
+        let b = b.add(SaveablesPlugin);
+
+        b
     }
 }
 
 /// `bevy_save` core functionality.
+///
+/// If you don't wish to use reflection, this is all you will need.
 pub struct SavePlugin;
 
 impl Plugin for SavePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DefaultBackend>()
-            .init_resource::<DefaultDebugBackend>()
-            .init_resource::<CheckpointRegistry>()
+        app.init_backend::<DefaultBackend, String>()
+            .init_backend::<DefaultBackend, &str>()
+            .init_backend::<DefaultDebugBackend, String>()
+            .init_backend::<DefaultDebugBackend, &str>();
+    }
+}
+
+/// `bevy_save` checkpoint functionality.
+#[cfg(feature = "checkpoints")]
+pub struct SaveCheckpointsPlugin;
+
+#[cfg(feature = "checkpoints")]
+impl Plugin for SaveCheckpointsPlugin {
+    fn build(&self, app: &mut App) {
+        use crate::reflect::checkpoint::{
+            CheckpointRegistry,
+            Checkpoints,
+        };
+
+        app.init_resource::<CheckpointRegistry>()
             .init_resource::<Checkpoints>();
     }
 }
 
-/// Saveable registrations for common types.
+/// Type registrations for common types.
 pub struct SaveablesPlugin;
 
 impl Plugin for SaveablesPlugin {

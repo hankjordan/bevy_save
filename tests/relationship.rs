@@ -45,7 +45,7 @@ impl Prefab for ItemPrefab {
         });
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         builder.extract_prefab(|entity| {
             Some(Self {
                 container: entity.get::<ItemOf>()?.container,
@@ -72,7 +72,7 @@ impl Prefab for ChildPrefab {
         world.entity_mut(target).insert(ChildOf(self.parent));
     }
 
-    fn extract(builder: SnapshotBuilder) -> SnapshotBuilder {
+    fn extract(builder: BuilderRef) -> BuilderRef {
         builder.extract_prefab(|entity| {
             Some(Self {
                 parent: entity.get::<ChildOf>()?.0,
@@ -148,7 +148,7 @@ fn dump_entities(world: &World) {
 
 fn check_items<F>(snapshot: &Snapshot, entities: &[Entity], applier: F)
 where
-    F: for<'a> Fn(&'a mut World, &'a Snapshot) -> SnapshotApplier<'a>,
+    F: for<'a> Fn(&'a mut World, &'a Snapshot) -> ApplierRef<'a, 'a>,
 {
     // Check behavior without mapping
     let mut app = empty_app();
@@ -229,7 +229,7 @@ where
 
 fn check_children<F>(snapshot: &Snapshot, entities: &[Entity], applier: F)
 where
-    F: for<'a> Fn(&'a mut World, &'a Snapshot) -> SnapshotApplier<'a>,
+    F: for<'a> Fn(&'a mut World, &'a Snapshot) -> ApplierRef<'a, 'a>,
 {
     // Check without mapping
     let mut app = empty_app();
