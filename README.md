@@ -8,7 +8,7 @@ A framework for saving and loading application state in Bevy.
 
 ## Features
 
-### [NEW]: Flows
+### NEW: Flows
 
 When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
 
@@ -50,7 +50,7 @@ impl Plugin for PluginA {
 }
 ```
 
-#### [NEW]: Pathway
+#### NEW: Pathway
 
 [`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
 

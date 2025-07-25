@@ -8,12 +8,12 @@ use crate::{
     CloneReflect,
     error::Error,
     prelude::*,
-    reflect::serde::SnapshotSerializer,
+    reflect::SnapshotSerializer,
 };
 
 /// A collection of serializable entities and resources.
 ///
-/// Can be serialized via [`SnapshotSerializer`](crate::serde::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::serde::SnapshotDeserializer).
+/// Can be serialized via [`SnapshotSerializer`](crate::reflect::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::reflect::SnapshotDeserializer).
 pub struct Snapshot {
     /// Entities contained in the snapshot.
     pub entities: Vec<DynamicEntity>,
@@ -56,7 +56,7 @@ impl std::fmt::Debug for Snapshot {
 impl Snapshot {
     /// Returns a complete [`Snapshot`] of the current [`World`] state.
     ///
-    /// Contains all saveable entities, resources, and [`Checkpoints`].
+    /// Contains all saveable entities, resources, and [`Checkpoints`](crate::reflect::checkpoint::Checkpoints).
     ///
     /// # Shortcut for
     /// ```
@@ -110,7 +110,7 @@ impl Snapshot {
         self.applier(world).apply()
     }
 
-    /// Create a [`SnapshotApplier`] from the [`Snapshot`] and the [`World`].
+    /// Create an [`ApplierRef`] from the [`Snapshot`] and the [`World`].
     ///
     /// This allows you to specify an entity map, hook, etc.
     ///

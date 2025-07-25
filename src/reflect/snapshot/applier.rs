@@ -74,7 +74,7 @@ pub struct Applier<'a> {
 }
 
 impl<'a> Applier<'a> {
-    /// Create a new [`SnapshotApplierInput`] from the given borrowed or owned [`Snapshot`]
+    /// Create a new [`Applier`] from the given borrowed or owned [`Snapshot`]
     #[must_use]
     pub fn new(snapshot: impl Into<MaybeRef<'a, Snapshot>>) -> Self {
         Self {
@@ -103,14 +103,14 @@ impl<'i> Applier<'i> {
     }
 }
 
-/// [`SnapshotApplier`] lets you configure how a snapshot will be applied to the [`World`].
+/// [`ApplierRef`] lets you configure how a snapshot will be applied to the [`World`].
 pub struct ApplierRef<'w, 'i> {
     world: &'w mut World,
     input: Applier<'i>,
 }
 
 impl<'w, 'i> ApplierRef<'w, 'i> {
-    /// Create a new [`SnapshotApplier`] from the world and snapshot.
+    /// Create a new [`ApplierRef`] from the world and borrowed or owned [`Snapshot`].
     #[must_use]
     pub fn new(snapshot: impl Into<MaybeRef<'i, Snapshot>>, world: &'w mut World) -> Self {
         Self {
@@ -119,7 +119,7 @@ impl<'w, 'i> ApplierRef<'w, 'i> {
         }
     }
 
-    /// Create a new [`SnapshotApplier`] from the world and input.
+    /// Create a new [`ApplierRef`] from the world and input.
     #[must_use]
     pub fn from_parts(world: &'w mut World, input: Applier<'i>) -> Self {
         Self { world, input }

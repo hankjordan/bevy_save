@@ -17,7 +17,7 @@ where
     }
 }
 
-/// The registry of types that should be included in [`Checkpoints`](crate::checkpoint::Checkpoints).
+/// The registry of types that should be included in [`Checkpoints`](crate::reflect::checkpoint::Checkpoints).
 ///
 /// Only types that are registered in here and [`AppTypeRegistry`] are included in checkpoints.
 #[derive(Resource, Default)]

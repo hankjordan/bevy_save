@@ -12,7 +12,7 @@ pub trait CaptureInput<P> {
     /// The builder type passed to flow systems
     type Builder: 'static;
 
-    /// Creates the builder from the given [`Pathway`] and [`World`]
+    /// Creates the builder from the given [`Pathway`](crate::prelude::Pathway) and [`World`]
     fn builder(pathway: &P, world: &World) -> Self::Builder;
 
     /// Builds the capture type
@@ -27,7 +27,7 @@ pub trait CaptureOutput<P>: Sized {
     /// Error potentially thrown while building
     type Error;
 
-    /// Creates the builder from the given [`Pathway`] and [`World`]
+    /// Creates the builder from the given [`Pathway`](crate::prelude::Pathway) and [`World`]
     fn builder(self, pathway: &P, world: &mut World) -> Self::Builder;
 
     /// Builds the capture type

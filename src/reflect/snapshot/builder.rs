@@ -126,7 +126,7 @@ impl<'a> BuilderRef<'a> {
 
     /// Create a new [`BuilderRef`] from the [`World`].
     ///
-    /// Types extracted by this builder will respect the [`CheckpointRegistry`](crate::checkpoint::CheckpointRegistry).
+    /// Types extracted by this builder will respect the [`CheckpointRegistry`](crate::reflect::checkpoint::CheckpointRegistry).
     ///
     /// You must call at least one of the `extract` methods or the built snapshot will be empty.
     ///

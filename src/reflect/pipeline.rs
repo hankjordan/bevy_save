@@ -31,7 +31,7 @@ pub trait Pipeline {
     ///
     /// This is where you would do any special filtering you might need.
     ///
-    /// You must extract [`Checkpoints`](crate::checkpoint::Checkpoints) if you want this pipeline to handle checkpoints properly.
+    /// You must extract [`Checkpoints`](crate::reflect::checkpoint::Checkpoints) if you want this pipeline to handle checkpoints properly.
     fn capture(&self, builder: BuilderRef) -> Snapshot;
 
     /// Apply a [`Snapshot`] to the [`World`].
@@ -45,7 +45,7 @@ pub trait Pipeline {
 
 /// Extension trait that adds pipeline-related methods to Bevy's [`App`].
 pub trait AppPipelineExt {
-    /// Initialize a [`Pipeline`], allowing it to be used with [`WorldSaveableExt`] methods.
+    /// Initialize a [`Pipeline`], allowing it to be used with global save and load methods.
     fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self;
 }
 
