@@ -12,11 +12,11 @@ A framework for saving and loading application state in Bevy.
 
 When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
 
-[`Flows`] are chains of systems used to modularize this process, allowing you to build snapshots and apply them in stages.
+[`Flow`]s are chains of systems used to modularize this process, allowing you to build snapshots and apply them in stages.
 
 They are defined similar to Bevy systems, but they require an input and an output.
 
-Additionally, the introduction of [`Flows`] allows reflection to become optional - bring your own serialization if you so wish!
+Additionally, the introduction of [`Flow`]s allows reflection to become optional - bring your own serialization if you so wish!
 
 ```rust,ignore
 fn main() {
@@ -52,7 +52,7 @@ impl Plugin for PluginA {
 
 #### [NEW]: Pathway
 
-[`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flows`].
+[`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
 
 ```rust,ignore
 // Pathways look very similar to pipelines, but there are a few key differences
@@ -523,6 +523,8 @@ This version introduced [`Pathway`], which is effectively a superset of [`Pipeli
 [`JSON`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.JSONFormat.html
 [`MessagePack`]: https://docs.rs/bevy_save/latest/bevy_save/format/struct.RMPFormat.html
 [`Prefab`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Prefab.html
+[`Flow`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Flow.html
+[`Pathway`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Pathway.html
 [`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/dir/constant.WORKSPACE.html
 [`App`]: https://docs.rs/bevy/latest/bevy/prelude/struct.App.html
 [`Component`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Component.html
