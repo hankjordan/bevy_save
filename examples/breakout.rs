@@ -19,7 +19,10 @@ use bevy_inspector_egui::{
     bevy_egui::EguiPlugin,
     quick::WorldInspectorPlugin,
 };
-use bevy_save::prelude::*;
+use bevy_save::{
+    prelude::*,
+    reflect::checkpoint::Checkpoints,
+};
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -222,7 +225,7 @@ struct Score(usize);
 #[reflect(Component)]
 struct ScoreboardUi;
 
-#[derive(Reflect)]
+#[derive(Reflect, Default)]
 struct PaddlePrefab {
     position: f32,
 }
@@ -254,6 +257,16 @@ impl Prefab for PaddlePrefab {
 #[derive(Reflect)]
 struct BallPrefab {
     position: Vec3,
+    velocity: Vec2,
+}
+
+impl Default for BallPrefab {
+    fn default() -> Self {
+        Self {
+            position: BALL_STARTING_POSITION,
+            velocity: INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED,
+        }
+    }
 }
 
 impl Prefab for BallPrefab {
@@ -271,7 +284,7 @@ impl Prefab for BallPrefab {
             Transform::from_translation(self.position)
                 .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
             Ball,
-            Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
+            Velocity(self.velocity),
         ));
     }
 
@@ -279,6 +292,7 @@ impl Prefab for BallPrefab {
         builder.extract_prefab(|entity| {
             Some(BallPrefab {
                 position: entity.get::<Transform>()?.translation,
+                velocity: entity.get::<Velocity>()?.0,
             })
         })
     }
@@ -328,13 +342,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(CollisionSound(ball_collision_sound));
 
     // Paddle
-
-    commands.spawn_prefab(PaddlePrefab { position: 0.0 });
+    commands.spawn_prefab(PaddlePrefab::default());
 
     // Ball
-    commands.spawn_prefab(BallPrefab {
-        position: BALL_STARTING_POSITION,
-    });
+    commands.spawn_prefab(BallPrefab::default());
 
     // Scoreboard
     commands
@@ -677,7 +688,7 @@ impl Pipeline for BreakoutPipeline {
             .extract_all_prefabs::<BallPrefab>()
             .extract_all_prefabs::<BrickPrefab>()
             .extract_resource::<Score>()
-            .extract_checkpoints()
+            .extract_resource::<Checkpoints>()
             .build()
     }
 

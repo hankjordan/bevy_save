@@ -92,9 +92,9 @@ fn handle_despawn_input(
 fn handle_save_input(world: &mut World) {
     let keys = world.resource::<ButtonInput<KeyCode>>();
 
-    // Using DebugPipeline as the argument for save/load, we can save locally with JSON.
-
     if keys.just_released(KeyCode::Enter) {
+        info!("Saving data");
+
         // Save every tile individually.
         let positions = world
             .resource::<TileMap>()
@@ -109,6 +109,8 @@ fn handle_save_input(world: &mut World) {
                 .expect("Failed to save");
         }
     } else if keys.just_released(KeyCode::Backspace) {
+        info!("Loading data");
+
         // For ease of implementation, let's just load the origin.
         world
             .load(&TilePipeline::new(TilePosition { x: 0, y: 0 }))
@@ -158,7 +160,7 @@ impl Pipeline for TilePipeline {
         let mut mapper = EntityHashMap::default();
 
         world.resource_scope(|world, mut tiles: Mut<TileMap>| {
-            for saved in &snapshot.entities {
+            for saved in snapshot.entities() {
                 if let Some(existing) = tiles.map.get(&self.position) {
                     mapper.insert(saved.entity, *existing);
                 } else {

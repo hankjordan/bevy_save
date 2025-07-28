@@ -13,11 +13,11 @@ use bevy::{
     scene::DynamicEntity,
 };
 
-use crate::prelude::*;
 #[cfg(feature = "checkpoints")]
-use crate::reflect::checkpoint::{
-    CheckpointRegistry,
-    Checkpoints,
+use crate::reflect::checkpoint::CheckpointRegistry;
+use crate::{
+    clone_reflect_value,
+    prelude::*,
 };
 
 /// A snapshot builder that can extract entities, resources, and rollback [`Checkpoints`] from a [`World`].
@@ -25,8 +25,6 @@ pub struct Builder {
     entities: BTreeMap<Entity, DynamicEntity>,
     resources: BTreeMap<ComponentId, Box<dyn PartialReflect>>,
     filter: SceneFilter,
-    #[cfg(feature = "checkpoints")]
-    checkpoints: Option<Checkpoints>,
     #[cfg(feature = "checkpoints")]
     is_checkpoint: bool,
 }
@@ -40,8 +38,6 @@ impl Builder {
             entities: BTreeMap::new(),
             resources: BTreeMap::new(),
             filter: SceneFilter::default(),
-            #[cfg(feature = "checkpoints")]
-            checkpoints: None,
             #[cfg(feature = "checkpoints")]
             is_checkpoint: false,
         }
@@ -79,8 +75,6 @@ impl Builder {
         Snapshot {
             entities: self.entities.into_values().collect(),
             resources: self.resources.into_values().collect(),
-            #[cfg(feature = "checkpoints")]
-            checkpoints: self.checkpoints,
         }
     }
 }
@@ -297,17 +291,10 @@ impl BuilderRef<'_> {
                 });
 
                 let reflect = reflect.and_then(|id| type_registry.get(id)).and_then(|r| {
-                    let reflect = r.data::<ReflectComponent>()?.reflect(entity)?;
-
-                    let reflect = r
-                        .data::<ReflectFromReflect>()
-                        .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
-                        .map_or_else(
-                            || reflect.to_dynamic(),
-                            PartialReflect::into_partial_reflect,
-                        );
-
-                    Some(reflect)
+                    Some(clone_reflect_value(
+                        r.data::<ReflectComponent>()?.reflect(entity)?,
+                        type_registry,
+                    ))
                 });
 
                 if let Some(reflect) = reflect {
@@ -466,19 +453,12 @@ impl BuilderRef<'_> {
         });
 
         f.filter_map(|r| {
-            let reflect = r.data::<ReflectResource>()?.reflect(self.world).ok()?;
-
-            let reflect = r
-                .data::<ReflectFromReflect>()
-                .and_then(|fr| fr.from_reflect(reflect.as_partial_reflect()))
-                .map_or_else(
-                    || reflect.to_dynamic(),
-                    PartialReflect::into_partial_reflect,
-                );
-
             Some((
                 self.world.components().get_resource_id(r.type_id())?,
-                reflect,
+                clone_reflect_value(
+                    r.data::<ReflectResource>()?.reflect(self.world).ok()?,
+                    type_registry,
+                ),
             ))
         })
         .for_each(|(i, r)| {
@@ -503,42 +483,10 @@ impl BuilderRef<'_> {
         self.extract_resources_by_type_id(resources)
     }
 
-    /// Extract [`Checkpoints`] from the builder's [`World`].
-    ///
-    /// # Panics
-    /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
-    #[cfg(feature = "checkpoints")]
-    #[must_use]
-    pub fn extract_checkpoints(mut self) -> Self {
-        let app_type_registry = self
-            .world
-            .get_resource::<AppTypeRegistry>()
-            .map(|r| r.read());
-
-        let type_registry = self
-            .type_registry
-            .or(app_type_registry.as_deref())
-            .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
-
-        self.input.checkpoints = self
-            .world
-            .get_resource::<Checkpoints>()
-            .map(|r| r.clone_reflect(type_registry));
-
-        self
-    }
-
     /// Extract all entities, and resources from the builder's [`World`].
     #[must_use]
     pub fn extract_all(self) -> Self {
         self.extract_all_entities().extract_all_resources()
-    }
-
-    /// Extract all entities, resources, and [`Checkpoints`] from the builder's [`World`].
-    #[cfg(feature = "checkpoints")]
-    #[must_use]
-    pub fn extract_all_with_checkpoints(self) -> Self {
-        self.extract_all().extract_checkpoints()
     }
 }
 
@@ -561,14 +509,6 @@ impl BuilderRef<'_> {
     #[must_use]
     pub fn clear_empty(mut self) -> Self {
         self.input.entities.retain(|_, e| !e.components.is_empty());
-        self
-    }
-
-    /// Clear [`Checkpoints`] from the snapshot.
-    #[cfg(feature = "checkpoints")]
-    #[must_use]
-    pub fn clear_checkpoints(mut self) -> Self {
-        self.input.checkpoints = None;
         self
     }
 

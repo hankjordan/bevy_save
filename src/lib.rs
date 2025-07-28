@@ -4,6 +4,7 @@
 #![cfg_attr(any(docsrs, docsrs_dep), feature(doc_auto_cfg, rustdoc_internals))]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
+#![warn(clippy::undocumented_unsafe_blocks)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::must_use_candidate)]
@@ -108,7 +109,7 @@ pub mod prelude {
         plugins::{
             SavePlugin,
             SavePlugins,
-            SaveablesPlugin,
+            SaveReflectPlugin,
         },
     };
 }

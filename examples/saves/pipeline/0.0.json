@@ -1,6 +1,6 @@
 {
   "entities": {
-    "4294967302": {
+    "4294967301": {
       "components": {
         "pipeline::Tile": "Dirt"
       }

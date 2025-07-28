@@ -1,12 +1,17 @@
 use bevy::{
     prelude::*,
-    reflect::TypeRegistry,
+    reflect::{
+        TypeRegistry,
+        Typed,
+    },
 };
 
 use crate::prelude::*;
 
 /// Currently stored snapshots used for rollback / rollforward.
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Clone, Debug, Default, Reflect)]
+#[reflect(Resource, Clone, Default)]
+#[type_path = "bevy_save"]
 pub struct Checkpoints {
     pub(crate) snapshots: Vec<Snapshot>,
     pub(crate) active: Option<usize>,
@@ -24,13 +29,23 @@ impl Checkpoints {
     pub fn checkpoint(&mut self, mut checkpoint: Snapshot) {
         let active = self.active.unwrap_or(0);
 
+        let id = Self::type_info().type_id();
+
         // Force conversion into checkpoint
-        checkpoint.checkpoints = None;
+        checkpoint
+            .resources
+            .0
+            .retain(|r| r.get_represented_type_info().map(|i| i.type_id()) != Some(id));
 
         self.snapshots.truncate(active + 1);
         self.snapshots.push(checkpoint);
 
         self.active = Some(self.snapshots.len() - 1);
+    }
+
+    /// Returns a reference to the last active checkpoint [`Snapshot`].
+    pub fn active(&self) -> Option<&Snapshot> {
+        self.active.and_then(|i| self.snapshots.get(i))
     }
 
     /// Rolls back the given number of checkpoints.

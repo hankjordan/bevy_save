@@ -63,10 +63,10 @@ fn interact(world: &mut World) {
     let keys = world.resource::<ButtonInput<KeyCode>>();
 
     if keys.just_released(KeyCode::Enter) {
-        info!("Save");
+        info!("Saving data");
         world.save(&HeirarchyPipeline).expect("Failed to save");
     } else if keys.just_released(KeyCode::Backspace) {
-        info!("Load");
+        info!("Loading data");
         world.load(&HeirarchyPipeline).expect("Failed to load");
     } else if keys.just_pressed(KeyCode::KeyE) {
         info!("Info");

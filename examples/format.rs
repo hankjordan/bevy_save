@@ -90,11 +90,11 @@ fn setup(mut commands: Commands) {
 fn handle_save_input(world: &mut World) {
     let keys = world.resource::<ButtonInput<KeyCode>>();
 
-    // Using DebugPipeline as the argument for save/load, we can save locally with JSON.
-
     if keys.just_released(KeyCode::Enter) {
+        info!("Saving data");
         world.save(&RONPipeline).expect("Failed to save");
     } else if keys.just_released(KeyCode::Backspace) {
+        info!("Loading data");
         world.load(&RONPipeline).expect("Failed to load");
     }
 }

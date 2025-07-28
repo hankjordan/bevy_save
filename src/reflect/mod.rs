@@ -1,8 +1,10 @@
 //! Reflection-based snapshots
 
+pub(crate) mod backcompat;
 mod clone;
 pub mod pipeline;
 pub mod prefab;
+pub mod remote;
 pub mod serde;
 pub mod snapshot;
 
@@ -10,6 +12,7 @@ pub mod snapshot;
 pub mod checkpoint;
 
 pub use self::{
+    backcompat::Version,
     clone::{
         CloneReflect,
         clone_reflect_value,
@@ -19,6 +22,12 @@ pub use self::{
         CommandsPrefabExt,
         Prefab,
         WithPrefab,
+    },
+    remote::{
+        BoxedPartialReflect,
+        DynamicEntity,
+        EntityMap,
+        ReflectMap,
     },
     serde::{
         SnapshotDeserializer,

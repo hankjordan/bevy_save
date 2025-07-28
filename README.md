@@ -448,21 +448,22 @@ If your application has specific migration requirements, please [open an issue](
 
 ### Bevy
 
-| Bevy Version              | Crate Version                     |
-| ------------------------- | --------------------------------- |
-| `0.16`                    | `0.18`                            |
-| `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17` |
-| `0.14`<sup> [1](#1)</sup> | `0.15`                            |
-| `0.13`                    | `0.14`                            |
-| `0.12`                    | `0.10`, `0.11`, `0.12`, `0.13`    |
-| `0.11`                    | `0.9`                             |
-| `0.10`                    | `0.4`, `0.5`, `0.6`, `0.7`, `0.8` |
-| `0.9`                     | `0.1`, `0.2`, `0.3`               |
+| Bevy Version              | Crate Version                             |
+| ------------------------- | ----------------------------------------- |
+| `0.16`                    | `0.18`, `0.19`, `0.20`<sup> [3](#3)</sup> |
+| `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17`         |
+| `0.14`<sup> [1](#1)</sup> | `0.15`                                    |
+| `0.13`                    | `0.14`                                    |
+| `0.12`                    | `0.10`, `0.11`, `0.12`, `0.13`            |
+| `0.11`                    | `0.9`                                     |
+| `0.10`                    | `0.4`, `0.5`, `0.6`, `0.7`, `0.8`         |
+| `0.9`                     | `0.1`, `0.2`, `0.3`                       |
 
 #### Save format changes (since `0.15`)
 
 1. <a id="1"></a> `bevy` changed [`Entity`]'s on-disk representation
 2. <a id="2"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
+3. <a id="3"></a> `bevy_save` removed the `checkpoints` field from [`Snapshot`], instead saving [`Checkpoints`] as a resource via [`Reflect`]. Use the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version.
 
 ### Migration
 

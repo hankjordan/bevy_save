@@ -188,9 +188,7 @@ mod reflect {
         type Seed<'a> = SnapshotDeserializerArc;
 
         fn seed(world: &World) -> Self::Seed<'_> {
-            SnapshotDeserializerArc {
-                registry: world.resource::<AppTypeRegistry>().clone().0,
-            }
+            SnapshotDeserializerArc::new(world.resource::<AppTypeRegistry>().clone().0)
         }
     }
 }
