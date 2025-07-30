@@ -547,7 +547,7 @@ This version introduced versioning and migrations.
 - `SnapshotVersion::V0_16` can be used with the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version if the snapshot had checkpoints.
 - Snapshots created in a previous version without checkpoints should load as expected.
 - The fields for all serializers and deserializers have been made private. Use the `new` methods to construct them.
-- Self-describing formats such as `postcard` should now work as expected.
+- Non self-describing formats such as `postcard` should now work as expected.
 
 ### Platforms
 
