@@ -221,7 +221,7 @@ impl ApplierRef<'_, '_> {
 
         // First ensure that every entity in the snapshot has a corresponding world
         // entity in the entity map.
-        for scene_entity in &self.input.snapshot.entities {
+        for scene_entity in self.input.snapshot.entities() {
             // Fetch the entity with the given entity id from the `entity_map`
             // or spawn a new entity with a transiently unique id if there is
             // no corresponding entry.
@@ -230,7 +230,7 @@ impl ApplierRef<'_, '_> {
                 .or_insert_with(|| self.world.spawn_empty().id());
         }
 
-        for scene_entity in &self.input.snapshot.entities {
+        for scene_entity in self.input.snapshot.entities() {
             // Fetch the entity with the given entity id from the `entity_map`.
             let entity = *entity_map
                 .get(&scene_entity.entity)
@@ -305,7 +305,7 @@ impl ApplierRef<'_, '_> {
         // Insert resources after all entities have been added to the world.
         // This ensures the entities are available for the resources to reference during
         // mapping.
-        for resource in &self.input.snapshot.resources {
+        for resource in self.input.snapshot.resources() {
             let type_info = resource.get_represented_type_info().ok_or_else(|| {
                 SceneSpawnError::NoRepresentedType {
                     type_path: resource.reflect_type_path().to_string(),
@@ -340,13 +340,6 @@ impl ApplierRef<'_, '_> {
             // If the world already contains an instance of the given resource
             // just apply the (possibly) new value, otherwise insert the resource
             reflect_resource.apply_or_insert(self.world, partial_reflect_resource, type_registry);
-        }
-
-        // Apply checkpoints from snapshot
-        #[cfg(feature = "checkpoints")]
-        if let Some(checkpoints) = &self.input.snapshot.checkpoints {
-            self.world
-                .insert_resource(checkpoints.clone_reflect(type_registry));
         }
 
         // Prefab hooks

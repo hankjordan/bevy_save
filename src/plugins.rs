@@ -18,7 +18,7 @@ impl PluginGroup for SavePlugins {
         let b = b.add(SaveCheckpointsPlugin);
 
         #[cfg(feature = "reflect")]
-        let b = b.add(SaveablesPlugin);
+        let b = b.add(SaveReflectPlugin);
 
         b
     }
@@ -45,21 +45,33 @@ pub struct SaveCheckpointsPlugin;
 #[cfg(feature = "checkpoints")]
 impl Plugin for SaveCheckpointsPlugin {
     fn build(&self, app: &mut App) {
-        use crate::reflect::checkpoint::{
-            CheckpointRegistry,
-            Checkpoints,
+        use crate::reflect::{
+            checkpoint::{
+                CheckpointRegistry,
+                Checkpoints,
+            },
+            migration::backcompat::v0_16::CheckpointsV0_16,
         };
 
-        app.init_resource::<CheckpointRegistry>()
+        app.register_type::<Checkpoints>()
+            .register_type::<CheckpointsV0_16>()
+            .init_resource::<CheckpointRegistry>()
             .init_resource::<Checkpoints>();
     }
 }
 
-/// Type registrations for common types.
-pub struct SaveablesPlugin;
+/// Type registrations for reflect types.
+#[cfg(feature = "reflect")]
+pub struct SaveReflectPlugin;
 
-impl Plugin for SaveablesPlugin {
+#[cfg(feature = "reflect")]
+impl Plugin for SaveReflectPlugin {
     fn build(&self, app: &mut App) {
+        use crate::reflect::migration::backcompat::v0_16::SnapshotV0_16;
+
+        app.register_type::<Snapshot>()
+            .register_type::<SnapshotV0_16>();
+
         #[cfg(feature = "bevy_render")]
         app.register_type::<Color>();
 

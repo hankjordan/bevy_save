@@ -11,6 +11,7 @@ where
 {
     use std::ptr;
 
+    // SAFETY: We have an exclusive reference to the value
     unsafe {
         let old_t = ptr::read(mut_ref);
         ptr::write(mut_ref, closure(old_t));

@@ -3,40 +3,22 @@
 mod de;
 mod ser;
 
-#[cfg(feature = "checkpoints")]
-pub use self::{
-    de::CheckpointsDeserializer,
-    ser::CheckpointsSerializer,
-};
 pub use self::{
     de::{
+        EntityMapDeserializer,
+        ReflectMapDeserializer,
         SnapshotDeserializer,
         SnapshotDeserializerArc,
     },
     ser::{
+        EntityMapSerializer,
+        ReflectMapSerializer,
         SnapshotSerializer,
         SnapshotSerializerArc,
     },
 };
 
-pub(super) const SNAPSHOT_STRUCT: &str = "Snapshot";
-pub(super) const SNAPSHOT_ENTITIES: &str = "entities";
-pub(super) const SNAPSHOT_RESOURCES: &str = "resources";
-pub(super) const SNAPSHOT_CHECKPOINTS: &str = "rollbacks";
-
-#[cfg(feature = "checkpoints")]
-mod checkpoints {
-    pub(super) const CHECKPOINTS_STRUCT: &str = "Rollbacks";
-    pub(super) const CHECKPOINTS_SNAPSHOTS: &str = "checkpoints";
-    pub(super) const CHECKPOINTS_ACTIVE: &str = "active";
-}
-
-#[cfg(feature = "checkpoints")]
-use checkpoints::{
-    CHECKPOINTS_ACTIVE,
-    CHECKPOINTS_SNAPSHOTS,
-    CHECKPOINTS_STRUCT,
-};
-
-pub(super) const ENTITY_STRUCT: &str = "Entity";
-pub(super) const ENTITY_COMPONENTS: &str = "components";
+/// Name of the serialized entity struct type.
+pub const ENTITY_STRUCT: &str = "Entity";
+/// Name of the serialized component field in an entity struct.
+pub const ENTITY_FIELD_COMPONENTS: &str = "components";

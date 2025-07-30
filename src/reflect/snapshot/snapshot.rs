@@ -8,21 +8,37 @@ use crate::{
     CloneReflect,
     error::Error,
     prelude::*,
-    reflect::SnapshotSerializer,
+    reflect::{
+        EntityMap,
+        ReflectMap,
+        SnapshotDeserializer,
+        SnapshotSerializer,
+    },
 };
 
 /// A collection of serializable entities and resources.
 ///
 /// Can be serialized via [`SnapshotSerializer`](crate::reflect::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::reflect::SnapshotDeserializer).
+#[derive(Reflect)]
+#[reflect(Clone)]
+#[type_path = "bevy_save"]
 pub struct Snapshot {
     /// Entities contained in the snapshot.
-    pub entities: Vec<DynamicEntity>,
+    pub entities: EntityMap,
 
     /// Resources contained in the snapshot.
-    pub resources: Vec<Box<dyn PartialReflect>>,
+    pub resources: ReflectMap,
+}
 
-    #[cfg(feature = "checkpoints")]
-    pub(crate) checkpoints: Option<crate::reflect::checkpoint::Checkpoints>,
+impl Clone for Snapshot {
+    fn clone(&self) -> Self {
+        Self {
+            entities: EntityMap::from_reflect(self.entities.as_partial_reflect())
+                .expect("failed to clone"),
+            resources: ReflectMap::from_reflect(self.resources.as_partial_reflect())
+                .expect("failed to clone"),
+        }
+    }
 }
 
 impl std::fmt::Debug for Snapshot {
@@ -38,25 +54,20 @@ impl std::fmt::Debug for Snapshot {
             }
         }
 
-        let mut f = f.debug_struct("Snapshot");
-
-        f.field(
-            "entities",
-            &self.entities.iter().map(DebugEntity).collect::<Vec<_>>(),
-        )
-        .field("resources", &self.resources);
-
-        #[cfg(feature = "checkpoints")]
-        f.field("checkpoints", &self.checkpoints);
-
-        f.finish()
+        f.debug_struct("Snapshot")
+            .field(
+                "entities",
+                &self.entities().iter().map(DebugEntity).collect::<Vec<_>>(),
+            )
+            .field("resources", &self.resources)
+            .finish()
     }
 }
 
 impl Snapshot {
     /// Returns a complete [`Snapshot`] of the current [`World`] state.
     ///
-    /// Contains all saveable entities, resources, and [`Checkpoints`](crate::reflect::checkpoint::Checkpoints).
+    /// Contains all saveable entities and resources.
     ///
     /// # Shortcut for
     /// ```
@@ -67,15 +78,10 @@ impl Snapshot {
     /// # app.add_plugins(SavePlugins);
     /// # let world = app.world_mut();
     /// Snapshot::builder(world)
-    ///     .extract_all_with_checkpoints()
+    ///     .extract_all()
     ///     .build();
     pub fn from_world(world: &World) -> Self {
-        let b = Self::builder(world).extract_all();
-
-        #[cfg(feature = "checkpoints")]
-        let b = b.extract_checkpoints();
-
-        b.build()
+        Self::builder(world).extract_all().build()
     }
 
     /// Create a [`BuilderRef`] from the [`World`], allowing you to create partial or filtered snapshots.
@@ -101,7 +107,23 @@ impl Snapshot {
     pub fn builder(world: &World) -> BuilderRef {
         BuilderRef::new(world)
     }
+}
 
+impl Snapshot {
+    /// Returns a reference to the slice of entities contained in the [`Snapshot`].
+    pub fn entities(&self) -> &[DynamicEntity] {
+        // SAFETY: DynamicEntity and bevy::scene::DynamicEntity are equivalent
+        unsafe { &*(std::ptr::from_ref(self.entities.0.as_slice()) as *const _) }
+    }
+
+    /// Returns a reference to the slice of resources contained in the [`Snapshot`].
+    pub fn resources(&self) -> &[Box<dyn PartialReflect>] {
+        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+        unsafe { &*(std::ptr::from_ref(self.resources.0.as_slice()) as *const _) }
+    }
+}
+
+impl Snapshot {
     /// Apply the [`Snapshot`] to the [`World`], using default applier settings.
     ///
     /// # Errors
@@ -143,6 +165,11 @@ impl Snapshot {
     pub fn serializer<'a>(&'a self, registry: &'a TypeRegistry) -> SnapshotSerializer<'a> {
         SnapshotSerializer::new(self, registry)
     }
+
+    /// Create a [`SnapshotDeserializer`] from the [`TypeRegistry`].
+    pub fn deserializer(registry: &TypeRegistry) -> SnapshotDeserializer<'_> {
+        SnapshotDeserializer::new(registry)
+    }
 }
 
 impl CloneReflect for Snapshot {
@@ -150,8 +177,6 @@ impl CloneReflect for Snapshot {
         Self {
             entities: self.entities.clone_reflect(registry),
             resources: self.resources.clone_reflect(registry),
-            #[cfg(feature = "checkpoints")]
-            checkpoints: self.checkpoints.clone_reflect(registry),
         }
     }
 }

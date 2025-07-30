@@ -1,18 +1,20 @@
-use std::fmt::Formatter;
+use std::{
+    fmt::Formatter,
+    str::FromStr,
+};
 
 use bevy::{
-    platform::collections::HashSet,
     prelude::*,
     reflect::{
+        GetTypeRegistration,
+        TypeRegistration,
         TypeRegistry,
         TypeRegistryArc,
         serde::{
             ReflectDeserializer,
-            TypeRegistrationDeserializer,
             TypedReflectDeserializer,
         },
     },
-    scene::DynamicEntity,
 };
 use serde::{
     Deserialize,
@@ -28,43 +30,43 @@ use serde::{
 
 use crate::{
     prelude::*,
-    reflect::serde::{
-        ENTITY_COMPONENTS,
-        ENTITY_STRUCT,
-        SNAPSHOT_CHECKPOINTS,
-        SNAPSHOT_ENTITIES,
-        SNAPSHOT_RESOURCES,
-        SNAPSHOT_STRUCT,
+    reflect::{
+        DynamicEntity,
+        EntityMap,
+        ReflectMap,
+        checkpoint::Checkpoints,
+        migration::{
+            ReflectMigrate,
+            SnapshotVersion,
+            backcompat::v0_16::SnapshotV0_16,
+        },
+        serde::{
+            ENTITY_FIELD_COMPONENTS,
+            ENTITY_STRUCT,
+        },
     },
 };
 
-#[derive(Deserialize)]
-#[serde(field_identifier, rename_all = "lowercase")]
-enum SnapshotField {
-    Entities,
-    Resources,
-    #[cfg(feature = "checkpoints")]
-    Rollbacks,
-}
-
-#[derive(Deserialize)]
-#[serde(field_identifier, rename_all = "lowercase")]
-#[cfg(feature = "checkpoints")]
-enum CheckpointsField {
-    Checkpoints,
-    Active,
-}
-
-#[derive(Deserialize)]
-#[serde(field_identifier, rename_all = "lowercase")]
-enum EntityField {
-    Components,
-}
-
 /// Owned deserializer that handles snapshot deserialization.
 pub struct SnapshotDeserializerArc {
-    /// Type registry in which the components and resources types used in the snapshot to deserialize are registered.
-    pub registry: TypeRegistryArc,
+    registry: TypeRegistryArc,
+    version: SnapshotVersion,
+}
+
+impl SnapshotDeserializerArc {
+    /// Creates a new [`SnapshotDeserializerArc`] from the given [`TypeRegistryArc`].
+    pub fn new(registry: TypeRegistryArc) -> Self {
+        Self {
+            registry,
+            version: SnapshotVersion::default(),
+        }
+    }
+
+    /// Sets the [`SnapshotVersion`] for backwards compatibility.
+    pub fn version(mut self, version: SnapshotVersion) -> Self {
+        self.version = version;
+        self
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for SnapshotDeserializerArc {
@@ -76,6 +78,7 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializerArc {
     {
         SnapshotDeserializer {
             registry: &self.registry.read(),
+            version: self.version,
         }
         .deserialize(deserializer)
     }
@@ -83,8 +86,24 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializerArc {
 
 /// Handles snapshot deserialization.
 pub struct SnapshotDeserializer<'a> {
-    /// Type registry in which the components and resources types used in the snapshot to deserialize are registered.
-    pub registry: &'a TypeRegistry,
+    registry: &'a TypeRegistry,
+    version: SnapshotVersion,
+}
+
+impl<'a> SnapshotDeserializer<'a> {
+    /// Creates a new [`SnapshotDeserializerArc`] from the given [`TypeRegistryArc`].
+    pub fn new(registry: &'a TypeRegistry) -> Self {
+        Self {
+            registry,
+            version: SnapshotVersion::default(),
+        }
+    }
+
+    /// Sets the [`SnapshotVersion`] for backwards compatibility.
+    pub fn version(mut self, version: SnapshotVersion) -> Self {
+        self.version = version;
+        self
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
@@ -94,113 +113,63 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_struct(
-            SNAPSHOT_STRUCT,
-            &[SNAPSHOT_ENTITIES, SNAPSHOT_RESOURCES, SNAPSHOT_CHECKPOINTS],
-            SnapshotVisitor {
-                registry: self.registry,
-            },
-        )
+        let reg = match self.version {
+            SnapshotVersion::V0_16 => SnapshotV0_16::get_type_registration(),
+            SnapshotVersion::V1_0 => Snapshot::get_type_registration(),
+        };
+
+        TypedReflectDeserializer::new(&reg, self.registry)
+            .deserialize(deserializer)
+            .and_then(|v| match self.version {
+                SnapshotVersion::V0_16 => {
+                    let old = SnapshotV0_16::from_reflect(&*v)
+                        .ok_or_else(|| Error::custom("FromReflect failed for Snapshot (v0.16)"))?;
+
+                    let mut new = Snapshot {
+                        entities: old.entities,
+                        resources: old.resources,
+                    };
+
+                    if let Some(rollbacks) = old.rollbacks {
+                        new.resources.0.push(
+                            Box::new(Checkpoints {
+                                snapshots: rollbacks
+                                    .checkpoints
+                                    .into_iter()
+                                    .map(|c| Snapshot {
+                                        entities: c.entities,
+                                        resources: c.resources,
+                                    })
+                                    .collect(),
+                                active: rollbacks.active,
+                            })
+                            .into_partial_reflect()
+                            .into(),
+                        );
+                    }
+
+                    Ok(new)
+                }
+                SnapshotVersion::V1_0 => Snapshot::from_reflect(&*v)
+                    .ok_or_else(|| Error::custom("FromReflect failed for Snapshot")),
+            })
     }
 }
 
-struct SnapshotVisitor<'a> {
-    pub registry: &'a TypeRegistry,
-}
-
-impl<'de> Visitor<'de> for SnapshotVisitor<'_> {
-    type Value = Snapshot;
-
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        formatter.write_str("snapshot struct")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut entities = None;
-        let mut resources = None;
-        #[cfg(feature = "checkpoints")]
-        let mut checkpoints = None;
-
-        while let Some(key) = map.next_key()? {
-            match key {
-                SnapshotField::Entities => {
-                    if entities.is_some() {
-                        return Err(Error::duplicate_field(SNAPSHOT_ENTITIES));
-                    }
-                    entities = Some(map.next_value_seed(EntityMapDeserializer {
-                        registry: self.registry,
-                    })?);
-                }
-                SnapshotField::Resources => {
-                    if resources.is_some() {
-                        return Err(Error::duplicate_field(SNAPSHOT_RESOURCES));
-                    }
-                    resources = Some(map.next_value_seed(ReflectMapDeserializer {
-                        registry: self.registry,
-                    })?);
-                }
-                #[cfg(feature = "checkpoints")]
-                SnapshotField::Rollbacks => {
-                    if checkpoints.is_some() {
-                        return Err(Error::duplicate_field(SNAPSHOT_CHECKPOINTS));
-                    }
-                    checkpoints = Some(map.next_value_seed(CheckpointsDeserializer {
-                        registry: self.registry,
-                    })?);
-                }
-            }
-        }
-
-        let entities = entities.ok_or_else(|| Error::missing_field(SNAPSHOT_ENTITIES))?;
-        let resources = resources.ok_or_else(|| Error::missing_field(SNAPSHOT_RESOURCES))?;
-
-        Ok(Snapshot {
-            entities,
-            resources,
-            #[cfg(feature = "checkpoints")]
-            checkpoints,
-        })
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let entities = seq
-            .next_element_seed(EntityMapDeserializer {
-                registry: self.registry,
-            })?
-            .ok_or_else(|| Error::missing_field(SNAPSHOT_ENTITIES))?;
-
-        let resources = seq
-            .next_element_seed(ReflectMapDeserializer {
-                registry: self.registry,
-            })?
-            .ok_or_else(|| Error::missing_field(SNAPSHOT_RESOURCES))?;
-
-        #[cfg(feature = "checkpoints")]
-        let checkpoints = seq.next_element_seed(CheckpointsDeserializer {
-            registry: self.registry,
-        })?;
-
-        Ok(Snapshot {
-            entities,
-            resources,
-            #[cfg(feature = "checkpoints")]
-            checkpoints,
-        })
-    }
-}
-
-struct EntityMapDeserializer<'a> {
+/// Handles deserialization for a collection of entities.
+pub struct EntityMapDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
+impl<'a> EntityMapDeserializer<'a> {
+    /// Creates a new [`EntityMapDeserializer`] from the given [`TypeRegistry`].
+    pub fn new(registry: &'a TypeRegistry) -> Self {
+        Self { registry }
+    }
+}
+
 impl<'de> DeserializeSeed<'de> for EntityMapDeserializer<'_> {
-    type Value = Vec<DynamicEntity>;
+    type Value = EntityMap;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -217,9 +186,9 @@ struct EntityMapVisitor<'a> {
 }
 
 impl<'de> Visitor<'de> for EntityMapVisitor<'_> {
-    type Value = Vec<DynamicEntity>;
+    type Value = EntityMap;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
         formatter.write_str("map of entities")
     }
 
@@ -236,10 +205,11 @@ impl<'de> Visitor<'de> for EntityMapVisitor<'_> {
             entities.push(entity);
         }
 
-        Ok(entities)
+        Ok(EntityMap(entities))
     }
 }
 
+/// Handle deserialization of an entity and its components.
 struct EntityDeserializer<'a> {
     entity: Entity,
     registry: &'a TypeRegistry,
@@ -250,9 +220,9 @@ impl<'de> DeserializeSeed<'de> for EntityDeserializer<'_> {
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
-        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_COMPONENTS], EntityVisitor {
+        deserializer.deserialize_struct(ENTITY_STRUCT, &[ENTITY_FIELD_COMPONENTS], EntityVisitor {
             entity: self.entity,
             registry: self.registry,
         })
@@ -267,11 +237,11 @@ struct EntityVisitor<'a> {
 impl<'de> Visitor<'de> for EntityVisitor<'_> {
     type Value = DynamicEntity;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
         formatter.write_str("entities")
     }
 
-    fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
@@ -279,7 +249,7 @@ impl<'de> Visitor<'de> for EntityVisitor<'_> {
             .next_element_seed(ReflectMapDeserializer {
                 registry: self.registry,
             })?
-            .ok_or_else(|| Error::missing_field(ENTITY_COMPONENTS))?;
+            .ok_or_else(|| Error::missing_field(ENTITY_FIELD_COMPONENTS))?;
 
         Ok(DynamicEntity {
             entity: self.entity,
@@ -291,12 +261,18 @@ impl<'de> Visitor<'de> for EntityVisitor<'_> {
     where
         A: MapAccess<'de>,
     {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "lowercase")]
+        enum EntityField {
+            Components,
+        }
+
         let mut components = None;
         while let Some(key) = map.next_key()? {
             match key {
                 EntityField::Components => {
                     if components.is_some() {
-                        return Err(Error::duplicate_field(ENTITY_COMPONENTS));
+                        return Err(Error::duplicate_field(ENTITY_FIELD_COMPONENTS));
                     }
 
                     components = Some(map.next_value_seed(ReflectMapDeserializer {
@@ -308,7 +284,7 @@ impl<'de> Visitor<'de> for EntityVisitor<'_> {
 
         let components = components
             .take()
-            .ok_or_else(|| Error::missing_field(ENTITY_COMPONENTS))?;
+            .ok_or_else(|| Error::missing_field(ENTITY_FIELD_COMPONENTS))?;
         Ok(DynamicEntity {
             entity: self.entity,
             components,
@@ -316,16 +292,26 @@ impl<'de> Visitor<'de> for EntityVisitor<'_> {
     }
 }
 
-struct ReflectMapDeserializer<'a> {
+/// Handles deserialization of a sequence of values with unique types.
+pub struct ReflectMapDeserializer<'a> {
     registry: &'a TypeRegistry,
 }
 
+impl<'a> ReflectMapDeserializer<'a> {
+    /// Creates a new [`ReflectMapDeserializer`] from the given [`TypeRegistry`].
+    ///
+    /// Automatically handles registered migrations.
+    pub fn new(registry: &'a TypeRegistry) -> Self {
+        Self { registry }
+    }
+}
+
 impl<'de> DeserializeSeed<'de> for ReflectMapDeserializer<'_> {
-    type Value = Vec<Box<dyn PartialReflect>>;
+    type Value = ReflectMap;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_map(ReflectMapVisitor {
             registry: self.registry,
@@ -334,48 +320,14 @@ impl<'de> DeserializeSeed<'de> for ReflectMapDeserializer<'_> {
 }
 
 struct ReflectMapVisitor<'a> {
-    pub registry: &'a TypeRegistry,
+    registry: &'a TypeRegistry,
 }
 
 impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
-    type Value = Vec<Box<dyn PartialReflect>>;
+    type Value = ReflectMap;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
         formatter.write_str("map of reflect types")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        let mut added = HashSet::new();
-        let mut entries = Vec::new();
-        while let Some(registration) =
-            map.next_key_seed(TypeRegistrationDeserializer::new(self.registry))?
-        {
-            if !added.insert(registration.type_id()) {
-                return Err(Error::custom(format_args!(
-                    "duplicate reflect type: `{}`",
-                    registration.type_info().type_path(),
-                )));
-            }
-
-            let value =
-                map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
-
-            // Attempt to convert using FromReflect.
-            let value = self
-                .registry
-                .get(registration.type_id())
-                .and_then(|tr| tr.data::<ReflectFromReflect>())
-                .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
-                .map(PartialReflect::into_partial_reflect)
-                .unwrap_or(value);
-
-            entries.push(value);
-        }
-
-        Ok(entries)
     }
 
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -387,162 +339,145 @@ impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
             dynamic_properties.push(entity);
         }
 
-        Ok(dynamic_properties)
-    }
-}
-
-#[cfg(feature = "checkpoints")]
-mod checkpoints {
-    use bevy::reflect::TypeRegistry;
-    use serde::{
-        Deserializer,
-        de::{
-            DeserializeSeed,
-            Error,
-            MapAccess,
-            SeqAccess,
-            Visitor,
-        },
-    };
-
-    use crate::reflect::{
-        Snapshot,
-        checkpoint::Checkpoints,
-        serde::{
-            CHECKPOINTS_ACTIVE,
-            CHECKPOINTS_SNAPSHOTS,
-            CHECKPOINTS_STRUCT,
-        },
-    };
-
-    struct CheckpointsVisitor<'a> {
-        registry: &'a TypeRegistry,
+        Ok(dynamic_properties.into())
     }
 
-    impl<'de> Visitor<'de> for CheckpointsVisitor<'_> {
-        type Value = Checkpoints;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("checkpoints struct")
-        }
-
-        fn visit_map<A>(self, mut map: A) -> std::result::Result<Self::Value, A::Error>
-        where
-            A: MapAccess<'de>,
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut entries = Vec::new();
+        while let Some(registration) =
+            map.next_key_seed(TypeRegistrationDeserializer::new(self.registry))?
         {
-            let mut snapshots = None;
-            let mut active = None;
+            let value = map.next_value_seed(TypedReflectDeserializer::new(
+                registration.input(),
+                self.registry,
+            ))?;
 
-            while let Some(key) = map.next_key()? {
-                match key {
-                    super::CheckpointsField::Checkpoints => {
-                        if snapshots.is_some() {
-                            return Err(Error::duplicate_field(CHECKPOINTS_SNAPSHOTS));
-                        }
-                        snapshots = Some(map.next_value_seed(SnapshotListDeserializer {
-                            registry: self.registry,
-                        })?);
-                    }
-                    super::CheckpointsField::Active => {
-                        if active.is_some() {
-                            return Err(Error::duplicate_field(CHECKPOINTS_ACTIVE));
-                        }
-                        active = Some(map.next_value()?);
-                    }
+            match registration {
+                TypeRegistrationVersioned::Unversioned(registration) => {
+                    // Attempt to convert using FromReflect.
+                    let value = registration
+                        .data::<ReflectFromReflect>()
+                        .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                        .map(PartialReflect::into_partial_reflect)
+                        .unwrap_or(value);
+
+                    entries.push(value);
+                }
+                TypeRegistrationVersioned::Versioned {
+                    version, output, ..
+                } => {
+                    // Attempt to convert using Migrate.
+                    let value = output
+                        .data::<ReflectMigrate>()
+                        .and_then(|m| m.migrate(&*value, version.to_string()))
+                        .map(PartialReflect::into_partial_reflect)
+                        .unwrap_or(value);
+
+                    entries.push(value);
                 }
             }
-
-            let snapshots = snapshots.ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
-            let active = active.ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
-
-            Ok(Checkpoints { snapshots, active })
         }
 
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: SeqAccess<'de>,
-        {
-            let snapshots = seq
-                .next_element_seed(SnapshotListDeserializer {
-                    registry: self.registry,
-                })?
-                .ok_or_else(|| Error::missing_field(CHECKPOINTS_SNAPSHOTS))?;
-
-            let active = seq
-                .next_element()?
-                .ok_or_else(|| Error::missing_field(CHECKPOINTS_ACTIVE))?;
-
-            Ok(Checkpoints { snapshots, active })
-        }
+        Ok(entries.into())
     }
+}
 
-    /// Handles checkpoints deserialization.
-    pub struct CheckpointsDeserializer<'a> {
-        /// Type registry in which the components and resources types used to deserialize the checkpoints are registered.
-        pub registry: &'a TypeRegistry,
+struct TypeRegistrationDeserializer<'a> {
+    registry: &'a TypeRegistry,
+}
+
+impl<'a> TypeRegistrationDeserializer<'a> {
+    pub fn new(registry: &'a TypeRegistry) -> Self {
+        Self { registry }
     }
+}
 
-    impl<'de> DeserializeSeed<'de> for CheckpointsDeserializer<'_> {
-        type Value = Checkpoints;
+enum TypeRegistrationVersioned<'a> {
+    Unversioned(&'a TypeRegistration),
+    Versioned {
+        version: semver::Version,
+        input: TypeRegistration,
+        output: &'a TypeRegistration,
+    },
+}
 
-        fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            deserializer.deserialize_struct(
-                CHECKPOINTS_STRUCT,
-                &[CHECKPOINTS_SNAPSHOTS, CHECKPOINTS_ACTIVE],
-                CheckpointsVisitor {
-                    registry: self.registry,
-                },
-            )
-        }
-    }
-
-    struct SnapshotListDeserializer<'a> {
-        registry: &'a TypeRegistry,
-    }
-
-    impl<'de> DeserializeSeed<'de> for SnapshotListDeserializer<'_> {
-        type Value = Vec<Snapshot>;
-
-        fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            deserializer.deserialize_seq(SnapshotListVisitor {
-                registry: self.registry,
-            })
-        }
-    }
-
-    struct SnapshotListVisitor<'a> {
-        registry: &'a TypeRegistry,
-    }
-
-    impl<'de> Visitor<'de> for SnapshotListVisitor<'_> {
-        type Value = Vec<Snapshot>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("sequence of snapshots")
-        }
-
-        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-        where
-            A: SeqAccess<'de>,
-        {
-            let mut result = Vec::new();
-
-            while let Some(next) = seq.next_element_seed(super::SnapshotDeserializer {
-                registry: self.registry,
-            })? {
-                result.push(next);
-            }
-
-            Ok(result)
+impl TypeRegistrationVersioned<'_> {
+    pub fn input(&self) -> &TypeRegistration {
+        match self {
+            TypeRegistrationVersioned::Unversioned(r) => r,
+            TypeRegistrationVersioned::Versioned { input, .. } => input,
         }
     }
 }
 
-#[cfg(feature = "checkpoints")]
-pub use checkpoints::*;
+impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
+    type Value = TypeRegistrationVersioned<'a>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct TypeRegistrationVisitor<'a>(&'a TypeRegistry);
+
+        impl<'a> Visitor<'_> for TypeRegistrationVisitor<'a> {
+            type Value = TypeRegistrationVersioned<'a>;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("string containing `type` entry for the reflected value")
+            }
+
+            fn visit_str<E>(self, type_path: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                if let Some((type_path, version)) = type_path.split_once(' ') {
+                    let version = semver::Version::from_str(version)
+                        .map_err(|_| Error::custom(format_args!("invalid version `{version}`")))?;
+
+                    let output = self
+                        .0
+                        .get_with_type_path(type_path)
+                        .or_else(|| {
+                            self.0
+                                .iter_with_data::<ReflectMigrate>()
+                                .find(|(_, m)| m.matches(type_path))
+                                .map(|(r, _)| r)
+                        })
+                        .ok_or_else(|| {
+                            Error::custom(format_args!("no registration found for `{type_path}`"))
+                        })?;
+
+                    let migrate = output.data::<ReflectMigrate>().ok_or_else(|| {
+                        Error::custom(format_args!(
+                            "`ReflectMigrate` not registered for `{type_path}`"
+                        ))
+                    })?;
+
+                    let input = migrate.registration(version.to_string()).ok_or_else(|| {
+                        Error::custom(format_args!(
+                            "no migration found for `{type_path}` -> `{}` with version `{version}`",
+                            output.type_info().type_path()
+                        ))
+                    })?;
+
+                    Ok(TypeRegistrationVersioned::Versioned {
+                        version,
+                        input,
+                        output,
+                    })
+                } else {
+                    let registration = self.0.get_with_type_path(type_path).ok_or_else(|| {
+                        Error::custom(format_args!("no registration found for `{type_path}`"))
+                    })?;
+
+                    Ok(TypeRegistrationVersioned::Unversioned(registration))
+                }
+            }
+        }
+
+        deserializer.deserialize_str(TypeRegistrationVisitor(self.registry))
+    }
+}

@@ -67,7 +67,7 @@ struct ExampleTransform {
 #[test]
 fn test_transforms() {
     fn serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> String {
-        let serializer = SnapshotSerializer { snapshot, registry };
+        let serializer = SnapshotSerializer::new(snapshot, registry);
 
         let mut buf = Vec::new();
         let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
@@ -86,9 +86,7 @@ fn test_transforms() {
 
     let output = serialize(&snapshot, &registry);
 
-    let deserializer = SnapshotDeserializer {
-        registry: &registry,
-    };
+    let deserializer = SnapshotDeserializer::new(&registry);
 
     let mut de = serde_json::Deserializer::from_str(&output);
 
@@ -279,7 +277,7 @@ fn transform_json() {
 
     let mut app = App::new();
 
-    app.register_type::<Transform>();
+    app.add_plugins(SavePlugins).register_type::<Transform>();
 
     app.world_mut().spawn(value);
 
@@ -298,9 +296,7 @@ fn transform_json() {
     let snapshot = Snapshot::builder(app.world())
         .extract_all_entities()
         .build();
-
     let ser = snapshot.serializer(&registry);
-
     let output = serde_json::to_string_pretty(&ser).unwrap();
 
     assert_eq!(TRANSFORM_SNAPSHOT_JSON, format!("\n{output}"));

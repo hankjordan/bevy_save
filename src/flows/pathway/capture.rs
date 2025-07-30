@@ -177,10 +177,7 @@ mod reflect {
             Self: 'a;
 
         fn value<'a>(&'a self, world: &'a World) -> Self::Value<'a> {
-            SnapshotSerializerArc {
-                snapshot: self,
-                registry: world.resource::<AppTypeRegistry>().clone().0,
-            }
+            SnapshotSerializerArc::new(self, world.resource::<AppTypeRegistry>().clone().0)
         }
     }
 
@@ -188,9 +185,7 @@ mod reflect {
         type Seed<'a> = SnapshotDeserializerArc;
 
         fn seed(world: &World) -> Self::Seed<'_> {
-            SnapshotDeserializerArc {
-                registry: world.resource::<AppTypeRegistry>().clone().0,
-            }
+            SnapshotDeserializerArc::new(world.resource::<AppTypeRegistry>().clone().0)
         }
     }
 }

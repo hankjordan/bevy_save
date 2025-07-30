@@ -1,10 +1,14 @@
-use bevy::{
-    reflect::{
-        PartialReflect,
-        ReflectFromReflect,
-        TypeRegistry,
-    },
-    scene::DynamicEntity,
+use bevy::reflect::{
+    PartialReflect,
+    ReflectFromReflect,
+    TypeRegistry,
+};
+
+use crate::reflect::{
+    BoxedPartialReflect,
+    DynamicEntity,
+    EntityMap,
+    ReflectMap,
 };
 
 /// Attempts to clone a [`PartialReflect`] value using various methods.
@@ -72,9 +76,27 @@ impl CloneReflect for Box<dyn PartialReflect> {
     }
 }
 
+impl CloneReflect for BoxedPartialReflect {
+    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
+        Self(self.0.clone_reflect(registry))
+    }
+}
+
+impl CloneReflect for EntityMap {
+    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
+        Self(self.0.clone_reflect(registry))
+    }
+}
+
+impl CloneReflect for ReflectMap {
+    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
+        Self(self.0.clone_reflect(registry))
+    }
+}
+
 impl CloneReflect for DynamicEntity {
     fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        DynamicEntity {
+        Self {
             entity: self.entity,
             components: self.components.clone_reflect(registry),
         }

@@ -4,6 +4,7 @@
 #![cfg_attr(any(docsrs, docsrs_dep), feature(doc_auto_cfg, rustdoc_internals))]
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
+#![warn(clippy::undocumented_unsafe_blocks)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::module_inception)]
 #![allow(clippy::must_use_candidate)]
@@ -20,6 +21,13 @@ pub mod format;
 pub mod middleware;
 pub mod plugins;
 mod utils;
+
+/// `bevy_save` crate version
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(feature = "reflect")]
+/// `bevy_save` snapshot version
+pub const SNAPSHOT_VERSION: reflect::SnapshotVersion = reflect::SnapshotVersion::V1_0;
 
 #[cfg(feature = "reflect")]
 pub mod reflect;
@@ -53,6 +61,11 @@ pub mod prelude {
     pub use crate::reflect::{
         CloneReflect,
         Pipeline,
+        migration::{
+            Migrate,
+            Migrator,
+            ReflectMigrate,
+        },
         prefab::{
             CommandsPrefabExt,
             Prefab,
@@ -108,7 +121,7 @@ pub mod prelude {
         plugins::{
             SavePlugin,
             SavePlugins,
-            SaveablesPlugin,
+            SaveReflectPlugin,
         },
     };
 }
