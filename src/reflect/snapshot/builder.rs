@@ -20,7 +20,7 @@ use crate::{
     prelude::*,
 };
 
-/// A snapshot builder that can extract entities, resources, and rollback [`Checkpoints`] from a [`World`].
+/// A snapshot builder that can extract entities and resources from a [`World`].
 pub struct Builder {
     entities: BTreeMap<Entity, DynamicEntity>,
     resources: BTreeMap<ComponentId, Box<dyn PartialReflect>>,
@@ -79,7 +79,7 @@ impl Builder {
     }
 }
 
-/// A snapshot builder that can extract entities, resources, and rollback [`Checkpoints`] from a [`World`].
+/// A snapshot builder that can extract entities and resources from a [`World`].
 pub struct BuilderRef<'a> {
     world: &'a World,
     type_registry: Option<&'a TypeRegistry>,

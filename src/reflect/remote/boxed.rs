@@ -18,6 +18,7 @@ use bevy::reflect::{
 /// Equivalent to [`Box<dyn PartialReflect>`], but implements [`Reflect`].
 #[repr(transparent)]
 #[derive(Debug, TypePath)]
+#[type_path = "bevy_save"]
 pub struct BoxedPartialReflect(pub Box<dyn PartialReflect>);
 
 impl From<Box<dyn PartialReflect>> for BoxedPartialReflect {

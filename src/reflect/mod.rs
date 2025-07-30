@@ -1,7 +1,7 @@
 //! Reflection-based snapshots
 
-pub(crate) mod backcompat;
 mod clone;
+pub mod migration;
 pub mod pipeline;
 pub mod prefab;
 pub mod remote;
@@ -11,11 +11,17 @@ pub mod snapshot;
 #[cfg(feature = "checkpoints")]
 pub mod checkpoint;
 
+#[doc(inline)]
 pub use self::{
-    backcompat::Version,
     clone::{
         CloneReflect,
         clone_reflect_value,
+    },
+    migration::{
+        Migrate,
+        Migrator,
+        ReflectMigrate,
+        SnapshotVersion,
     },
     pipeline::Pipeline,
     prefab::{

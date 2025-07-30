@@ -46,11 +46,11 @@ pub struct SaveCheckpointsPlugin;
 impl Plugin for SaveCheckpointsPlugin {
     fn build(&self, app: &mut App) {
         use crate::reflect::{
-            backcompat::v0_16::CheckpointsV0_16,
             checkpoint::{
                 CheckpointRegistry,
                 Checkpoints,
             },
+            migration::backcompat::v0_16::CheckpointsV0_16,
         };
 
         app.register_type::<Checkpoints>()
@@ -67,7 +67,7 @@ pub struct SaveReflectPlugin;
 #[cfg(feature = "reflect")]
 impl Plugin for SaveReflectPlugin {
     fn build(&self, app: &mut App) {
-        use crate::reflect::backcompat::v0_16::SnapshotV0_16;
+        use crate::reflect::migration::backcompat::v0_16::SnapshotV0_16;
 
         app.register_type::<Snapshot>()
             .register_type::<SnapshotV0_16>();

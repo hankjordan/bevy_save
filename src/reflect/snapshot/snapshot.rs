@@ -11,6 +11,7 @@ use crate::{
     reflect::{
         EntityMap,
         ReflectMap,
+        SnapshotDeserializer,
         SnapshotSerializer,
     },
 };
@@ -163,6 +164,11 @@ impl Snapshot {
     /// Create a [`SnapshotSerializer`] from the [`Snapshot`] and the [`TypeRegistry`].
     pub fn serializer<'a>(&'a self, registry: &'a TypeRegistry) -> SnapshotSerializer<'a> {
         SnapshotSerializer::new(self, registry)
+    }
+
+    /// Create a [`SnapshotDeserializer`] from the [`TypeRegistry`].
+    pub fn deserializer(registry: &TypeRegistry) -> SnapshotDeserializer<'_> {
+        SnapshotDeserializer::new(registry)
     }
 }
 

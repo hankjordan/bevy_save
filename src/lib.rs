@@ -22,6 +22,13 @@ pub mod middleware;
 pub mod plugins;
 mod utils;
 
+/// `bevy_save` crate version
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(feature = "reflect")]
+/// `bevy_save` snapshot version
+pub const SNAPSHOT_VERSION: reflect::SnapshotVersion = reflect::SnapshotVersion::V1_0;
+
 #[cfg(feature = "reflect")]
 pub mod reflect;
 
@@ -54,6 +61,11 @@ pub mod prelude {
     pub use crate::reflect::{
         CloneReflect,
         Pipeline,
+        migration::{
+            Migrate,
+            Migrator,
+            ReflectMigrate,
+        },
         prefab::{
             CommandsPrefabExt,
             Prefab,

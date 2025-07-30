@@ -11,12 +11,6 @@ use bevy::{
             SerializeWithRegistry,
         },
     },
-    scene::serde::{
-        EntitiesSerializer,
-        SceneEntitiesDeserializer,
-        SceneMapDeserializer,
-        SceneMapSerializer,
-    },
 };
 use serde::{
     Serialize,
@@ -26,11 +20,18 @@ use serde::{
 use crate::reflect::{
     BoxedPartialReflect,
     DynamicEntity,
+    serde::{
+        EntityMapDeserializer,
+        EntityMapSerializer,
+        ReflectMapDeserializer,
+        ReflectMapSerializer,
+    },
 };
 
 /// Serializable wrapper type for `Vec<DynamicEntity>`
 #[derive(Reflect, Debug)]
 #[reflect(SerializeWithRegistry, DeserializeWithRegistry)]
+#[type_path = "bevy_save"]
 #[repr(transparent)]
 pub struct EntityMap(pub Vec<DynamicEntity>);
 
@@ -39,12 +40,7 @@ impl SerializeWithRegistry for EntityMap {
     where
         S: serde::Serializer,
     {
-        EntitiesSerializer {
-            // SAFETY: DynamicEntity and bevy::scene::DynamicEntity are equivalent
-            entities: unsafe { &*(std::ptr::from_ref(self.0.as_slice()) as *const _) },
-            registry,
-        }
-        .serialize(serializer)
+        EntityMapSerializer::new(self, registry).serialize(serializer)
     }
 }
 
@@ -53,18 +49,18 @@ impl<'de> DeserializeWithRegistry<'de> for EntityMap {
     where
         D: serde::Deserializer<'de>,
     {
-        SceneEntitiesDeserializer {
-            type_registry: registry,
-        }
-        .deserialize(deserializer)
-        .map(|m| {
-            EntityMap(
-                // SAFETY: DynamicEntity and bevy::scene::DynamicEntity are equivalent
-                unsafe {
-                    std::mem::transmute::<Vec<bevy::scene::DynamicEntity>, Vec<DynamicEntity>>(m)
-                },
-            )
-        })
+        EntityMapDeserializer::new(registry).deserialize(deserializer)
+    }
+}
+
+impl From<Vec<bevy::scene::DynamicEntity>> for EntityMap {
+    fn from(value: Vec<bevy::scene::DynamicEntity>) -> Self {
+        EntityMap(
+            // SAFETY: DynamicEntity and bevy::scene::DynamicEntity are equivalent
+            unsafe {
+                std::mem::transmute::<Vec<bevy::scene::DynamicEntity>, Vec<DynamicEntity>>(value)
+            },
+        )
     }
 }
 
@@ -83,6 +79,7 @@ impl FromIterator<DynamicEntity> for EntityMap {
 /// Serializable wrapper type for `Vec<BoxedPartialReflect>`
 #[derive(Reflect, Debug)]
 #[reflect(SerializeWithRegistry, DeserializeWithRegistry)]
+#[type_path = "bevy_save"]
 #[repr(transparent)]
 pub struct ReflectMap(pub Vec<BoxedPartialReflect>);
 
@@ -91,12 +88,7 @@ impl SerializeWithRegistry for ReflectMap {
     where
         S: serde::Serializer,
     {
-        SceneMapSerializer {
-            // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
-            entries: unsafe { &*(std::ptr::from_ref(self.0.as_slice()) as *const _) },
-            registry,
-        }
-        .serialize(serializer)
+        ReflectMapSerializer::new(self, registry).serialize(serializer)
     }
 }
 
@@ -105,9 +97,7 @@ impl<'de> DeserializeWithRegistry<'de> for ReflectMap {
     where
         D: serde::Deserializer<'de>,
     {
-        SceneMapDeserializer { registry }
-            .deserialize(deserializer)
-            .map(|m| m.into())
+        ReflectMapDeserializer::new(registry).deserialize(deserializer)
     }
 }
 

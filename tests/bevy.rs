@@ -67,7 +67,7 @@ struct ExampleTransform {
 #[test]
 fn test_transforms() {
     fn serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> String {
-        let serializer = SnapshotSerializer { snapshot, registry };
+        let serializer = SnapshotSerializer::new(snapshot, registry);
 
         let mut buf = Vec::new();
         let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");

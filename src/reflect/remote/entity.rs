@@ -7,13 +7,14 @@ use crate::reflect::ReflectMap;
 
 /// A reflection-powered serializable representation of an entity and its components.
 #[derive(Reflect, Debug)]
+#[type_path = "bevy_save"]
 pub struct DynamicEntity {
     /// The identifier of the entity, unique within a scene (and the world it may have been generated from).
     ///
     /// Components that reference this entity must consistently use this identifier.
     pub entity: Entity,
     /// A vector of boxed components that belong to the given entity and
-    /// implement the [`PartialReflect`] trait.
+    /// implement the [`PartialReflect`](bevy::reflect::PartialReflect) trait.
     pub components: ReflectMap,
 }
 

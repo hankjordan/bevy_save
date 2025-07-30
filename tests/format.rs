@@ -7,7 +7,7 @@ use bevy_save::{
     reflect::{
         SnapshotDeserializer,
         SnapshotSerializer,
-        Version,
+        SnapshotVersion,
         checkpoint::Checkpoints,
     },
 };
@@ -385,7 +385,7 @@ const JSON_CHECKPOINTS: &str = r#"{
 }"#;
 
 fn json_serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> String {
-    let serializer = SnapshotSerializer { snapshot, registry };
+    let serializer = SnapshotSerializer::new(snapshot, registry);
 
     let mut buf = Vec::new();
     let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
@@ -451,7 +451,7 @@ fn test_format_json_checkpoints_backcompat() {
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let deserializer = SnapshotDeserializer::new(&registry).version(Version::V0_16);
+    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V0_16);
 
     let mut de = serde_json::Deserializer::from_str(JSON_CHECKPOINTS_V0_16);
     let value = deserializer.deserialize(&mut de).unwrap();
@@ -528,7 +528,7 @@ const MP_CHECKPOINTS_V0_20: &[u8] = &[
 ];
 
 fn mp_serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> Vec<u8> {
-    let serializer = SnapshotSerializer { snapshot, registry };
+    let serializer = SnapshotSerializer::new(snapshot, registry);
 
     let mut buf = Vec::new();
     let mut ser = rmp_serde::Serializer::new(&mut buf);
@@ -590,7 +590,7 @@ fn test_format_mp_checkpoints_backcompat() {
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let deserializer = SnapshotDeserializer::new(&registry).version(Version::V0_16);
+    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V0_16);
 
     let mut de = rmp_serde::Deserializer::new(MP_CHECKPOINTS_V0_16);
     let value = deserializer.deserialize(&mut de).unwrap();
@@ -637,7 +637,7 @@ const POSTCARD_CHECKPOINTS: &[u8] = &[
 ];
 
 fn postcard_serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> Vec<u8> {
-    postcard::to_stdvec(&SnapshotSerializer { snapshot, registry }).unwrap()
+    postcard::to_stdvec(&SnapshotSerializer::new(snapshot, registry)).unwrap()
 }
 
 #[test]

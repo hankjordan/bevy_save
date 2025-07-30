@@ -8,7 +8,7 @@ A framework for saving and loading application state in Bevy.
 
 ## Features
 
-### NEW: Flows
+### Flows
 
 When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
 
@@ -50,7 +50,7 @@ impl Plugin for PluginA {
 }
 ```
 
-#### NEW: Pathway
+#### Pathway
 
 [`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
 
@@ -119,6 +119,75 @@ Or via the [`World`] extension method [`WorldPathwayExt`](https://docs.rs/bevy_s
 
 - [`World::capture()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.capture) captures a snapshot of the current application state, including resources.
 - [`World::apply()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.apply) applies a snapshot to the [`World`].
+
+#### NEW: Versioning and Migrations
+
+Applications can change over the history of development. Users expect that saves created in an older version will continue to work in newer versions.
+
+`bevy_save` provides support for reflection-based migrations with the [`Migrate`] trait:
+
+```rust,ignore
+// `#[reflect(Migrate)]` registers `ReflectMigrate` with the `TypeRegistry`
+// This allows `Snapshot`s to save the type version and apply migrations automatically
+#[derive(Reflect, Component, Debug, PartialEq)]
+#[type_path = "migrate"]
+#[type_name = "Position"]
+#[reflect(Component, Migrate)]
+struct Position {
+    xyz: (f32, f32, f32),
+}
+
+// The `Migrate` trait allows you to define a `Migrator`
+// which will step the upgrade through each version
+impl Migrate for Position {
+    fn migrator() -> Migrator<Self> {
+        #[derive(Reflect)]
+        #[type_path = "migrate"]
+        #[type_name = "Pos"]
+        struct PosV0_1 {
+            x: f32,
+            y: f32,
+        }
+
+        Migrator::new::<PosV0_1>("0.1.0")
+            .version("0.2.0", |v1| {
+                // Changing type paths and type names is supported
+                #[derive(Reflect)]
+                #[type_path = "migrate"]
+                #[type_name = "Position"]
+                struct PosV0_2 {
+                    x: f32,
+                    y: f32,
+                }
+
+                Some(PosV0_2 { x: v1.x, y: v1.y })
+            })
+            .version("0.3.0", |v2| {
+                #[derive(Reflect)]
+                #[type_path = "migrate"]
+                #[type_name = "Position"]
+                struct PosV0_3 {
+                    x: f32,
+                    y: f32,
+                    z: f32,
+                }
+
+                // Fields can be re-mapped from version to version, added, or removed
+                Some(PosV0_3 {
+                    x: v2.x,
+                    y: v2.y,
+                    z: 0.0,
+                })
+            })
+            // The final version will represent the current layout
+            .version("0.4.0", |v2| {
+                Some(Self {
+                    xyz: (v2.x, v2.y, v2.z),
+                })
+            })
+    }
+}
+```
 
 #### Rollbacks and checkpoints
 
@@ -417,18 +486,17 @@ Snapshot::builder(world)
     .build()
 ```
 
-## Stability warning
+## Stability
 
-`bevy_save` does not _yet_ provide any stability guarantees for save file format between crate versions.
+`bevy_save` attempts to provide stability guarantees for [`Snapshot`] serialization and deserialization between crate versions, enforced with unit tests.
+
+If a breaking change is introduced, it will be supported via the `version` method on [`SnapshotDeserializer`].
 
 `bevy_save` relies on serialization to create save files and as such is exposed to internal implementation details for types.
-Expect Bevy or other crate updates to break your save file format.
-It should be possible to mitigate this by overriding [`ReflectDeserialize`] for any offending types.
+As a result, Bevy or other crate updates may break your save file format.
+It should be possible to mitigate this by defining [`ReflectMigrate`] for any offending types.
 
 Changing what entities have what components or how you use your entities or resources in your logic can also result in broken saves.
-While `bevy_save` does not _yet_ have explicit support for save file migration, you can use [`ApplierRef::hook`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ApplierRef.html#method.hook) to account for changes while applying a snapshot.
-
-If your application has specific migration requirements, please [open an issue](https://github.com/hankjordan/bevy_save/issues/new).
 
 ### Entity
 
@@ -440,40 +508,46 @@ If your application has specific migration requirements, please [open an issue](
 
 `bevy_save` serializes and deserializes entities directly. If you need to maintain compatibility across Bevy versions, consider adding a unique identifier [`Component`] to your tracked entities.
 
-### Stabilization
-
-`bevy_save` will become a candidate for stabilization once [all stabilization tasks](https://github.com/hankjordan/bevy_save/milestone/2) have been completed.
-
 ## Compatibility
 
 ### Bevy
 
-| Bevy Version              | Crate Version                             |
-| ------------------------- | ----------------------------------------- |
-| `0.16`                    | `0.18`, `0.19`, `0.20`<sup> [3](#3)</sup> |
-| `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17`         |
-| `0.14`<sup> [1](#1)</sup> | `0.15`                                    |
-| `0.13`                    | `0.14`                                    |
-| `0.12`                    | `0.10`, `0.11`, `0.12`, `0.13`            |
-| `0.11`                    | `0.9`                                     |
-| `0.10`                    | `0.4`, `0.5`, `0.6`, `0.7`, `0.8`         |
-| `0.9`                     | `0.1`, `0.2`, `0.3`                       |
+| Bevy Version              | Crate Version                            |
+| ------------------------- | ---------------------------------------- |
+| `0.16`                    | `0.18`, `0.19`, `1.0`<sup> [3](#3)</sup> |
+| `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17`        |
+| `0.14`<sup> [1](#1)</sup> | `0.15`                                   |
+| `0.13`                    | `0.14`                                   |
+| `0.12`                    | `0.10`, `0.11`, `0.12`, `0.13`           |
+| `0.11`                    | `0.9`                                    |
+| `0.10`                    | `0.4`, `0.5`, `0.6`, `0.7`, `0.8`        |
+| `0.9`                     | `0.1`, `0.2`, `0.3`                      |
 
 #### Save format changes (since `0.15`)
 
 1. <a id="1"></a> `bevy` changed [`Entity`]'s on-disk representation
 2. <a id="2"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
-3. <a id="3"></a> `bevy_save` removed the `checkpoints` field from [`Snapshot`], instead saving [`Checkpoints`] as a resource via [`Reflect`]. Use the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version.
+3. <a id="3"></a> `bevy_save` removed the `checkpoints` field from [`Snapshot`], instead saving [`Checkpoints`] as a resource via [`Reflect`]. Use the `version` method on [`SnapshotDeserializer`] to load a snapshot created in the previous version. Types implementing [`Migrate`] will deserialize from snapshots created in the previous version automatically.
 
 ### Migration
 
-#### `0.18` - `0.19`
+#### `0.18` -> `0.19`
 
 This version introduced [`Pathway`], which is effectively a superset of [`Pipeline`].
 
 - In `World::capture`, `World:apply`, `World::save`, `World::load` methods and similar, add a `&` before your existing pipeline
 - Previously provided `Commands` extension traits and associated commands have been removed (since [`Pathway`] operates on references), you'll need to write your own or use events instead
 - If you're using `default-features = false`, you'll need to add the `reflect` and `checkpoints` features in order to get parity with the last version
+- `SnapshotBuilder` and `SnapshotApplier` have been renamed to [`BuilderRef`] and [`ApplierRef`], respectively.
+
+#### `0.19` -> `1.0`
+
+This version introduced versioning and migrations.
+
+- `SnapshotVersion::V0_16` can be used with the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version if the snapshot had checkpoints.
+- Snapshots created in a previous version without checkpoints should load as expected.
+- The fields for all serializers and deserializers have been made private. Use the `new` methods to construct them.
+- Self-describing formats such as `postcard` should now work as expected.
 
 ### Platforms
 
@@ -526,6 +600,10 @@ This version introduced [`Pathway`], which is effectively a superset of [`Pipeli
 [`Prefab`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Prefab.html
 [`Flow`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Flow.html
 [`Pathway`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Pathway.html
+[`SnapshotDeserializer`]: https://docs.rs/bevy_save/latest/bevy_save/reflect/struct.SnapshotDeserializer.html
+[`Migrate`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.Migrate.html
+[`Migrator`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Migrator.html
+[`ReflectMigrate`]: https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ReflectMigrate.html
 [`WORKSPACE`]: https://docs.rs/bevy_save/latest/bevy_save/dir/constant.WORKSPACE.html
 [`App`]: https://docs.rs/bevy/latest/bevy/prelude/struct.App.html
 [`Component`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Component.html
