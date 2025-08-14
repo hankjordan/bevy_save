@@ -50,11 +50,11 @@ impl Plugin for SaveCheckpointsPlugin {
                 CheckpointRegistry,
                 Checkpoints,
             },
-            migration::backcompat::v0_16::CheckpointsV0_16,
+            migration::backcompat::v3::CheckpointsV3,
         };
 
         app.register_type::<Checkpoints>()
-            .register_type::<CheckpointsV0_16>()
+            .register_type::<CheckpointsV3>()
             .init_resource::<CheckpointRegistry>()
             .init_resource::<Checkpoints>();
     }
@@ -67,10 +67,10 @@ pub struct SaveReflectPlugin;
 #[cfg(feature = "reflect")]
 impl Plugin for SaveReflectPlugin {
     fn build(&self, app: &mut App) {
-        use crate::reflect::migration::backcompat::v0_16::SnapshotV0_16;
+        use crate::reflect::migration::backcompat::v3::SnapshotV3;
 
         app.register_type::<Snapshot>()
-            .register_type::<SnapshotV0_16>();
+            .register_type::<SnapshotV3>();
 
         #[cfg(feature = "bevy_render")]
         app.register_type::<Color>();

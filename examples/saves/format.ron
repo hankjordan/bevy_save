@@ -18,7 +18,7 @@
                 ),
                 "format::ExampleComponent": (
                     float: 64.0,
-                    string: "Example",
+                    string: "Hello, world!",
                 ),
             },
         ),

@@ -27,7 +27,8 @@ use crate::{
     },
 };
 
-/// Owned serializer that handles serialization of a snapshot as a struct containing its entities and resources.
+/// Owned serializer that handles serialization of a snapshot as a struct
+/// containing its entities and resources.
 pub struct SnapshotSerializerArc<'a> {
     snapshot: &'a Snapshot,
     registry: TypeRegistryArc,
@@ -146,7 +147,7 @@ impl Serialize for ReflectMapSerializer<'_> {
         S: Serializer,
     {
         let mut state = serializer.serialize_map(Some(self.entries.len()))?;
-        let sorted_entries = {
+        let sorted = {
             let mut entries = self
                 .entries
                 .iter()
@@ -159,7 +160,7 @@ impl Serialize for ReflectMapSerializer<'_> {
                             .get(info.type_id())
                             .and_then(|r| r.data::<ReflectMigrate>())
                             .and_then(|m| m.version()),
-                        entry.as_partial_reflect(),
+                        entry,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -167,14 +168,14 @@ impl Serialize for ReflectMapSerializer<'_> {
             entries
         };
 
-        for (type_path, version, partial_reflect) in sorted_entries {
+        for (type_path, version, value) in sorted {
             state.serialize_entry(
                 &if let Some(version) = version {
                     format!("{type_path} {version}")
                 } else {
                     type_path.to_string()
                 },
-                &TypedReflectSerializer::new(partial_reflect, self.registry),
+                &TypedReflectSerializer::new(value, self.registry),
             )?;
         }
         state.end()

@@ -130,7 +130,8 @@ impl<In> Migrator<In> {
     }
 }
 
-/// [`Migrate`] allows reflect-enabled types to define a [`Migrator`] which can transform older versions of the type into the current version.
+/// [`Migrate`] allows reflect-enabled types to define a [`Migrator`] which can
+/// transform older versions of the type into the current version.
 pub trait Migrate: TypePath + Sized {
     /// Returns the [`Migrator`] for the type.
     fn migrator() -> Migrator<Self>;
@@ -138,7 +139,8 @@ pub trait Migrate: TypePath + Sized {
 
 /// Type data that represents the [`Migrate`] trait and allows it to be used dynamically.
 ///
-/// [`Migrate`] allows reflect-enabled types to define a [`Migrator`] which can transform older versions of the type into the current version.
+/// [`Migrate`] allows reflect-enabled types to define a [`Migrator`] which can
+/// transform older versions of the type into the current version.
 #[derive(Clone)]
 pub struct ReflectMigrate {
     migrate: fn(&dyn PartialReflect, Version) -> Option<Box<dyn Reflect>>,

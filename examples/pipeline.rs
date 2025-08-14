@@ -62,6 +62,7 @@ fn setup_world(mut commands: Commands) {
     };
 
     commands.insert_resource(map);
+    commands.spawn(Camera2d);
 }
 
 fn display_world(keys: Res<ButtonInput<KeyCode>>, map: Res<TileMap>, tiles: Query<&Tile>) {
@@ -183,20 +184,14 @@ fn main() {
                 ..default()
             }),
             // Inspector
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
+            EguiPlugin::default(),
             WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,
         ))
         // Register our types
         .register_type::<TileMap>()
-        .register_type::<TilePosition>()
         .register_type::<Tile>()
-        // Bevy's reflection requires we register each generic instance of a type individually
-        // Note that we only need to register it in the AppTypeRegistry for it to be included in saves
-        .register_type::<HashMap<TilePosition, Entity>>()
         // Resources
         .init_resource::<TileMap>()
         // Systems

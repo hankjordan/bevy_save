@@ -120,7 +120,7 @@ fn test_migrate() {
         .expect("Invalid type registration");
 
     let out = migrator
-        .migrate(Pos { x: 0.0, y: 1.0 }.as_partial_reflect(), "0.1.0")
+        .migrate(&Pos { x: 0.0, y: 1.0 }, "0.1.0")
         .and_then(|r| r.take().ok());
 
     println!("{:?}", out);
@@ -133,12 +133,11 @@ fn test_migrate() {
 
     let out = migrator
         .migrate(
-            Pos2 {
+            &Pos2 {
                 x: 2.0,
                 y: 3.0,
                 z: 4.0,
-            }
-            .as_partial_reflect(),
+            },
             "0.3.0",
         )
         .and_then(|r| r.take().ok());
@@ -315,7 +314,7 @@ fn test_migrate_deserialize() {
 
     let out = out
         .iter()
-        .map(|r| Position::from_reflect(r.as_partial_reflect()).expect("Invalid reflect"))
+        .map(|r| Position::from_reflect(r).expect("Invalid reflect"))
         .collect::<Vec<_>>();
 
     println!("{:?}", out);

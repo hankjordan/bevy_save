@@ -159,7 +159,7 @@ const JSON_SNAPSHOT: &str = r#"{
     "resources": {}
 }"#;
 
-const JSON_CHECKPOINTS_V0_16: &str = r#"{
+const JSON_CHECKPOINTS_V3: &str = r#"{
     "entities": {
         "4294967296": {
             "components": {}
@@ -271,7 +271,7 @@ const JSON_CHECKPOINTS_V0_16: &str = r#"{
     }
 }"#;
 
-const JSON_CHECKPOINTS: &str = r#"{
+const JSON_CHECKPOINTS_V4: &str = r#"{
     "entities": {
         "4294967296": {
             "components": {}
@@ -434,7 +434,7 @@ fn test_format_json_checkpoints() {
     let snapshot = extract(world, true);
     let output = json_serialize(&snapshot, &registry);
 
-    assert_eq!(output, JSON_CHECKPOINTS);
+    assert_eq!(output, JSON_CHECKPOINTS_V4);
 
     let deserializer = SnapshotDeserializer::new(&registry);
 
@@ -442,7 +442,7 @@ fn test_format_json_checkpoints() {
     let value = deserializer.deserialize(&mut de).unwrap();
     let output = json_serialize(&value, &registry);
 
-    assert_eq!(output, JSON_CHECKPOINTS);
+    assert_eq!(output, JSON_CHECKPOINTS_V4);
 }
 
 #[test]
@@ -451,13 +451,13 @@ fn test_format_json_checkpoints_backcompat() {
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V0_16);
+    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V3);
 
-    let mut de = serde_json::Deserializer::from_str(JSON_CHECKPOINTS_V0_16);
+    let mut de = serde_json::Deserializer::from_str(JSON_CHECKPOINTS_V3);
     let value = deserializer.deserialize(&mut de).unwrap();
     let output = json_serialize(&value, &registry);
 
-    assert_eq!(output, JSON_CHECKPOINTS);
+    assert_eq!(output, JSON_CHECKPOINTS_V4);
 }
 
 const MP_SNAPSHOT: &[u8] = &[
@@ -474,7 +474,7 @@ const MP_SNAPSHOT: &[u8] = &[
     176, 102, 111, 114, 109, 97, 116, 58, 58, 78, 117, 108, 108, 97, 98, 108, 101, 145, 192, 128,
 ];
 
-const MP_CHECKPOINTS_V0_16: &[u8] = &[
+const MP_CHECKPOINTS_V3: &[u8] = &[
     147, 133, 207, 0, 0, 0, 1, 0, 0, 0, 0, 145, 128, 207, 0, 0, 0, 1, 0, 0, 0, 1, 145, 131, 175,
     102, 111, 114, 109, 97, 116, 58, 58, 67, 111, 108, 108, 101, 99, 116, 145, 147, 3, 4, 5, 176,
     102, 111, 114, 109, 97, 116, 58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 0, 0, 0,
@@ -500,7 +500,7 @@ const MP_CHECKPOINTS_V0_16: &[u8] = &[
     192, 128, 0,
 ];
 
-const MP_CHECKPOINTS_V0_20: &[u8] = &[
+const MP_CHECKPOINTS_V4: &[u8] = &[
     146, 133, 207, 0, 0, 0, 1, 0, 0, 0, 0, 145, 128, 207, 0, 0, 0, 1, 0, 0, 0, 1, 145, 131, 175,
     102, 111, 114, 109, 97, 116, 58, 58, 67, 111, 108, 108, 101, 99, 116, 145, 147, 3, 4, 5, 176,
     102, 111, 114, 109, 97, 116, 58, 58, 80, 111, 115, 105, 116, 105, 111, 110, 147, 202, 0, 0, 0,
@@ -573,7 +573,7 @@ fn test_format_mp_checkpoints() {
 
     let output = mp_serialize(&snapshot, &registry);
 
-    assert_eq!(output, MP_CHECKPOINTS_V0_20);
+    assert_eq!(output, MP_CHECKPOINTS_V4);
 
     let deserializer = SnapshotDeserializer::new(&registry);
 
@@ -581,7 +581,7 @@ fn test_format_mp_checkpoints() {
     let value = deserializer.deserialize(&mut de).unwrap();
     let output = mp_serialize(&value, &registry);
 
-    assert_eq!(output, MP_CHECKPOINTS_V0_20);
+    assert_eq!(output, MP_CHECKPOINTS_V4);
 }
 
 #[test]
@@ -590,13 +590,13 @@ fn test_format_mp_checkpoints_backcompat() {
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>().read();
-    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V0_16);
+    let deserializer = SnapshotDeserializer::new(&registry).version(SnapshotVersion::V3);
 
-    let mut de = rmp_serde::Deserializer::new(MP_CHECKPOINTS_V0_16);
+    let mut de = rmp_serde::Deserializer::new(MP_CHECKPOINTS_V3);
     let value = deserializer.deserialize(&mut de).unwrap();
     let output = mp_serialize(&value, &registry);
 
-    assert_eq!(output, MP_CHECKPOINTS_V0_20);
+    assert_eq!(output, MP_CHECKPOINTS_V4);
 }
 
 const POSTCARD_SNAPSHOT: &[u8] = &[

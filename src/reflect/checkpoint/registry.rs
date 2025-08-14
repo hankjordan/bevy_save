@@ -5,20 +5,8 @@ use std::any::{
 
 use bevy::prelude::*;
 
-fn take<T, F>(mut_ref: &mut T, closure: F)
-where
-    F: FnOnce(T) -> T,
-{
-    use std::ptr;
-
-    // SAFETY: We have an exclusive reference to the value
-    unsafe {
-        let old_t = ptr::read(mut_ref);
-        ptr::write(mut_ref, closure(old_t));
-    }
-}
-
-/// The registry of types that should be included in [`Checkpoints`](crate::reflect::checkpoint::Checkpoints).
+/// The registry of types that should be included in
+/// [`Checkpoints`](crate::reflect::checkpoint::Checkpoints).
 ///
 /// Only types that are registered in here and [`AppTypeRegistry`] are included in checkpoints.
 #[derive(Resource, Default)]
@@ -37,16 +25,28 @@ impl CheckpointRegistry {
         self.types = SceneFilter::deny_all();
     }
 
-    /// Include a type in checkpoints.
+    /// Include a type `T` in checkpoints.
     pub fn allow<T: Any>(&mut self) {
-        take(&mut self.types, |types| types.allow::<T>());
+        self.types = std::mem::take(&mut self.types).allow::<T>();
+    }
+
+    /// Include a type in checkpoints.
+    pub fn allow_id(&mut self, type_id: TypeId) {
+        self.types = std::mem::take(&mut self.types).allow_by_id(type_id);
+    }
+
+    /// Exclude a type `T` from checkpoints.
+    ///
+    /// The type is still included in normal snapshots.
+    pub fn deny<T: Any>(&mut self) {
+        self.types = std::mem::take(&mut self.types).deny::<T>();
     }
 
     /// Exclude a type from checkpoints.
     ///
     /// The type is still included in normal snapshots.
-    pub fn deny<T: Any>(&mut self) {
-        take(&mut self.types, |types| types.deny::<T>());
+    pub fn deny_id(&mut self, type_id: TypeId) {
+        self.types = std::mem::take(&mut self.types).deny_by_id(type_id);
     }
 
     /// Check if a type is allowed to be included in checkpoints.

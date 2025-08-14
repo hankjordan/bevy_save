@@ -37,7 +37,7 @@ use crate::{
         migration::{
             ReflectMigrate,
             SnapshotVersion,
-            backcompat::v0_16::SnapshotV0_16,
+            backcompat::v3::SnapshotV3,
         },
         serde::{
             ENTITY_FIELD_COMPONENTS,
@@ -112,16 +112,19 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
     where
         D: serde::Deserializer<'de>,
     {
+        use SnapshotVersion as Ver;
+
         let reg = match self.version {
-            SnapshotVersion::V0_16 => SnapshotV0_16::get_type_registration(),
-            SnapshotVersion::V1_0 => Snapshot::get_type_registration(),
+            Ver::V3 => SnapshotV3::get_type_registration(),
+            Ver::V4 => Snapshot::get_type_registration(),
+            _ => unimplemented!("Unsupported version"),
         };
 
         TypedReflectDeserializer::new(&reg, self.registry)
             .deserialize(deserializer)
-            .and_then(|v| match self.version {
-                SnapshotVersion::V0_16 => {
-                    let old = SnapshotV0_16::from_reflect(&*v)
+            .and_then(|r| match self.version {
+                Ver::V3 => {
+                    let old = SnapshotV3::from_reflect(&*r)
                         .ok_or_else(|| Error::custom("FromReflect failed for Snapshot (v0.16)"))?;
 
                     #[cfg_attr(not(feature = "checkpoints"), expect(unused_mut))]
@@ -151,8 +154,9 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
 
                     Ok(new)
                 }
-                SnapshotVersion::V1_0 => Snapshot::from_reflect(&*v)
+                Ver::V4 => Snapshot::from_reflect(&*r)
                     .ok_or_else(|| Error::custom("FromReflect failed for Snapshot")),
+                _ => unimplemented!("Unsupported version"),
             })
     }
 }
@@ -367,7 +371,7 @@ impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
                 // Attempt to convert using FromReflect.
                 let value = registration
                     .data::<ReflectFromReflect>()
-                    .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                    .and_then(|fr| fr.from_reflect(&*value))
                     .map(PartialReflect::into_partial_reflect)
                     .unwrap_or(value);
 

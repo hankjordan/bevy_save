@@ -61,13 +61,19 @@ impl Pipeline for RONPipeline {
         builder
             .allow::<Transform>()
             .allow::<ExampleComponent>()
-            .extract_all_entities()
+            // This is just one way to prevent extracting the camera.
+            // Instead of using this match, you could use a marker component
+            // and only extract entities with that marker component.
+            .extract_entities_matching(|e| !e.contains::<Camera>())
             .clear_empty()
             .build()
     }
 
     fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), Error> {
-        snapshot.applier(world).despawn::<With<Transform>>().apply()
+        snapshot
+            .applier(world)
+            .despawn::<(With<Transform>, Without<Camera>)>()
+            .apply()
     }
 }
 
@@ -85,6 +91,7 @@ fn setup(mut commands: Commands) {
         float: 64.0,
         string: "Hello, world!".into(),
     }));
+    commands.spawn(Camera2d);
 }
 
 fn handle_save_input(world: &mut World) {
@@ -105,12 +112,7 @@ fn main() {
             ..default()
         }))
         // Inspector
-        .add_plugins((
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
-            WorldInspectorPlugin::new(),
-        ))
+        .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::new()))
         // Bevy Save
         .add_plugins(SavePlugins)
         // Register types

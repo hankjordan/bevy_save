@@ -104,7 +104,7 @@ fn test_reflect() {
         .into_iter()
         .collect(),
     };
-    let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&data, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
@@ -144,12 +144,12 @@ fn test_reflect_clone() {
         z: 2.0,
     })
     .into_partial_reflect();
-    let cloned = clone_reflect_value(data.as_partial_reflect(), &registry);
+    let cloned = clone_reflect_value(&*data, &registry);
 
-    let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&*data, &registry);
     let a = json_serialize(&ser).expect("Failed to serialize");
 
-    let ser = TypedReflectSerializer::new(cloned.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&*cloned, &registry);
     let b = json_serialize(&ser).expect("Failed to serialize");
 
     assert_eq!(a, CLONE_JSON);
@@ -164,12 +164,12 @@ fn test_reflect_clone() {
         .into_partial_reflect(),
     ]
     .into();
-    let cloned = clone_reflect_value(data.as_partial_reflect(), &registry);
+    let cloned = clone_reflect_value(&data, &registry);
 
-    let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&data, &registry);
     let a = json_serialize(&ser).expect("Failed to serialize");
 
-    let ser = TypedReflectSerializer::new(cloned.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&*cloned, &registry);
     let b = json_serialize(&ser).expect("Failed to serialize");
 
     assert_eq!(a, CLONE_LIST_JSON);
@@ -387,7 +387,7 @@ fn test_reflect_checkpoints() {
     let snap = cps.active().expect("No checkpoint found");
     let registry = app.world().resource::<AppTypeRegistry>().read();
 
-    let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(snap, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
@@ -403,7 +403,7 @@ fn test_reflect_checkpoints() {
         items: vec![snap.clone()],
     };
 
-    let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&data, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
@@ -414,7 +414,7 @@ fn test_reflect_checkpoints() {
     snap.resources
         .push(clone_reflect_value(&data, &registry).into());
 
-    let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&snap, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
@@ -428,13 +428,13 @@ fn test_reflect_checkpoints() {
     let registry = app.world().resource::<AppTypeRegistry>().read();
 
     let snap = Snapshot::from_world(app.world());
-    let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
+    let ser = TypedReflectSerializer::new(&snap, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_SNAPSHOT_JSON);
 
-    let snap = clone_reflect_value(snap.as_partial_reflect(), &registry);
+    let snap = clone_reflect_value(&snap, &registry);
     let ser = TypedReflectSerializer::new(&*snap, &registry);
     let out = json_serialize(&ser).expect("Failed to serialize");
 

@@ -301,7 +301,7 @@ where
 }
 
 #[test]
-fn test_relationships() {
+fn test_relationship_items() {
     // Check expected, default behavior
     let (app, entities) = init_items_app();
     let registry = app.world().resource::<AppTypeRegistry>().read();
@@ -326,7 +326,7 @@ fn test_relationships() {
 }
 
 #[test]
-fn test_prefab_relationships() {
+fn test_relationship_prefab() {
     let (app, entities) = init_items_app();
     let registry = app.world().resource::<AppTypeRegistry>().read();
 
@@ -343,7 +343,7 @@ fn test_prefab_relationships() {
 }
 
 #[test]
-fn test_builtin_relationships() {
+fn test_relationship_builtin() {
     let (app, entities) = init_builtin_app();
 
     let expected = app
@@ -364,7 +364,7 @@ fn test_builtin_relationships() {
 }
 
 #[test]
-fn test_builtin_prefab_relationships() {
+fn test_relationship_builtin_prefab() {
     let (app, entities) = init_builtin_app();
 
     let snapshot = Snapshot::builder(app.world())
@@ -376,3 +376,97 @@ fn test_builtin_prefab_relationships() {
         s.applier(w).prefab::<ChildPrefab>()
     });
 }
+
+#[derive(Component, Reflect, Clone, Debug)]
+#[relationship(relationship_target = TestRelationshipTarget)]
+#[reflect(Component, MapEntities)]
+pub struct TestRelationship(pub Entity);
+
+impl MapEntities for TestRelationship {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        self.0 = entity_mapper.get_mapped(self.0);
+    }
+}
+
+#[derive(Component)]
+#[relationship_target(relationship = TestRelationship)]
+pub struct TestRelationshipTarget(Entity);
+
+#[test]
+fn test_relationship_desync() {
+    let mut app = App::new();
+
+    app.add_plugins(SavePlugins)
+        .register_type::<TestRelationship>();
+
+    let world = app.world_mut();
+
+    let child = world.spawn_empty().id();
+    let parent = world.spawn(TestRelationship(child)).id();
+
+    let snap = Snapshot::builder(world)
+        .extract_entities_matching(|e| {
+            e.contains::<TestRelationship>() || e.contains::<TestRelationshipTarget>()
+        })
+        .build();
+
+    snap.applier(world)
+        .despawn::<Or<(With<TestRelationship>, With<TestRelationshipTarget>)>>()
+        .apply()
+        .expect("Failed to apply");
+
+    let parents = world
+        .query_filtered::<Entity, With<TestRelationship>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+
+    let children = world
+        .query_filtered::<Entity, With<TestRelationshipTarget>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+
+    assert_eq!(parents.len(), 1);
+    assert_eq!(children.len(), 1);
+
+    assert_eq!(parents[0].index(), parent.index());
+    assert_eq!(children[0].index(), child.index());
+}
+
+#[test]
+fn test_relationship_desync_asym() {
+    let mut app = App::new();
+
+    app.add_plugins(SavePlugins)
+        .add_plugins(bevy::log::LogPlugin::default())
+        .register_type::<TestRelationship>();
+
+    let world = app.world_mut();
+
+    let child = world.spawn_empty().id();
+    world.spawn(TestRelationship(child));
+
+    let snap = Snapshot::builder(world)
+        .extract_entities_matching(|e| e.contains::<TestRelationship>())
+        .build();
+
+    println!("[snapshot (asym)]: {:?}", snap);
+
+    snap.applier(world)
+        .despawn::<Or<(With<TestRelationship>, With<TestRelationshipTarget>)>>()
+        .apply()
+        .expect("Failed to apply");
+
+    let parents = world
+        .query_filtered::<Entity, With<TestRelationship>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+
+    let children = world
+        .query_filtered::<Entity, With<TestRelationshipTarget>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+
+    assert_eq!(parents.len(), 1);
+    assert_eq!(children.len(), 1);
+}
+

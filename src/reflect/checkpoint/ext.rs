@@ -10,12 +10,15 @@ use crate::{
     },
 };
 
-/// Extension trait that adds rollback checkpoint-related methods to Bevy's [`App`].
+/// Extension trait that adds rollback checkpoint-related methods to Bevy's
+/// [`App`].
 pub trait AppCheckpointExt {
-    /// Set a type to allow rollback - it will be included in rollback checkpoints and affected by save/load.
+    /// Set a type to allow rollback - it will be included in rollback
+    /// checkpoints and affected by save/load.
     fn allow_checkpoint<T: Any>(&mut self) -> &mut Self;
 
-    /// Set a type to ignore rollback - it will be included in save/load but it won't change during rollback.
+    /// Set a type to ignore rollback - it will be included in save/load but it
+    /// won't change during rollback.
     fn deny_checkpoint<T: Any>(&mut self) -> &mut Self;
 }
 
@@ -35,7 +38,8 @@ impl AppCheckpointExt for App {
     }
 }
 
-/// Extension trait that adds rollback checkpoint-related methods to Bevy's [`World`].
+/// Extension trait that adds rollback checkpoint-related methods to Bevy's
+/// [`World`].
 pub trait WorldCheckpointExt {
     /// Creates a checkpoint for rollback and stores it in [`Checkpoints`].
     fn checkpoint<P>(&mut self, pathway: &P)

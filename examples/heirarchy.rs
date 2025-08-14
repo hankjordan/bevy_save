@@ -20,12 +20,8 @@ fn setup(mut commands: Commands) {
             p.spawn(Head);
         });
 
-    // to reproduce the error, hit the following keys:
-    // P         - Print debug info about heads and check their parent exists
-    // ENTER     - Save
-    // R         - Reset, delete all player entities
-    // BACKSPACE - Load
-    // P         - Print head info <== head will have an invalid parent
+    commands.spawn(Camera2d);
+
     println!("Controls:");
     println!("P: to print debug info on `Head` entities and to validate their parent exists");
     println!("R: to recursively delete all `Player` entities");
@@ -115,12 +111,7 @@ fn main() {
             ..default()
         }))
         // Inspector
-        .add_plugins((
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
-            WorldInspectorPlugin::new(),
-        ))
+        .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::new()))
         // Bevy Save
         .add_plugins(SavePlugins)
         // Register types

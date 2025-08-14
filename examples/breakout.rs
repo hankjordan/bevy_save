@@ -91,9 +91,7 @@ fn main() {
         .add_systems(Update, (update_scoreboard, close_on_esc))
         .add_plugins((
             // Inspector
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
+            EguiPlugin::default(),
             WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,

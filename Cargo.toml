@@ -2,7 +2,7 @@
 members = [".", "crates/*"]
 
 [workspace.package]
-version = "1.0.0"
+version = "2.0.0+4"
 edition = "2024"
 description = "A framework for saving and loading application state in Bevy."
 license = "MIT OR Apache-2.0"
@@ -28,17 +28,9 @@ all-features = true
 uninlined_format_args = "allow"
 
 [features]
-default = [
-    "reflect",
-    "checkpoints",
-    "log",
-    "bevy_asset",
-    "bevy_render",
-    "bevy_sprite",
-]
+default = ["reflect", "checkpoints", "bevy_asset", "bevy_render", "bevy_sprite"]
 reflect = ["bevy/bevy_scene"]
 checkpoints = ["reflect"]
-log = ["bevy/bevy_log"]
 bevy_asset = ["bevy/bevy_asset"]
 bevy_render = ["bevy/bevy_render"]
 bevy_sprite = ["bevy/bevy_sprite"]
@@ -47,7 +39,7 @@ brotli = ["dep:brotli"]
 [workspace.dependencies]
 bevy = { version = "0.16.1", default-features = false }
 bevy_macro_utils = "0.16.1"
-bevy_save_macros = { version = "1.0", path = "crates/bevy_save_macros" }
+bevy_save_macros = { version = "2.0.0", path = "crates/bevy_save_macros" }
 variadics_please = { version = "1.1" }
 
 [dependencies]
@@ -75,8 +67,8 @@ uuid = { version = "1.16", features = ["js"] }
 
 [dev-dependencies]
 bevy = { workspace = true, default-features = true, features = ["serialize"] }
-bevy-inspector-egui = "0.31.0"
-bevy_egui = "0.35"
+bevy-inspector-egui = "0.33.1"
+bevy_egui = "0.36"
 anyhow = "1.0"
 ron = "0.10"
 postcard = { version = "1.1", features = ["use-std"] }

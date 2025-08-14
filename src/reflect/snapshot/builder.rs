@@ -7,7 +7,10 @@ use std::{
 };
 
 use bevy::{
-    ecs::component::ComponentId,
+    ecs::component::{
+        ComponentId,
+        ComponentInfo,
+    },
     prelude::*,
     reflect::TypeRegistry,
     scene::DynamicEntity,
@@ -89,7 +92,8 @@ pub struct BuilderRef<'a> {
 impl<'a> BuilderRef<'a> {
     /// Create a new [`Builder`] from the [`World`].
     ///
-    /// You must call at least one of the `extract` methods or the built snapshot will be empty.
+    /// You must call at least one of the `extract` methods or the built
+    /// snapshot will be empty.
     ///
     /// # Example
     /// ```
@@ -120,9 +124,11 @@ impl<'a> BuilderRef<'a> {
 
     /// Create a new [`BuilderRef`] from the [`World`].
     ///
-    /// Types extracted by this builder will respect the [`CheckpointRegistry`](crate::reflect::checkpoint::CheckpointRegistry).
+    /// Types extracted by this builder will respect the
+    /// [`CheckpointRegistry`](crate::reflect::checkpoint::CheckpointRegistry).
     ///
-    /// You must call at least one of the `extract` methods or the built snapshot will be empty.
+    /// You must call at least one of the `extract` methods or the built
+    /// snapshot will be empty.
     ///
     /// # Example
     /// ```
@@ -205,6 +211,18 @@ impl BuilderRef<'_> {
         self
     }
 
+    /// Allows the given type to be included in the generated snapshot.
+    ///
+    /// This method may be called multiple times for any number of types.
+    ///
+    /// This is the inverse of [`deny_id`](Self::deny_id).
+    /// If the type has already been denied, then it will be removed from the blacklist.
+    #[must_use]
+    pub fn allow_id(mut self, type_id: TypeId) -> Self {
+        self.input.filter = self.input.filter.allow_by_id(type_id);
+        self
+    }
+
     /// Denies the given type, `T`, from being included in the generated snapshot.
     ///
     /// This method may be called multiple times for any number of types.
@@ -217,11 +235,22 @@ impl BuilderRef<'_> {
         self
     }
 
+    /// Denies the given type from being included in the generated snapshot.
+    ///
+    /// This method may be called multiple times for any number of types.
+    ///
+    /// This is the inverse of [`allow_id`](Self::allow_id).
+    /// If the type has already been allowed, then it will be removed from the
+    /// whitelist.
+    #[must_use]
+    pub fn deny_id(mut self, type_id: TypeId) -> Self {
+        self.input.filter = self.input.filter.deny_by_id(type_id);
+        self
+    }
+
     /// Updates the filter to allow all types.
     ///
-    /// This is useful for resetting the filter so that types may be selectively [denied].
-    ///
-    /// [denied]: Self::deny
+    /// This is useful for resetting the filter so that types may be selectively [denied](Self::deny).
     #[must_use]
     pub fn allow_all(mut self) -> Self {
         self.input.filter = SceneFilter::allow_all();
@@ -230,9 +259,7 @@ impl BuilderRef<'_> {
 
     /// Updates the filter to deny all types.
     ///
-    /// This is useful for resetting the filter so that types may be selectively [allowed].
-    ///
-    /// [allowed]: Self::allow
+    /// This is useful for resetting the filter so that types may be selectively [allowed](Self::allow).
     #[must_use]
     pub fn deny_all(mut self) -> Self {
         self.input.filter = SceneFilter::deny_all();
@@ -310,7 +337,7 @@ impl BuilderRef<'_> {
 
     /// Extract the entities matching the given filter from the builder’s [`World`].
     #[must_use]
-    pub fn extract_entities_matching<F: Fn(&EntityRef) -> bool>(self, filter: F) -> Self {
+    pub fn extract_entities_matching(self, filter: impl Fn(&EntityRef) -> bool) -> Self {
         // TODO: We should be using Query and caching the lookup
         let entities = self.world.iter_entities().filter(filter).map(|e| e.id());
         self.extract_entities(entities)
@@ -325,10 +352,10 @@ impl BuilderRef<'_> {
 
     /// Extract all entities with a custom extraction function.
     #[must_use]
-    pub fn extract_entities_manual<F, B>(mut self, func: F) -> Self
-    where
-        F: Fn(&EntityRef) -> Option<Vec<Box<dyn PartialReflect>>>,
-    {
+    pub fn extract_entities_manual(
+        mut self,
+        func: impl Fn(&EntityRef) -> Option<Vec<Box<dyn PartialReflect>>>,
+    ) -> Self {
         for entity in self.world.iter_entities() {
             let Some(components) = func(&entity) else {
                 continue;
@@ -345,9 +372,8 @@ impl BuilderRef<'_> {
 
     /// Extract all [`Prefab`] entities with a custom extraction function.
     #[must_use]
-    pub fn extract_prefab<F, P>(mut self, func: F) -> Self
+    pub fn extract_prefab<P>(mut self, func: impl Fn(&EntityRef) -> Option<P>) -> Self
     where
-        F: Fn(&EntityRef) -> Option<P>,
         P: Prefab + PartialReflect,
     {
         for entity in self.world.iter_entities() {
@@ -390,7 +416,7 @@ impl BuilderRef<'_> {
 
     /// Extract a single resource with the given type path from the builder's [`World`].
     #[must_use]
-    pub fn extract_resource_by_path<T: AsRef<str>>(self, type_path: T) -> Self {
+    pub fn extract_resource_by_path(self, type_path: impl AsRef<str>) -> Self {
         self.extract_resources_by_path([type_path].into_iter())
     }
 
@@ -399,10 +425,7 @@ impl BuilderRef<'_> {
     /// # Panics
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     #[must_use]
-    pub fn extract_resources_by_path<T: AsRef<str>>(
-        self,
-        type_paths: impl Iterator<Item = T>,
-    ) -> Self {
+    pub fn extract_resources_by_path(self, type_paths: impl Iterator<Item: AsRef<str>>) -> Self {
         let app_type_registry = self
             .world
             .get_resource::<AppTypeRegistry>()
@@ -466,6 +489,23 @@ impl BuilderRef<'_> {
         });
 
         self
+    }
+
+    /// Extract the resources matching the given filter from the builder’s [`World`].
+    #[must_use]
+    pub fn extract_resources_matching(self, filter: impl Fn(&ComponentInfo) -> bool) -> Self {
+        let resources = self
+            .world
+            .storages()
+            .resources
+            .iter()
+            .map(|(id, _)| id)
+            .filter_map(move |id| self.world.components().get_info(id))
+            .filter_map(|i| i.type_id().map(|id| (i, id)))
+            .filter(|&(i, _)| filter(i))
+            .map(|(_, id)| id);
+
+        self.extract_resources_by_type_id(resources)
     }
 
     /// Extract all resources from the builder's [`World`].
