@@ -1,14 +1,14 @@
 //! Wrappers for remote types
 
-mod boxed;
 mod entity;
 mod map;
+mod value;
 
 pub use self::{
-    boxed::BoxedPartialReflect,
     entity::DynamicEntity,
     map::{
         EntityMap,
         ReflectMap,
     },
+    value::DynamicValue,
 };

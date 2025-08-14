@@ -4,13 +4,6 @@ use bevy::reflect::{
     TypeRegistry,
 };
 
-use crate::reflect::{
-    BoxedPartialReflect,
-    DynamicEntity,
-    EntityMap,
-    ReflectMap,
-};
-
 /// Attempts to clone a [`PartialReflect`] value using various methods.
 ///
 /// This first attempts to clone via [`PartialReflect::reflect_clone`].
@@ -34,71 +27,4 @@ pub fn clone_reflect_value(
         },
         PartialReflect::into_partial_reflect,
     )
-}
-
-/// Clone-like trait for duplicating [`Reflect`](bevy::reflect::Reflect) types.
-///
-/// Any type that does not implement [`FromReflect`](bevy::reflect::FromReflect) will be converted into a Dynamic type.
-pub trait CloneReflect {
-    /// Clone the value using reflection.
-    #[must_use]
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self;
-}
-
-impl<T> CloneReflect for Option<T>
-where
-    T: CloneReflect,
-{
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        self.as_ref().map(|t| t.clone_reflect(registry))
-    }
-}
-
-impl<T> CloneReflect for Vec<T>
-where
-    T: CloneReflect,
-{
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        self.iter().map(|t| t.clone_reflect(registry)).collect()
-    }
-}
-
-impl CloneReflect for Box<dyn PartialReflect> {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        registry
-            .get(self.get_represented_type_info().unwrap().type_id())
-            .and_then(|r| {
-                r.data::<ReflectFromReflect>()
-                    .and_then(|fr| fr.from_reflect(self.as_partial_reflect()))
-                    .map(|fr| fr.into_partial_reflect())
-            })
-            .unwrap_or_else(|| self.to_dynamic())
-    }
-}
-
-impl CloneReflect for BoxedPartialReflect {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self(self.0.clone_reflect(registry))
-    }
-}
-
-impl CloneReflect for EntityMap {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self(self.0.clone_reflect(registry))
-    }
-}
-
-impl CloneReflect for ReflectMap {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self(self.0.clone_reflect(registry))
-    }
-}
-
-impl CloneReflect for DynamicEntity {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self {
-            entity: self.entity,
-            components: self.components.clone_reflect(registry),
-        }
-    }
 }

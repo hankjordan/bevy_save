@@ -24,10 +24,21 @@ rust-version.workspace = true
 rustdoc-args = ["-Zunstable-options", "--generate-link-to-definition"]
 all-features = true
 
+[lints.clippy]
+uninlined_format_args = "allow"
+
 [features]
-default = ["reflect", "checkpoints", "bevy_asset", "bevy_render", "bevy_sprite"]
+default = [
+    "reflect",
+    "checkpoints",
+    "log",
+    "bevy_asset",
+    "bevy_render",
+    "bevy_sprite",
+]
 reflect = ["bevy/bevy_scene"]
 checkpoints = ["reflect"]
+log = ["bevy/bevy_log"]
 bevy_asset = ["bevy/bevy_asset"]
 bevy_render = ["bevy/bevy_render"]
 bevy_sprite = ["bevy/bevy_sprite"]
@@ -66,6 +77,7 @@ uuid = { version = "1.16", features = ["js"] }
 bevy = { workspace = true, default-features = true, features = ["serialize"] }
 bevy-inspector-egui = "0.31.0"
 bevy_egui = "0.35"
+anyhow = "1.0"
 ron = "0.10"
 postcard = { version = "1.1", features = ["use-std"] }
 io-adapters = "0.4"

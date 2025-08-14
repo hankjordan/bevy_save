@@ -99,6 +99,14 @@ fn init_app() -> App {
     app
 }
 
+fn json_serialize<T: serde::Serialize>(value: &T) -> Result<String, anyhow::Error> {
+    let mut buf = Vec::new();
+    let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+    let mut ser = serde_json::Serializer::with_formatter(&mut buf, format);
+    value.serialize(&mut ser)?;
+    Ok(String::from_utf8(buf)?)
+}
+
 #[test]
 fn test_migrate() {
     let mut app = init_app();
@@ -145,123 +153,123 @@ fn test_migrate() {
 }
 
 const JSON_REFLECT_MAP: &str = r#"{
-  "migrate::Position 0.4.0": {
-    "xyz": [
-      0.0,
-      1.0,
-      2.0
-    ]
-  },
-  "migrate::Position 0.4.0": {
-    "xyz": [
-      2.0,
-      3.0,
-      4.0
-    ]
-  }
+    "migrate::Position 0.4.0": {
+        "xyz": [
+            0.0,
+            1.0,
+            2.0
+        ]
+    },
+    "migrate::Position 0.4.0": {
+        "xyz": [
+            2.0,
+            3.0,
+            4.0
+        ]
+    }
 }"#;
 
 const JSON_REFLECT_MAP_OLD: &str = r#"{
- "migrate::Pos 0.1.0": {
-    "x": -2.0,
-    "y": -1.0
-  },
-  "migrate::Position 0.2.0": {
-    "x": 0.0,
-    "y": 1.0
-  },
-  "migrate::Position 0.3.0": {
-    "x": 3.0,
-    "y": 4.0,
-    "z": 5.0
-  },
-  "migrate::Position 0.4.0": {
-    "xyz": [
-      6.0,
-      7.0,
-      8.0
-    ]
-  }
+    "migrate::Pos 0.1.0": {
+        "x": -2.0,
+        "y": -1.0
+    },
+    "migrate::Position 0.2.0": {
+        "x": 0.0,
+        "y": 1.0
+    },
+    "migrate::Position 0.3.0": {
+        "x": 3.0,
+        "y": 4.0,
+        "z": 5.0
+    },
+    "migrate::Position 0.4.0": {
+        "xyz": [
+            6.0,
+            7.0,
+            8.0
+        ]
+    }
 }"#;
 
 const JSON_SNAPSHOT: &str = r#"{
-  "entities": {
-    "4294967296": {
-      "components": {
-        "migrate::Position 0.4.0": {
-          "xyz": [
-            0.0,
-            1.0,
-            0.0
-          ]
+    "entities": {
+        "4294967296": {
+            "components": {
+                "migrate::Position 0.4.0": {
+                    "xyz": [
+                        0.0,
+                        1.0,
+                        0.0
+                    ]
+                }
+            }
+        },
+        "4294967297": {
+            "components": {
+                "migrate::Position 0.4.0": {
+                    "xyz": [
+                        2.0,
+                        3.0,
+                        0.0
+                    ]
+                }
+            }
+        },
+        "4294967298": {
+            "components": {
+                "migrate::Position 0.4.0": {
+                    "xyz": [
+                        4.0,
+                        5.0,
+                        6.0
+                    ]
+                }
+            }
         }
-      }
     },
-    "4294967297": {
-      "components": {
-        "migrate::Position 0.4.0": {
-          "xyz": [
-            2.0,
-            3.0,
-            0.0
-          ]
+    "resources": {
+        "bevy_save::Checkpoints": {
+            "snapshots": [],
+            "active": null
         }
-      }
-    },
-    "4294967298": {
-      "components": {
-        "migrate::Position 0.4.0": {
-          "xyz": [
-            4.0,
-            5.0,
-            6.0
-          ]
-        }
-      }
     }
-  },
-  "resources": {
-    "bevy_save::Checkpoints": {
-      "snapshots": [],
-      "active": null
-    }
-  }
 }"#;
 
 const JSON_SNAPSHOT_OLD: &str = r#"{
-  "entities": {
-    "4294967296": {
-      "components": {
-        "migrate::Pos 0.1.0": {
-          "x": 0.0,
-          "y": 1.0
+    "entities": {
+        "4294967296": {
+            "components": {
+                "migrate::Pos 0.1.0": {
+                    "x": 0.0,
+                    "y": 1.0
+                }
+            }
+        },
+        "4294967297": {
+            "components": {
+                "migrate::Position 0.2.0": {
+                    "x": 2.0,
+                    "y": 3.0
+                }
+            }
+        },
+        "4294967298": {
+            "components": {
+                "migrate::Position 0.3.0": {
+                    "x": 4.0,
+                    "y": 5.0,
+                    "z": 6.0
+                }
+            }
         }
-      }
     },
-    "4294967297": {
-      "components": {
-        "migrate::Position 0.2.0": {
-          "x": 2.0,
-          "y": 3.0
+    "resources": {
+        "bevy_save::Checkpoints": {
+            "snapshots": [],
+            "active": null
         }
-      }
-    },
-    "4294967298": {
-      "components": {
-        "migrate::Position 0.3.0": {
-          "x": 4.0,
-          "y": 5.0,
-          "z": 6.0
-        }
-      }
     }
-  },
-  "resources": {
-    "bevy_save::Checkpoints": {
-      "snapshots": [],
-      "active": null
-    }
-  }
 }"#;
 
 #[test]
@@ -285,7 +293,7 @@ fn test_migrate_serialize() {
     ]);
     let ser = ReflectMapSerializer::new(&entries, &registry);
 
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, JSON_REFLECT_MAP);
@@ -306,8 +314,7 @@ fn test_migrate_deserialize() {
     println!("{:?}", out);
 
     let out = out
-        .0
-        .into_iter()
+        .iter()
         .map(|r| Position::from_reflect(r.as_partial_reflect()).expect("Invalid reflect"))
         .collect::<Vec<_>>();
 
@@ -336,8 +343,7 @@ fn test_migrate_snapshot() {
     let registry = world.resource::<AppTypeRegistry>().read();
     let snapshot = Snapshot::from_world(world);
 
-    let out =
-        serde_json::to_string_pretty(&snapshot.serializer(&registry)).expect("Failed to serialize");
+    let out = json_serialize(&snapshot.serializer(&registry)).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, JSON_SNAPSHOT);
@@ -346,8 +352,7 @@ fn test_migrate_snapshot() {
     let mut de = serde_json::Deserializer::from_str(&out);
     let snapshot = deserializer.deserialize(&mut de).unwrap();
 
-    let out =
-        serde_json::to_string_pretty(&snapshot.serializer(&registry)).expect("Failed to serialize");
+    let out = json_serialize(&snapshot.serializer(&registry)).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, JSON_SNAPSHOT);
@@ -356,8 +361,7 @@ fn test_migrate_snapshot() {
     let mut de = serde_json::Deserializer::from_str(JSON_SNAPSHOT_OLD);
     let snapshot = deserializer.deserialize(&mut de).unwrap();
 
-    let out =
-        serde_json::to_string_pretty(&snapshot.serializer(&registry)).expect("Failed to serialize");
+    let out = json_serialize(&snapshot.serializer(&registry)).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, JSON_SNAPSHOT);

@@ -1,9 +1,6 @@
 use bevy::{
     prelude::*,
-    reflect::{
-        TypeRegistry,
-        Typed,
-    },
+    reflect::Typed,
 };
 
 use crate::prelude::*;
@@ -34,7 +31,6 @@ impl Checkpoints {
         // Force conversion into checkpoint
         checkpoint
             .resources
-            .0
             .retain(|r| r.get_represented_type_info().map(|i| i.type_id()) != Some(id));
 
         self.snapshots.truncate(active + 1);
@@ -65,15 +61,6 @@ impl Checkpoints {
             Some(&self.snapshots[new])
         } else {
             None
-        }
-    }
-}
-
-impl CloneReflect for Checkpoints {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self {
-            snapshots: self.snapshots.clone_reflect(registry),
-            active: self.active,
         }
     }
 }

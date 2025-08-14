@@ -11,8 +11,8 @@ use bevy::ecs::{
 };
 use thiserror::Error;
 
-pub mod pathway;
 mod ext;
+pub mod pathway;
 mod registry;
 mod systems;
 

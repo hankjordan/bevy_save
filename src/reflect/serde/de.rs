@@ -34,7 +34,6 @@ use crate::{
         DynamicEntity,
         EntityMap,
         ReflectMap,
-        checkpoint::Checkpoints,
         migration::{
             ReflectMigrate,
             SnapshotVersion,
@@ -125,14 +124,16 @@ impl<'de> DeserializeSeed<'de> for SnapshotDeserializer<'_> {
                     let old = SnapshotV0_16::from_reflect(&*v)
                         .ok_or_else(|| Error::custom("FromReflect failed for Snapshot (v0.16)"))?;
 
+                    #[cfg_attr(not(feature = "checkpoints"), expect(unused_mut))]
                     let mut new = Snapshot {
                         entities: old.entities,
                         resources: old.resources,
                     };
 
+                    #[cfg(feature = "checkpoints")]
                     if let Some(rollbacks) = old.rollbacks {
-                        new.resources.0.push(
-                            Box::new(Checkpoints {
+                        new.resources.push(
+                            Box::new(crate::reflect::checkpoint::Checkpoints {
                                 snapshots: rollbacks
                                     .checkpoints
                                     .into_iter()
@@ -347,37 +348,30 @@ impl<'de> Visitor<'de> for ReflectMapVisitor<'_> {
         A: MapAccess<'de>,
     {
         let mut entries = Vec::new();
-        while let Some(registration) =
+        while let Some((registration, versioning)) =
             map.next_key_seed(TypeRegistrationDeserializer::new(self.registry))?
         {
-            let value = map.next_value_seed(TypedReflectDeserializer::new(
-                registration.input(),
-                self.registry,
-            ))?;
+            let value =
+                map.next_value_seed(TypedReflectDeserializer::new(registration, self.registry))?;
 
-            match registration {
-                TypeRegistrationVersioned::Unversioned(registration) => {
-                    // Attempt to convert using FromReflect.
-                    let value = registration
-                        .data::<ReflectFromReflect>()
-                        .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
-                        .map(PartialReflect::into_partial_reflect)
-                        .unwrap_or(value);
+            if let Some((version, output)) = versioning {
+                // Attempt to convert using Migrate.
+                let value = output
+                    .data::<ReflectMigrate>()
+                    .and_then(|m| m.migrate(&*value, version))
+                    .map(PartialReflect::into_partial_reflect)
+                    .unwrap_or(value);
 
-                    entries.push(value);
-                }
-                TypeRegistrationVersioned::Versioned {
-                    version, output, ..
-                } => {
-                    // Attempt to convert using Migrate.
-                    let value = output
-                        .data::<ReflectMigrate>()
-                        .and_then(|m| m.migrate(&*value, version.to_string()))
-                        .map(PartialReflect::into_partial_reflect)
-                        .unwrap_or(value);
+                entries.push(value);
+            } else {
+                // Attempt to convert using FromReflect.
+                let value = registration
+                    .data::<ReflectFromReflect>()
+                    .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                    .map(PartialReflect::into_partial_reflect)
+                    .unwrap_or(value);
 
-                    entries.push(value);
-                }
+                entries.push(value);
             }
         }
 
@@ -395,26 +389,11 @@ impl<'a> TypeRegistrationDeserializer<'a> {
     }
 }
 
-enum TypeRegistrationVersioned<'a> {
-    Unversioned(&'a TypeRegistration),
-    Versioned {
-        version: semver::Version,
-        input: TypeRegistration,
-        output: &'a TypeRegistration,
-    },
-}
-
-impl TypeRegistrationVersioned<'_> {
-    pub fn input(&self) -> &TypeRegistration {
-        match self {
-            TypeRegistrationVersioned::Unversioned(r) => r,
-            TypeRegistrationVersioned::Versioned { input, .. } => input,
-        }
-    }
-}
-
 impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
-    type Value = TypeRegistrationVersioned<'a>;
+    type Value = (
+        &'a TypeRegistration,
+        Option<(semver::Version, &'a TypeRegistration)>,
+    );
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -423,7 +402,10 @@ impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
         struct TypeRegistrationVisitor<'a>(&'a TypeRegistry);
 
         impl<'a> Visitor<'_> for TypeRegistrationVisitor<'a> {
-            type Value = TypeRegistrationVersioned<'a>;
+            type Value = (
+                &'a TypeRegistration,
+                Option<(semver::Version, &'a TypeRegistration)>,
+            );
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("string containing `type` entry for the reflected value")
@@ -456,24 +438,20 @@ impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
                         ))
                     })?;
 
-                    let input = migrate.registration(version.to_string()).ok_or_else(|| {
+                    let input = migrate.registration(version.clone()).ok_or_else(|| {
                         Error::custom(format_args!(
                             "no migration found for `{type_path}` -> `{}` with version `{version}`",
                             output.type_info().type_path()
                         ))
                     })?;
 
-                    Ok(TypeRegistrationVersioned::Versioned {
-                        version,
-                        input,
-                        output,
-                    })
+                    Ok((input, Some((version, output))))
                 } else {
                     let registration = self.0.get_with_type_path(type_path).ok_or_else(|| {
                         Error::custom(format_args!("no registration found for `{type_path}`"))
                     })?;
 
-                    Ok(TypeRegistrationVersioned::Unversioned(registration))
+                    Ok((registration, None))
                 }
             }
         }

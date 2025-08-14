@@ -1,3 +1,32 @@
+use std::str::FromStr;
+
+/// Conversion trait for anything that can be used as a [`Version`](semver::Version).
+pub trait IntoVersion {
+    /// Converts the type into [`Version`](semver::Version).
+    ///
+    /// # Errors
+    /// - If the type does not represent a valid [`Version`](semver::Version).
+    fn into_version(self) -> Result<semver::Version, semver::Error>;
+}
+
+impl IntoVersion for &str {
+    fn into_version(self) -> Result<semver::Version, semver::Error> {
+        semver::Version::from_str(self)
+    }
+}
+
+impl IntoVersion for String {
+    fn into_version(self) -> Result<semver::Version, semver::Error> {
+        semver::Version::from_str(self.as_ref())
+    }
+}
+
+impl IntoVersion for semver::Version {
+    fn into_version(self) -> Result<semver::Version, semver::Error> {
+        Ok(self)
+    }
+}
+
 /// Borrowed or owned value
 #[derive(Debug)]
 pub enum MaybeRef<'a, T> {

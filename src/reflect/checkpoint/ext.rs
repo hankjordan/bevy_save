@@ -1,9 +1,6 @@
 use std::any::Any;
 
-use bevy::{
-    prelude::*,
-    reflect::TypeRegistry,
-};
+use bevy::prelude::*;
 
 use crate::{
     prelude::*,
@@ -54,19 +51,6 @@ pub trait WorldCheckpointExt {
     fn rollback<P>(&mut self, pathway: &P, checkpoints: isize) -> Result<(), Error>
     where
         P: Pathway<Capture: CaptureOutput<P> + From<Snapshot>>;
-
-    /// Rolls back / forward the [`World`] state using the given [`TypeRegistry`].
-    ///
-    /// # Errors
-    /// - See [`Error`]
-    fn rollback_with<P>(
-        &mut self,
-        pathway: &P,
-        checkpoints: isize,
-        registry: &TypeRegistry,
-    ) -> Result<(), Error>
-    where
-        P: Pathway<Capture: CaptureOutput<P> + From<Snapshot>>;
 }
 
 impl WorldCheckpointExt for World {
@@ -86,25 +70,10 @@ impl WorldCheckpointExt for World {
     where
         P: Pathway<Capture: CaptureOutput<P> + From<Snapshot>>,
     {
-        let registry_arc = self.resource::<AppTypeRegistry>().clone();
-        let registry = registry_arc.read();
-
-        self.rollback_with(pathway, checkpoints, &registry)
-    }
-
-    fn rollback_with<P>(
-        &mut self,
-        pathway: &P,
-        checkpoints: isize,
-        registry: &TypeRegistry,
-    ) -> Result<(), Error>
-    where
-        P: Pathway<Capture: CaptureOutput<P> + From<Snapshot>>,
-    {
         if let Some(rollback) = self
             .resource_mut::<Checkpoints>()
             .rollback(checkpoints)
-            .map(|r| r.clone_reflect(registry))
+            .cloned()
         {
             self.apply(pathway, rollback.into()).map(|_| ())
         } else {

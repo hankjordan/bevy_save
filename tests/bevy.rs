@@ -2,6 +2,7 @@
 
 use bevy::{
     diagnostic::DiagnosticsPlugin,
+    log::LogPlugin,
     prelude::*,
     reflect::{
         TypeRegistry,
@@ -23,10 +24,7 @@ use bevy::{
 };
 use bevy_save::{
     prelude::*,
-    reflect::{
-        SnapshotDeserializer,
-        SnapshotSerializer,
-    },
+    reflect::SnapshotDeserializer,
 };
 use serde::{
     Deserialize,
@@ -59,32 +57,28 @@ fn extract(world: &World) -> Snapshot {
     Snapshot::builder(world).extract_all_entities().build()
 }
 
+fn json_serialize<T: Serialize>(value: &T) -> Result<String, anyhow::Error> {
+    let mut buf = Vec::new();
+    let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+    let mut ser = serde_json::Serializer::with_formatter(&mut buf, format);
+    value.serialize(&mut ser)?;
+    Ok(String::from_utf8(buf)?)
+}
+
 #[derive(Serialize, Deserialize)]
 struct ExampleTransform {
     position: Vec3,
 }
 
 #[test]
-fn test_transforms() {
-    fn serialize(snapshot: &Snapshot, registry: &TypeRegistry) -> String {
-        let serializer = SnapshotSerializer::new(snapshot, registry);
-
-        let mut buf = Vec::new();
-        let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
-        let mut ser = serde_json::Serializer::with_formatter(&mut buf, format);
-
-        serializer.serialize(&mut ser).unwrap();
-
-        String::from_utf8(buf).unwrap()
-    }
-
+fn test_bevy_transforms() {
     let (mut app, _) = init_app();
     let world = app.world_mut();
 
     let registry = world.resource::<AppTypeRegistry>().read();
     let snapshot = extract(world);
 
-    let output = serialize(&snapshot, &registry);
+    let output = json_serialize(&snapshot.serializer(&registry)).expect("Failed to serialize");
 
     let deserializer = SnapshotDeserializer::new(&registry);
 
@@ -108,21 +102,21 @@ trait SerDe {
 struct Json;
 
 impl SerDe for Json {
-    type Error = serde_json::Error;
+    type Error = anyhow::Error;
 
-    fn ser<T>(value: &T) -> Result<String, serde_json::Error>
+    fn ser<T>(value: &T) -> Result<String, anyhow::Error>
     where
         T: Serialize,
     {
-        serde_json::to_string_pretty(value)
+        json_serialize(value)
     }
 
-    fn de<'a, D, T>(de: D, text: &'a str) -> Result<T, serde_json::Error>
+    fn de<'a, D, T>(de: D, text: &'a str) -> Result<T, anyhow::Error>
     where
         D: for<'de> DeserializeSeed<'de, Value = T>,
     {
         let mut deserializer = serde_json::Deserializer::from_str(text);
-        de.deserialize(&mut deserializer)
+        Ok(de.deserialize(&mut deserializer)?)
     }
 }
 
@@ -178,6 +172,7 @@ fn build_registry_app() -> App {
             .disable::<WinitPlugin>()
             .disable::<DiagnosticsPlugin>()
             .disable::<WindowPlugin>()
+            .disable::<LogPlugin>()
             .set(RenderPlugin {
                 render_creation: RenderCreation::Automatic(WgpuSettings {
                     backends: None,
@@ -191,7 +186,7 @@ fn build_registry_app() -> App {
 }
 
 #[test]
-fn test_builtin_types() {
+fn test_bevy_builtin_types() {
     let app = build_registry_app();
 
     let registry = app.world().resource::<AppTypeRegistry>().read();
@@ -202,77 +197,77 @@ fn test_builtin_types() {
 
 const TRANSFORM_JSON: &str = r#"
 {
-  "bevy_transform::components::transform::Transform": {
-    "translation": [
-      1.0,
-      2.0,
-      3.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0,
-      1.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ]
-  }
+    "bevy_transform::components::transform::Transform": {
+        "translation": [
+            1.0,
+            2.0,
+            3.0
+        ],
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    }
 }"#;
 
 const TRANSFORM_TYPED_JSON: &str = r#"
 {
-  "translation": [
-    1.0,
-    2.0,
-    3.0
-  ],
-  "rotation": [
-    0.0,
-    0.0,
-    0.0,
-    1.0
-  ],
-  "scale": [
-    1.0,
-    1.0,
-    1.0
-  ]
+    "translation": [
+        1.0,
+        2.0,
+        3.0
+    ],
+    "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+    ],
+    "scale": [
+        1.0,
+        1.0,
+        1.0
+    ]
 }"#;
 
 const TRANSFORM_SNAPSHOT_JSON: &str = r#"
 {
-  "entities": {
-    "4294967296": {
-      "components": {
-        "bevy_transform::components::transform::Transform": {
-          "translation": [
-            1.0,
-            2.0,
-            3.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ]
+    "entities": {
+        "4294967296": {
+            "components": {
+                "bevy_transform::components::transform::Transform": {
+                    "translation": [
+                        1.0,
+                        2.0,
+                        3.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            }
         }
-      }
-    }
-  },
-  "resources": {}
+    },
+    "resources": {}
 }"#;
 
 #[test]
-fn transform_json() {
+fn test_bevy_transform_json() {
     let value = Transform::from_xyz(1.0, 2.0, 3.0);
 
     let mut app = App::new();
@@ -284,12 +279,12 @@ fn transform_json() {
     let registry = app.world().resource::<AppTypeRegistry>().read();
 
     let ser = ReflectSerializer::new(&value, &registry);
-    let data_erased = serde_json::to_string_pretty(&ser).unwrap();
+    let data_erased = json_serialize(&ser).unwrap();
 
     assert_eq!(TRANSFORM_JSON, format!("\n{data_erased}"));
 
     let ser = TypedReflectSerializer::new(&value, &registry);
-    let data_typed = serde_json::to_string_pretty(&ser).unwrap();
+    let data_typed = json_serialize(&ser).unwrap();
 
     assert_eq!(TRANSFORM_TYPED_JSON, format!("\n{data_typed}"));
 
@@ -297,7 +292,7 @@ fn transform_json() {
         .extract_all_entities()
         .build();
     let ser = snapshot.serializer(&registry);
-    let output = serde_json::to_string_pretty(&ser).unwrap();
+    let output = json_serialize(&ser).unwrap();
 
     assert_eq!(TRANSFORM_SNAPSHOT_JSON, format!("\n{output}"));
 }

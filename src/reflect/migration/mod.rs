@@ -6,7 +6,7 @@ use std::{
         HashSet,
     },
     marker::PhantomData,
-    str::FromStr,
+    sync::OnceLock,
 };
 
 use bevy::reflect::{
@@ -28,7 +28,9 @@ pub use backcompat::{
     VersionError,
 };
 
-type TransformFn = Box<dyn Fn(&dyn PartialReflect) -> Option<Box<dyn Reflect>>>;
+use crate::IntoVersion;
+
+type TransformFn = Box<dyn Fn(&dyn PartialReflect) -> Option<Box<dyn Reflect>> + Send + Sync>;
 
 struct MigrationStep {
     registration: TypeRegistration,
@@ -67,7 +69,7 @@ pub struct Migrator<In = ()> {
 
 impl Migrator {
     /// Creates a default [`Migrator`] for the given first step output.
-    pub fn new<Out>(version: impl AsRef<str>) -> Migrator<Out>
+    pub fn new<Out>(version: impl IntoVersion) -> Migrator<Out>
     where
         Out: FromReflect + TypePath + GetTypeRegistration,
     {
@@ -82,7 +84,7 @@ impl Migrator {
 impl<In> Migrator<In> {
     fn add_step<Out>(
         mut self,
-        version: impl AsRef<str>,
+        version: impl IntoVersion,
         transform: Option<TransformFn>,
     ) -> Migrator<Out>
     where
@@ -91,7 +93,7 @@ impl<In> Migrator<In> {
         self.data.type_paths.insert(Out::type_path());
 
         self.data.steps.insert(
-            Version::from_str(version.as_ref()).expect("Invalid version string"),
+            version.into_version().expect("Invalid version string"),
             MigrationStep {
                 registration: Out::get_type_registration(),
                 from_reflect: FromType::<Out>::from_type(),
@@ -110,8 +112,8 @@ impl<In> Migrator<In> {
     /// Defines a migration step with the given version and transformation function.
     pub fn version<Out>(
         self,
-        version: impl AsRef<str>,
-        step: impl Fn(In) -> Option<Out> + 'static,
+        version: impl IntoVersion,
+        step: impl Fn(In) -> Option<Out> + Send + Sync + 'static,
     ) -> Migrator<Out>
     where
         In: FromReflect + TypePath + GetTypeRegistration,
@@ -139,7 +141,10 @@ pub trait Migrate: TypePath + Sized {
 /// [`Migrate`] allows reflect-enabled types to define a [`Migrator`] which can transform older versions of the type into the current version.
 #[derive(Clone)]
 pub struct ReflectMigrate {
-    data: fn() -> MigratorData,
+    migrate: fn(&dyn PartialReflect, Version) -> Option<Box<dyn Reflect>>,
+    matches: fn(&str) -> bool,
+    registration: fn(Version) -> Option<&'static TypeRegistration>,
+    version: fn() -> Option<&'static Version>,
 }
 
 impl ReflectMigrate {
@@ -147,57 +152,68 @@ impl ReflectMigrate {
     pub fn migrate(
         &self,
         value: &dyn PartialReflect,
-        version: impl AsRef<str>,
+        version: impl IntoVersion,
     ) -> Option<Box<dyn Reflect>> {
-        let ver = Version::from_str(version.as_ref()).ok()?;
-
-        // Order steps by version
-        let data = (self.data)();
-        let mut steps = data
-            .steps
-            .iter()
-            .filter(|(v, _)| v >= &&ver)
-            .collect::<Vec<_>>();
-
-        steps.sort_by_key(|(v, _)| *v);
-
-        let mut it = steps.into_iter();
-
-        let value = it
-            .next()
-            .and_then(|(_, s)| s.from_reflect.from_reflect(value))?;
-
-        it.try_fold(value, |acc, (_, step)| (step.transform)(&*acc))
+        (self.migrate)(value, version.into_version().ok()?)
     }
 
     /// Returns `true` if the [`Migrator`] can migrate the given type path.
     pub fn matches(&self, type_path: &str) -> bool {
-        let data = (self.data)();
-        data.type_paths.contains(type_path)
+        (self.matches)(type_path)
     }
 
     /// Returns the stored [`TypeRegistration`] for the given version.
-    pub fn registration(&self, version: impl AsRef<str>) -> Option<TypeRegistration> {
-        let ver = Version::from_str(version.as_ref()).ok()?;
-        let data = (self.data)();
-
-        data.steps
-            .into_iter()
-            .find(|(v, _)| v == &ver)
-            .map(|(_, s)| s.registration)
+    pub fn registration(&self, version: impl IntoVersion) -> Option<&TypeRegistration> {
+        (self.registration)(version.into_version().ok()?)
     }
 
     /// Returns the latest registered version for the type.
-    pub fn version(&self) -> Option<Version> {
-        let data = (self.data)();
-        data.steps.keys().max().cloned()
+    pub fn version(&self) -> Option<&Version> {
+        (self.version)()
     }
 }
 
 impl<T: Migrate> FromType<T> for ReflectMigrate {
     fn from_type() -> Self {
+        static CELL: OnceLock<MigratorData> = OnceLock::new();
+
         ReflectMigrate {
-            data: || T::migrator().data,
+            migrate: |value, version| {
+                let data = CELL.get_or_init(|| T::migrator().data);
+
+                // Order steps by version
+                let mut steps = data
+                    .steps
+                    .iter()
+                    .filter(|(v, _)| v >= &&version)
+                    .collect::<Vec<_>>();
+
+                steps.sort_by_key(|(v, _)| *v);
+
+                let mut it = steps.into_iter();
+
+                let value = it
+                    .next()
+                    .and_then(|(_, s)| s.from_reflect.from_reflect(value))?;
+
+                it.try_fold(value, |acc, (_, step)| (step.transform)(&*acc))
+            },
+            matches: |type_path| {
+                let data = CELL.get_or_init(|| T::migrator().data);
+                data.type_paths.contains(type_path)
+            },
+            registration: |version| {
+                let data = CELL.get_or_init(|| T::migrator().data);
+
+                data.steps
+                    .iter()
+                    .find(|(v, _)| v == &&version)
+                    .map(|(_, s)| &s.registration)
+            },
+            version: || {
+                let data = CELL.get_or_init(|| T::migrator().data);
+                data.steps.keys().max()
+            },
         }
     }
 }

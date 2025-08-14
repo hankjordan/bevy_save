@@ -33,13 +33,11 @@ pub const SNAPSHOT_VERSION: reflect::SnapshotVersion = reflect::SnapshotVersion:
 pub mod reflect;
 
 #[cfg(feature = "reflect")]
-pub use crate::reflect::{
-    CloneReflect,
-    clone_reflect_value,
-};
+pub use crate::reflect::clone_reflect_value;
 pub use crate::{
     error::Error,
     utils::{
+        IntoVersion,
         MaybeMut,
         MaybeRef,
     },
@@ -59,7 +57,6 @@ pub mod prelude {
     #[cfg(feature = "reflect")]
     #[doc(inline)]
     pub use crate::reflect::{
-        CloneReflect,
         Pipeline,
         migration::{
             Migrate,
@@ -121,7 +118,6 @@ pub mod prelude {
         plugins::{
             SavePlugin,
             SavePlugins,
-            SaveReflectPlugin,
         },
     };
 }
