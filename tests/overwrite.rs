@@ -8,7 +8,7 @@ struct Collect {
 }
 
 #[test]
-fn test_collect() {
+fn test_overwrite_collect() {
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);
@@ -72,7 +72,7 @@ struct Basic {
 }
 
 #[test]
-fn test_basic() {
+fn test_overwrite_basic() {
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins);

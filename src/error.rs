@@ -16,6 +16,7 @@ pub enum Error {
     #[error("flow error: {0}")]
     Flow(#[from] crate::flows::FlowError),
 
+    #[cfg(feature = "reflect")]
     /// Scene spawning error.
     #[error("scene spawn error: {0}")]
     SceneSpawnError(#[from] bevy::scene::SceneSpawnError),

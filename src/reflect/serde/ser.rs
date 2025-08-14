@@ -93,8 +93,8 @@ impl Serialize for EntityMapSerializer<'_> {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_map(Some(self.entities.0.len()))?;
-        for entity in &self.entities.0 {
+        let mut state = serializer.serialize_map(Some(self.entities.len()))?;
+        for entity in self.entities.iter() {
             state.serialize_entry(&entity.entity, &EntitySerializer {
                 entity,
                 registry: self.registry,
@@ -145,11 +145,10 @@ impl Serialize for ReflectMapSerializer<'_> {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_map(Some(self.entries.0.len()))?;
+        let mut state = serializer.serialize_map(Some(self.entries.len()))?;
         let sorted_entries = {
             let mut entries = self
                 .entries
-                .0
                 .iter()
                 .map(|entry| {
                     let info = entry.get_represented_type_info().unwrap();

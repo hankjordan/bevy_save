@@ -5,7 +5,6 @@ use bevy::{
 };
 
 use crate::{
-    CloneReflect,
     error::Error,
     prelude::*,
     reflect::{
@@ -19,7 +18,7 @@ use crate::{
 /// A collection of serializable entities and resources.
 ///
 /// Can be serialized via [`SnapshotSerializer`](crate::reflect::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::reflect::SnapshotDeserializer).
-#[derive(Reflect)]
+#[derive(Reflect, Clone, Debug)]
 #[reflect(Clone)]
 #[type_path = "bevy_save"]
 pub struct Snapshot {
@@ -28,40 +27,6 @@ pub struct Snapshot {
 
     /// Resources contained in the snapshot.
     pub resources: ReflectMap,
-}
-
-impl Clone for Snapshot {
-    fn clone(&self) -> Self {
-        Self {
-            entities: EntityMap::from_reflect(self.entities.as_partial_reflect())
-                .expect("failed to clone"),
-            resources: ReflectMap::from_reflect(self.resources.as_partial_reflect())
-                .expect("failed to clone"),
-        }
-    }
-}
-
-impl std::fmt::Debug for Snapshot {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        struct DebugEntity<'a>(&'a DynamicEntity);
-
-        impl std::fmt::Debug for DebugEntity<'_> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_struct("DynamicEntity")
-                    .field("entity", &self.0.entity)
-                    .field("components", &self.0.components)
-                    .finish()
-            }
-        }
-
-        f.debug_struct("Snapshot")
-            .field(
-                "entities",
-                &self.entities().iter().map(DebugEntity).collect::<Vec<_>>(),
-            )
-            .field("resources", &self.resources)
-            .finish()
-    }
 }
 
 impl Snapshot {
@@ -113,13 +78,13 @@ impl Snapshot {
     /// Returns a reference to the slice of entities contained in the [`Snapshot`].
     pub fn entities(&self) -> &[DynamicEntity] {
         // SAFETY: DynamicEntity and bevy::scene::DynamicEntity are equivalent
-        unsafe { &*(std::ptr::from_ref(self.entities.0.as_slice()) as *const _) }
+        unsafe { &*(std::ptr::from_ref(self.entities.as_slice()) as *const _) }
     }
 
     /// Returns a reference to the slice of resources contained in the [`Snapshot`].
     pub fn resources(&self) -> &[Box<dyn PartialReflect>] {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
-        unsafe { &*(std::ptr::from_ref(self.resources.0.as_slice()) as *const _) }
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
+        unsafe { &*(std::ptr::from_ref(self.resources.as_slice()) as *const _) }
     }
 }
 
@@ -169,14 +134,5 @@ impl Snapshot {
     /// Create a [`SnapshotDeserializer`] from the [`TypeRegistry`].
     pub fn deserializer(registry: &TypeRegistry) -> SnapshotDeserializer<'_> {
         SnapshotDeserializer::new(registry)
-    }
-}
-
-impl CloneReflect for Snapshot {
-    fn clone_reflect(&self, registry: &TypeRegistry) -> Self {
-        Self {
-            entities: self.entities.clone_reflect(registry),
-            resources: self.resources.clone_reflect(registry),
-        }
     }
 }

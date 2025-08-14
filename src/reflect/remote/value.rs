@@ -17,53 +17,59 @@ use bevy::reflect::{
 
 /// Equivalent to [`Box<dyn PartialReflect>`], but implements [`Reflect`].
 #[repr(transparent)]
-#[derive(Debug, TypePath)]
+#[derive(TypePath)]
 #[type_path = "bevy_save"]
-pub struct BoxedPartialReflect(pub Box<dyn PartialReflect>);
+pub struct DynamicValue(pub Box<dyn PartialReflect>);
 
-impl From<Box<dyn PartialReflect>> for BoxedPartialReflect {
+impl From<Box<dyn PartialReflect>> for DynamicValue {
     fn from(value: Box<dyn PartialReflect>) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { std::mem::transmute(value) }
     }
 }
 
-impl From<BoxedPartialReflect> for Box<dyn PartialReflect> {
-    fn from(value: BoxedPartialReflect) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+impl From<DynamicValue> for Box<dyn PartialReflect> {
+    fn from(value: DynamicValue) -> Self {
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { std::mem::transmute(value) }
     }
 }
 
-impl From<&Box<dyn PartialReflect>> for &BoxedPartialReflect {
+impl From<&Box<dyn PartialReflect>> for &DynamicValue {
     fn from(value: &Box<dyn PartialReflect>) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { &*std::ptr::from_ref(value).cast() }
     }
 }
 
-impl From<&BoxedPartialReflect> for &Box<dyn PartialReflect> {
-    fn from(value: &BoxedPartialReflect) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+impl From<&DynamicValue> for &Box<dyn PartialReflect> {
+    fn from(value: &DynamicValue) -> Self {
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { &*std::ptr::from_ref(value).cast() }
     }
 }
 
-impl From<&mut Box<dyn PartialReflect>> for &mut BoxedPartialReflect {
+impl From<&mut Box<dyn PartialReflect>> for &mut DynamicValue {
     fn from(value: &mut Box<dyn PartialReflect>) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { &mut *std::ptr::from_mut(value).cast() }
     }
 }
 
-impl From<&mut BoxedPartialReflect> for &mut Box<dyn PartialReflect> {
-    fn from(value: &mut BoxedPartialReflect) -> Self {
-        // SAFETY: BoxedPartialReflect and Box<dyn PartialReflect> are equivalent
+impl From<&mut DynamicValue> for &mut Box<dyn PartialReflect> {
+    fn from(value: &mut DynamicValue) -> Self {
+        // SAFETY: DynamicValue and Box<dyn PartialReflect> are equivalent
         unsafe { &mut *std::ptr::from_mut(value).cast() }
     }
 }
 
-impl std::ops::Deref for BoxedPartialReflect {
+impl std::fmt::Debug for DynamicValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.debug(f)
+    }
+}
+
+impl std::ops::Deref for DynamicValue {
     type Target = Box<dyn PartialReflect>;
 
     fn deref(&self) -> &Self::Target {
@@ -71,13 +77,13 @@ impl std::ops::Deref for BoxedPartialReflect {
     }
 }
 
-impl std::ops::DerefMut for BoxedPartialReflect {
+impl std::ops::DerefMut for DynamicValue {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl ReflectRemote for BoxedPartialReflect {
+impl ReflectRemote for DynamicValue {
     type Remote = Box<dyn PartialReflect>;
 
     fn as_remote(&self) -> &Self::Remote {
@@ -105,7 +111,7 @@ impl ReflectRemote for BoxedPartialReflect {
     }
 }
 
-impl PartialReflect for BoxedPartialReflect {
+impl PartialReflect for DynamicValue {
     fn get_represented_type_info(&self) -> Option<&'static bevy::reflect::TypeInfo> {
         self.0.get_represented_type_info()
     }
@@ -193,7 +199,7 @@ impl PartialReflect for BoxedPartialReflect {
     }
 }
 
-impl Reflect for BoxedPartialReflect {
+impl Reflect for DynamicValue {
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
         self.0
             .try_into_reflect()
@@ -233,14 +239,14 @@ impl Reflect for BoxedPartialReflect {
     }
 }
 
-impl Typed for BoxedPartialReflect {
+impl Typed for DynamicValue {
     fn type_info() -> &'static bevy::reflect::TypeInfo {
         static CELL: NonGenericTypeInfoCell = NonGenericTypeInfoCell::new();
         CELL.get_or_set(|| TypeInfo::Opaque(OpaqueInfo::new::<Self>()))
     }
 }
 
-impl GetTypeRegistration for BoxedPartialReflect {
+impl GetTypeRegistration for DynamicValue {
     fn get_type_registration() -> bevy::reflect::TypeRegistration {
         let mut registration = TypeRegistration::of::<Self>();
         registration.insert::<ReflectFromPtr>(FromType::<Self>::from_type());
@@ -249,7 +255,7 @@ impl GetTypeRegistration for BoxedPartialReflect {
     }
 }
 
-impl FromReflect for BoxedPartialReflect {
+impl FromReflect for DynamicValue {
     fn from_reflect(reflect: &dyn PartialReflect) -> Option<Self> {
         reflect
             .reflect_clone()

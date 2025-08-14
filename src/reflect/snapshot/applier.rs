@@ -285,6 +285,15 @@ impl ApplierRef<'_, '_> {
                     }
                 }
 
+                let mut component =
+                    clone_reflect_value(component.as_partial_reflect(), type_registry);
+
+                if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
+                    SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
+                        map_entities.map_entities(component.as_partial_reflect_mut(), mapper);
+                    });
+                }
+
                 SceneEntityMapper::world_scope(entity_map, self.world, |world, mapper| {
                     let entity_mut = &mut world.entity_mut(entity);
 

@@ -13,10 +13,7 @@ pub mod checkpoint;
 
 #[doc(inline)]
 pub use self::{
-    clone::{
-        CloneReflect,
-        clone_reflect_value,
-    },
+    clone::clone_reflect_value,
     migration::{
         Migrate,
         Migrator,
@@ -30,8 +27,8 @@ pub use self::{
         WithPrefab,
     },
     remote::{
-        BoxedPartialReflect,
         DynamicEntity,
+        DynamicValue,
         EntityMap,
         ReflectMap,
     },

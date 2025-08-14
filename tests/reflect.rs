@@ -6,42 +6,50 @@ use bevy_save::{
     clone_reflect_value,
     prelude::*,
     reflect::{
-        BoxedPartialReflect,
+        DynamicValue,
         ReflectMap,
         checkpoint::Checkpoints,
     },
 };
 
+fn json_serialize<T: serde::Serialize>(value: &T) -> Result<String, anyhow::Error> {
+    let mut buf = Vec::new();
+    let format = serde_json::ser::PrettyFormatter::with_indent(b"    ");
+    let mut ser = serde_json::Serializer::with_formatter(&mut buf, format);
+    value.serialize(&mut ser)?;
+    Ok(String::from_utf8(buf)?)
+}
+
 const REFLECT_JSON: &str = r#"{
-  "objects": {
-    "glam::Vec3": [
-      0.0,
-      1.0,
-      2.0
-    ],
-    "reflect::Project": {
-      "objects": {
+    "objects": {
         "glam::Vec3": [
-          3.0,
-          4.0,
-          5.0
-        ]
-      }
-    },
-    "reflect::Project": {
-      "objects": {
+            0.0,
+            1.0,
+            2.0
+        ],
         "reflect::Project": {
-          "objects": {
-            "glam::Vec3": [
-              6.0,
-              7.0,
-              8.0
-            ]
-          }
+            "objects": {
+                "glam::Vec3": [
+                    3.0,
+                    4.0,
+                    5.0
+                ]
+            }
+        },
+        "reflect::Project": {
+            "objects": {
+                "reflect::Project": {
+                    "objects": {
+                        "glam::Vec3": [
+                            6.0,
+                            7.0,
+                            8.0
+                        ]
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }"#;
 
 #[test]
@@ -97,7 +105,7 @@ fn test_reflect() {
         .collect(),
     };
     let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
 
@@ -105,17 +113,17 @@ fn test_reflect() {
 }
 
 const CLONE_JSON: &str = r#"[
-  0.0,
-  1.0,
-  2.0
-]"#;
-
-const CLONE_LIST_JSON: &str = r#"{
-  "glam::Vec3": [
     0.0,
     1.0,
     2.0
-  ]
+]"#;
+
+const CLONE_LIST_JSON: &str = r#"{
+    "glam::Vec3": [
+        0.0,
+        1.0,
+        2.0
+    ]
 }"#;
 
 #[test]
@@ -125,7 +133,7 @@ fn test_reflect_clone() {
     let app = app
         .add_plugins(SavePlugins)
         .register_type::<Vec3>()
-        .register_type::<BoxedPartialReflect>()
+        .register_type::<DynamicValue>()
         .register_type::<ReflectMap>();
 
     let registry = app.world().resource::<AppTypeRegistry>().read();
@@ -139,10 +147,10 @@ fn test_reflect_clone() {
     let cloned = clone_reflect_value(data.as_partial_reflect(), &registry);
 
     let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
-    let a = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let a = json_serialize(&ser).expect("Failed to serialize");
 
     let ser = TypedReflectSerializer::new(cloned.as_partial_reflect(), &registry);
-    let b = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let b = json_serialize(&ser).expect("Failed to serialize");
 
     assert_eq!(a, CLONE_JSON);
     assert_eq!(b, CLONE_JSON);
@@ -159,202 +167,202 @@ fn test_reflect_clone() {
     let cloned = clone_reflect_value(data.as_partial_reflect(), &registry);
 
     let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
-    let a = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let a = json_serialize(&ser).expect("Failed to serialize");
 
     let ser = TypedReflectSerializer::new(cloned.as_partial_reflect(), &registry);
-    let b = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let b = json_serialize(&ser).expect("Failed to serialize");
 
     assert_eq!(a, CLONE_LIST_JSON);
     assert_eq!(b, CLONE_LIST_JSON);
 }
 
 const CHECKPOINT_JSON: &str = r#"{
-  "entities": {
-    "4294967296": {
-      "components": {
-        "bevy_transform::components::transform::Transform": {
-          "translation": [
-            0.0,
-            1.0,
-            2.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ]
+    "entities": {
+        "4294967296": {
+            "components": {
+                "bevy_transform::components::transform::Transform": {
+                    "translation": [
+                        0.0,
+                        1.0,
+                        2.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            }
         }
-      }
-    }
-  },
-  "resources": {}
+    },
+    "resources": {}
 }"#;
 
 const CHECKPOINT_LIST_JSON: &str = r#"{
-  "items": [
-    {
-      "entities": {
-        "4294967296": {
-          "components": {
-            "bevy_transform::components::transform::Transform": {
-              "translation": [
-                0.0,
-                1.0,
-                2.0
-              ],
-              "rotation": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-              ],
-              "scale": [
-                1.0,
-                1.0,
-                1.0
-              ]
-            }
-          }
+    "items": [
+        {
+            "entities": {
+                "4294967296": {
+                    "components": {
+                        "bevy_transform::components::transform::Transform": {
+                            "translation": [
+                                0.0,
+                                1.0,
+                                2.0
+                            ],
+                            "rotation": [
+                                0.0,
+                                0.0,
+                                0.0,
+                                1.0
+                            ],
+                            "scale": [
+                                1.0,
+                                1.0,
+                                1.0
+                            ]
+                        }
+                    }
+                }
+            },
+            "resources": {}
         }
-      },
-      "resources": {}
-    }
-  ]
+    ]
 }"#;
 
 const CHECKPOINT_LIST_NESTED_JSON: &str = r#"{
-  "entities": {
-    "4294967296": {
-      "components": {
-        "bevy_transform::components::transform::Transform": {
-          "translation": [
-            0.0,
-            1.0,
-            2.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "scale": [
-            1.0,
-            1.0,
-            1.0
-          ]
-        }
-      }
-    }
-  },
-  "resources": {
-    "reflect::CheckpointList": {
-      "items": [
-        {
-          "entities": {
-            "4294967296": {
-              "components": {
+    "entities": {
+        "4294967296": {
+            "components": {
                 "bevy_transform::components::transform::Transform": {
-                  "translation": [
-                    0.0,
-                    1.0,
-                    2.0
-                  ],
-                  "rotation": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                  ],
-                  "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                  ]
+                    "translation": [
+                        0.0,
+                        1.0,
+                        2.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
                 }
-              }
             }
-          },
-          "resources": {}
         }
-      ]
+    },
+    "resources": {
+        "reflect::CheckpointList": {
+            "items": [
+                {
+                    "entities": {
+                        "4294967296": {
+                            "components": {
+                                "bevy_transform::components::transform::Transform": {
+                                    "translation": [
+                                        0.0,
+                                        1.0,
+                                        2.0
+                                    ],
+                                    "rotation": [
+                                        0.0,
+                                        0.0,
+                                        0.0,
+                                        1.0
+                                    ],
+                                    "scale": [
+                                        1.0,
+                                        1.0,
+                                        1.0
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "resources": {}
+                }
+            ]
+        }
     }
-  }
 }"#;
 
 const CHECKPOINT_SNAPSHOT_JSON: &str = r#"{
-  "entities": {},
-  "resources": {
-    "bevy_save::Checkpoints": {
-      "snapshots": [
-        {
-          "entities": {
-            "4294967296": {
-              "components": {
-                "bevy_transform::components::transform::Transform": {
-                  "translation": [
-                    0.0,
-                    1.0,
-                    2.0
-                  ],
-                  "rotation": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                  ],
-                  "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                  ]
+    "entities": {},
+    "resources": {
+        "bevy_save::Checkpoints": {
+            "snapshots": [
+                {
+                    "entities": {
+                        "4294967296": {
+                            "components": {
+                                "bevy_transform::components::transform::Transform": {
+                                    "translation": [
+                                        0.0,
+                                        1.0,
+                                        2.0
+                                    ],
+                                    "rotation": [
+                                        0.0,
+                                        0.0,
+                                        0.0,
+                                        1.0
+                                    ],
+                                    "scale": [
+                                        1.0,
+                                        1.0,
+                                        1.0
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "resources": {}
                 }
-              }
-            }
-          },
-          "resources": {}
-        }
-      ],
-      "active": 0
-    },
-    "reflect::CheckpointList": {
-      "items": [
-        {
-          "entities": {
-            "4294967296": {
-              "components": {
-                "bevy_transform::components::transform::Transform": {
-                  "translation": [
-                    0.0,
-                    1.0,
-                    2.0
-                  ],
-                  "rotation": [
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0
-                  ],
-                  "scale": [
-                    1.0,
-                    1.0,
-                    1.0
-                  ]
+            ],
+            "active": 0
+        },
+        "reflect::CheckpointList": {
+            "items": [
+                {
+                    "entities": {
+                        "4294967296": {
+                            "components": {
+                                "bevy_transform::components::transform::Transform": {
+                                    "translation": [
+                                        0.0,
+                                        1.0,
+                                        2.0
+                                    ],
+                                    "rotation": [
+                                        0.0,
+                                        0.0,
+                                        0.0,
+                                        1.0
+                                    ],
+                                    "scale": [
+                                        1.0,
+                                        1.0,
+                                        1.0
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "resources": {}
                 }
-              }
-            }
-          },
-          "resources": {}
+            ]
         }
-      ]
     }
-  }
 }"#;
 
 #[test]
@@ -380,7 +388,7 @@ fn test_reflect_checkpoints() {
     let registry = app.world().resource::<AppTypeRegistry>().read();
 
     let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_JSON);
@@ -392,23 +400,22 @@ fn test_reflect_checkpoints() {
     }
 
     let data = CheckpointList {
-        items: vec![snap.clone_reflect(&registry)],
+        items: vec![snap.clone()],
     };
 
     let ser = TypedReflectSerializer::new(data.as_partial_reflect(), &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_LIST_JSON);
 
-    let mut snap = snap.clone_reflect(&registry);
+    let mut snap = snap.clone();
 
     snap.resources
-        .0
         .push(clone_reflect_value(&data, &registry).into());
 
     let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_LIST_NESTED_JSON);
@@ -419,17 +426,17 @@ fn test_reflect_checkpoints() {
     app.world_mut().clear_entities();
 
     let registry = app.world().resource::<AppTypeRegistry>().read();
-    
+
     let snap = Snapshot::from_world(app.world());
     let ser = TypedReflectSerializer::new(snap.as_partial_reflect(), &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_SNAPSHOT_JSON);
 
     let snap = clone_reflect_value(snap.as_partial_reflect(), &registry);
     let ser = TypedReflectSerializer::new(&*snap, &registry);
-    let out = serde_json::to_string_pretty(&ser).expect("Failed to serialize");
+    let out = json_serialize(&ser).expect("Failed to serialize");
 
     println!("{}", out);
     assert_eq!(out, CHECKPOINT_SNAPSHOT_JSON);
