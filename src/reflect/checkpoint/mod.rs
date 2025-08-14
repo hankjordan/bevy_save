@@ -1,4 +1,5 @@
-//! Checkpoint utilities for [`Snapshot`](crate::prelude::Snapshot)s that can be quickly rolled through.
+//! Checkpoint utilities for [`Snapshot`](crate::prelude::Snapshot)s
+//! that can be quickly rolled through.
 
 mod ext;
 mod registry;

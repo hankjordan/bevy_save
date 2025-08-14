@@ -63,6 +63,7 @@ fn setup_world(mut commands: Commands) {
     };
 
     commands.insert_resource(map);
+    commands.spawn(Camera2d);
 }
 
 fn display_world(keys: Res<ButtonInput<KeyCode>>, map: Res<TileMap>, tiles: Query<&Tile>) {
@@ -231,9 +232,7 @@ fn main() {
                 ..default()
             }),
             // Inspector
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
+            EguiPlugin::default(),
             WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,

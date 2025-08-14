@@ -27,7 +27,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg(feature = "reflect")]
 /// `bevy_save` snapshot version
-pub const SNAPSHOT_VERSION: reflect::SnapshotVersion = reflect::SnapshotVersion::V1_0;
+pub const SNAPSHOT_VERSION: reflect::SnapshotVersion = reflect::SnapshotVersion::V4;
 
 #[cfg(feature = "reflect")]
 pub mod reflect;
@@ -63,6 +63,7 @@ pub mod prelude {
             Migrator,
             ReflectMigrate,
         },
+        pipeline::AppPipelineExt,
         prefab::{
             CommandsPrefabExt,
             Prefab,

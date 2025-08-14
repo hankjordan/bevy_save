@@ -13,7 +13,7 @@ use bevy::reflect::{
 /// This helps ensure that the original type and type data is retained,
 /// and only returning a dynamic type if all other methods fail.
 pub fn clone_reflect_value(
-    value: &(impl PartialReflect + ?Sized),
+    value: &dyn PartialReflect,
     registry: &TypeRegistry,
 ) -> Box<dyn PartialReflect> {
     value.reflect_clone().map_or_else(
@@ -22,7 +22,7 @@ pub fn clone_reflect_value(
                 .get_represented_type_info()
                 .and_then(|i| registry.get(i.type_id()))
                 .and_then(|r| r.data::<ReflectFromReflect>())
-                .and_then(|fr| fr.from_reflect(value.as_partial_reflect()))
+                .and_then(|fr| fr.from_reflect(value))
                 .map_or_else(|| value.to_dynamic(), PartialReflect::into_partial_reflect)
         },
         PartialReflect::into_partial_reflect,

@@ -10,7 +10,8 @@ use crate::reflect::ReflectMap;
 #[reflect(Clone)]
 #[type_path = "bevy_save"]
 pub struct DynamicEntity {
-    /// The identifier of the entity, unique within a scene (and the world it may have been generated from).
+    /// The identifier of the entity, unique within a scene
+    /// (and the world it may have been generated from).
     ///
     /// Components that reference this entity must consistently use this identifier.
     pub entity: Entity,

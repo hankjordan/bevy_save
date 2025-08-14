@@ -29,6 +29,7 @@ pub struct AppBackend<B>(pub B);
 ///
 /// # Implementation
 /// The preferred style for implementing this method is an `async fn` returning a result.
+///
 /// ```
 /// # use bevy::tasks::ConditionalSend;
 /// # use serde::{de::DeserializeSeed, Serialize};

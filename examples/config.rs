@@ -5,6 +5,7 @@ use bevy_egui::{
     EguiPrimaryContextPass,
     egui,
 };
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_save::prelude::*;
 use serde::{
     Deserialize,
@@ -45,7 +46,8 @@ impl Default for DisplayConfig {
     }
 }
 
-// Without using something like Vec<Box<dyn PartialReflect>>, we have to name each captured type explicitly
+// Without using something like Vec<Box<dyn PartialReflect>>,
+// we have to name each captured type explicitly.
 #[derive(Default, Serialize, Deserialize)]
 struct ConfigCapture {
     controls: Option<ControlsConfig>,
@@ -203,6 +205,8 @@ fn main() {
             }),
             // egui
             EguiPlugin::default(),
+            // Our resources won't be displayed in the inspector because we're not using reflection
+            WorldInspectorPlugin::new(),
             // Bevy Save
             SavePlugins,
         ))

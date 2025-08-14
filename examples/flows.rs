@@ -81,7 +81,10 @@ fn capture(In(cap): In<Builder>, world: &World) -> Builder {
     cap.scope(world, |b| {
         b.allow::<Transform>()
             .allow::<ExampleComponent>()
-            .extract_all_entities()
+            // This is just one way to prevent extracting the camera.
+            // Instead of using this match, you could use a marker component
+            // and only extract entities with that marker component.
+            .extract_entities_matching(|e| !e.contains::<Camera>())
             .clear_empty()
     })
 }
@@ -91,7 +94,7 @@ fn apply(In(apply): In<Applier<'static>>, world: &mut World) -> Applier<'static>
         // Apply is handled automatically for us
         // a.apply().expect("Failed to apply");
 
-        a.despawn::<With<Transform>>()
+        a.despawn::<(With<Transform>, Without<Camera>)>()
     })
 }
 
@@ -109,6 +112,7 @@ fn setup(mut commands: Commands) {
         float: 64.0,
         string: "Hello, world!".into(),
     }));
+    commands.spawn(Camera2d);
 }
 
 fn handle_save_input(world: &mut World) {
@@ -130,12 +134,7 @@ fn main() {
             ..default()
         }))
         // Inspector
-        .add_plugins((
-            EguiPlugin {
-                enable_multipass_for_primary_context: true,
-            },
-            WorldInspectorPlugin::new(),
-        ))
+        .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::new()))
         // Bevy Save
         .add_plugins(SavePlugins)
         // Register types

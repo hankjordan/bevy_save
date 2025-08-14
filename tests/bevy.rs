@@ -131,18 +131,17 @@ where
 
         let type_path = ty.type_info().type_path();
 
-        let Some(reflect_default) = ty.data::<ReflectDefault>() else {
+        let Some(reflect) = ty.data::<ReflectDefault>() else {
             continue;
         };
 
-        let default = reflect_default.default();
-        let reflect = default.as_partial_reflect();
+        let default = reflect.default();
 
         let data = if erased {
-            let value = ReflectSerializer::new(reflect, registry);
+            let value = ReflectSerializer::new(&*default, registry);
             S::ser(&value)
         } else {
-            let value = TypedReflectSerializer::new(reflect, registry);
+            let value = TypedReflectSerializer::new(&*default, registry);
             S::ser(&value)
         }
         .expect(&format!("Failed to serialize {:?}", type_path));

@@ -1,4 +1,5 @@
-//! Middleware for [`Format`](crate::prelude::Format), allowing you to easily add features like compression or encryption.
+//! Middleware for [`Format`](crate::prelude::Format), allowing you to easily
+//! add features like compression or encryption.
 
 #[cfg(feature = "brotli")]
 mod brotli {

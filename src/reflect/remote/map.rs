@@ -111,7 +111,6 @@ impl FromIterator<DynamicEntity> for EntityMap {
 /// Serializable wrapper type for `Vec<DynamicValue>`
 #[derive(Reflect)]
 #[reflect(Clone, SerializeWithRegistry, DeserializeWithRegistry)]
-#[reflect(from_reflect = false)]
 #[type_path = "bevy_save"]
 #[repr(transparent)]
 pub struct ReflectMap(pub Vec<DynamicValue>);
@@ -131,46 +130,6 @@ impl<'de> DeserializeWithRegistry<'de> for ReflectMap {
         D: serde::Deserializer<'de>,
     {
         ReflectMapDeserializer::new(registry).deserialize(deserializer)
-    }
-}
-
-impl FromReflect for ReflectMap {
-    fn from_reflect(reflect: &dyn PartialReflect) -> Option<Self> {
-        if let Some(list) = reflect
-            .reflect_ref()
-            .as_tuple_struct()
-            .ok()
-            .and_then(|t| t.field(0))
-            .and_then(|r| r.reflect_ref().as_list().ok())
-        {
-            return Some(
-                list.iter()
-                    .filter_map(|r| match r.reflect_clone() {
-                        Ok(boxed) => Some(boxed.into_partial_reflect()),
-                        Err(err) => {
-                            #[cfg(feature = "log")]
-                            {
-                                let extra =
-                                    if let bevy::reflect::ReflectCloneError::FieldNotCloneable {
-                                        ..
-                                    } = err
-                                    {
-                                        ""
-                                    } else {
-                                        " (are you missing a `#[reflect(clone)]` attribute?)"
-                                    };
-
-                                bevy::log::warn!("Skipped FromReflect: {err}{}", extra);
-                            }
-                            let _ = err;
-                            None
-                        }
-                    })
-                    .collect(),
-            );
-        }
-
-        None
     }
 }
 

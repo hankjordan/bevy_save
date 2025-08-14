@@ -1,6 +1,8 @@
-//! [`Pathway`] connects all of the pieces together, defining how your application state is captured, applied, saved, and loaded.
+//! [`Pathway`] connects all of the pieces together, defining how your
+//! application state is captured, applied, saved, and loaded.
 //!
-//! Unlike [`Pipeline`], [`Pathway`] allows you to use [`Flow`]s and custom capture types.
+//! Unlike [`Pipeline`], [`Pathway`] allows you to use [`Flow`]s and custom
+//! capture types.
 
 use bevy::prelude::*;
 
@@ -30,7 +32,8 @@ pub use self::compat::PipelineCapture;
 
 /// Trait that defines how exactly your app saves and loads.
 ///
-/// Unlike [`Pipeline`], [`Pathway`] allows you to define custom capture types and utilize [`Flow`]s.
+/// Unlike [`Pipeline`], [`Pathway`] allows you to define custom capture types
+/// and utilize [`Flow`]s.
 pub trait Pathway {
     /// The type to be captured from and applied to the world
     type Capture: 'static;
@@ -43,7 +46,8 @@ pub trait Pathway {
     /// Used to uniquely identify each saved capture.
     type Key<'a>;
 
-    /// Retrieve the unique identifier for the capture being processed by the [`Pathway`].
+    /// Retrieve the unique identifier for the capture being processed by the
+    /// [`Pathway`].
     fn key(&self) -> Self::Key<'_>;
 
     /// The label of the capture [`Flow`] the [`Pathway`] will use

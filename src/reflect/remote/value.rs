@@ -257,10 +257,9 @@ impl GetTypeRegistration for DynamicValue {
 
 impl FromReflect for DynamicValue {
     fn from_reflect(reflect: &dyn PartialReflect) -> Option<Self> {
-        reflect
-            .reflect_clone()
-            .ok()
-            .map(PartialReflect::into_partial_reflect)
-            .map(Self)
+        Some(Self(reflect.reflect_clone().map_or_else(
+            |_| reflect.to_dynamic(),
+            PartialReflect::into_partial_reflect,
+        )))
     }
 }

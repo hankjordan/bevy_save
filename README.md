@@ -8,87 +8,6 @@ A framework for saving and loading application state in Bevy.
 
 ## Features
 
-### Flows
-
-When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
-
-[`Flow`]s are chains of systems used to modularize this process, allowing you to build snapshots and apply them in stages.
-
-They are defined similar to Bevy systems, but they require an input and an output.
-
-Additionally, the introduction of [`Flow`]s allows reflection to become optional - bring your own serialization if you so wish!
-
-```rust,ignore
-fn main() {
-    App::new()
-        .add_flows(CaptureFlow, (capture_tiles, capture_players, capture_cameras))
-        .add_flows(ApplyFlow, (apply_tiles, apply_monsters));
-}
-
-// User-defined captures make reflection unnecessary
-#[derive(Serialize, Deserialize)]
-struct MyCapture {
-    // ... but then you'll need to specify everything you extract
-    tiles: Vec<(Entity, Tile)>,
-    players: Vec<(Entity, Transform, Visibility)>,
-    cameras: Vec<(Entity, Camera)>,
-}
-
-// Flow systems have full access to the ECS (even write access)
-fn capture_tiles(In(cap): In<MyCapture>, tiles: Query<(Entity, &Tile)>) -> MyCapture {
-    cap.tiles.extend(query.iter().map(|(e, t)| (e, t.clone())));
-    cap
-}
-
-// Flow systems can be added to flows from anywhere, not just in one location
-struct PluginA;
-
-impl Plugin for PluginA {
-    fn build(&self, app: &mut App) {
-        app.add_flows(CaptureFlow, another_capture);
-    }
-}
-```
-
-#### Pathway
-
-[`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
-
-```rust,ignore
-// Pathways look very similar to pipelines, but there are a few key differences
-pub struct RONPathway;
-
-impl Pathway for RONPathway {
-    // The capture type allows you to save anything you want to disk, even without using reflection
-    type Capture = Snapshot;
-
-    type Backend = DefaultDebugBackend;
-    type Format = RONFormat;
-    type Key<'a> = &'a str;
-
-    fn key(&self) -> Self::Key<'_> {
-        "examples/saves/flows"
-    }
-
-    // Instead of capturing and applying directly, now these methods just return labels to user-defined flows
-    // This allows for better dependency injection and reduces code complexity
-    fn capture(&self, _world: &World) -> impl FlowLabel {
-        CaptureFlow
-    }
-
-    fn apply(&self, _world: &World) -> impl FlowLabel {
-        ApplyFlow
-    }
-}
-
-// Flow labels don't encode any behavior by themselves, only point to flows
-#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
-pub struct CaptureFlow;
-
-#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
-pub struct ApplyFlow;
-```
-
 ### Save file management
 
 `bevy_save` automatically uses your app's workspace name to create a unique, permanent save location in the correct place for [any platform](#platforms) it can run on.
@@ -120,7 +39,7 @@ Or via the [`World`] extension method [`WorldPathwayExt`](https://docs.rs/bevy_s
 - [`World::capture()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.capture) captures a snapshot of the current application state, including resources.
 - [`World::apply()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.WorldPathwayExt.html#tymethod.apply) applies a snapshot to the [`World`].
 
-#### NEW: Versioning and Migrations
+#### Versioning and Migrations
 
 Applications can change over the history of development. Users expect that saves created in an older version will continue to work in newer versions.
 
@@ -339,6 +258,87 @@ snapshot
 
 See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
+### Flows
+
+When creating a complex application, snapshot builder and applier functions tend to get complex and unwieldy.
+
+[`Flow`]s are chains of systems used to modularize this process, allowing you to build snapshots and apply them in stages.
+
+They are defined similar to Bevy systems, but they require an input and an output.
+
+Additionally, the introduction of [`Flow`]s allows reflection to become optional - bring your own serialization if you so wish!
+
+```rust,ignore
+fn main() {
+    App::new()
+        .add_flows(CaptureFlow, (capture_tiles, capture_players, capture_cameras))
+        .add_flows(ApplyFlow, (apply_tiles, apply_monsters));
+}
+
+// User-defined captures make reflection unnecessary
+#[derive(Serialize, Deserialize)]
+struct MyCapture {
+    // ... but then you'll need to specify everything you extract
+    tiles: Vec<(Entity, Tile)>,
+    players: Vec<(Entity, Transform, Visibility)>,
+    cameras: Vec<(Entity, Camera)>,
+}
+
+// Flow systems have full access to the ECS (even write access)
+fn capture_tiles(In(cap): In<MyCapture>, tiles: Query<(Entity, &Tile)>) -> MyCapture {
+    cap.tiles.extend(query.iter().map(|(e, t)| (e, t.clone())));
+    cap
+}
+
+// Flow systems can be added to flows from anywhere, not just in one location
+struct PluginA;
+
+impl Plugin for PluginA {
+    fn build(&self, app: &mut App) {
+        app.add_flows(CaptureFlow, another_capture);
+    }
+}
+```
+
+#### Pathway
+
+[`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
+
+```rust,ignore
+// Pathways look very similar to pipelines, but there are a few key differences
+pub struct RONPathway;
+
+impl Pathway for RONPathway {
+    // The capture type allows you to save anything you want to disk, even without using reflection
+    type Capture = Snapshot;
+
+    type Backend = DefaultDebugBackend;
+    type Format = RONFormat;
+    type Key<'a> = &'a str;
+
+    fn key(&self) -> Self::Key<'_> {
+        "examples/saves/flows"
+    }
+
+    // Instead of capturing and applying directly, now these methods just return labels to user-defined flows
+    // This allows for better dependency injection and reduces code complexity
+    fn capture(&self, _world: &World) -> impl FlowLabel {
+        CaptureFlow
+    }
+
+    fn apply(&self, _world: &World) -> impl FlowLabel {
+        ApplyFlow
+    }
+}
+
+// Flow labels don't encode any behavior by themselves, only point to flows
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct CaptureFlow;
+
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct ApplyFlow;
+```
+
 ### Backend
 
 The [`Backend`] is the interface between your application and persistent storage.
@@ -488,9 +488,9 @@ Snapshot::builder(world)
 
 ## Stability
 
-`bevy_save` attempts to provide stability guarantees for [`Snapshot`] serialization and deserialization between crate versions, enforced with unit tests.
+`bevy_save` attempts to provide stability guarantees for [`Snapshot`] serialization and deserialization between crate versions on a best-effort basis, enforced with unit tests.
 
-If a breaking change is introduced, it will be supported via the `version` method on [`SnapshotDeserializer`].
+If a breaking change is introduced, **the number after the `+` on the crate version will be incremented** and it will be supported via the `version` method on [`SnapshotDeserializer`].
 
 `bevy_save` relies on serialization to create save files and as such is exposed to internal implementation details for types.
 As a result, Bevy or other crate updates may break your save file format.
@@ -510,28 +510,38 @@ Changing what entities have what components or how you use your entities or reso
 
 ## Compatibility
 
+`bevy_save` follows [Semantic Versioning 2.0.0](https://semver.org/), with additional metadata: `MAJOR.MINOR.PATCH+SNAPSHOT`
+
+- **Major**: Breaking API changes and/or [`Snapshot`] format changes
+- **Minor**: Backwards-compatible API changes
+- **Patch**: Backwards-compatible bug-fixes
+- **Snapshot**: [`Snapshot`] version, incremented when the wire format of [`Snapshot`] changes in a way that will break existing applications
+
 ### Bevy
 
-| Bevy Version              | Crate Version                            |
-| ------------------------- | ---------------------------------------- |
-| `0.16`                    | `0.18`, `0.19`, `1.0`<sup> [3](#3)</sup> |
-| `0.15`                    | `0.16`<sup> [2](#2)</sup>, `0.17`        |
-| `0.14`<sup> [1](#1)</sup> | `0.15`                                   |
-| `0.13`                    | `0.14`                                   |
-| `0.12`                    | `0.10`, `0.11`, `0.12`, `0.13`           |
-| `0.11`                    | `0.9`                                    |
-| `0.10`                    | `0.4`, `0.5`, `0.6`, `0.7`, `0.8`        |
-| `0.9`                     | `0.1`, `0.2`, `0.3`                      |
+| Bevy Version              | Crate Version                                                  |
+| ------------------------- | -------------------------------------------------------------- |
+| `0.16`                    | `0.18+3`, `0.19+3`, `1.0+4`<sup> [4](#4)</sup>, `2.0+4`        |
+| `0.15`                    | `0.16+3`<sup> [3](#3)</sup>, `0.17+3`                          |
+| `0.14`<sup> [2](#2)</sup> | `0.15+2`                                                       |
+| `0.13`                    | `0.14+1`                                                       |
+| `0.12`                    | `0.10+1`, `0.11+1`, `0.12+1`, `0.13+1`                         |
+| `0.11`                    | `0.9+1`                                                        |
+| `0.10`                    | `0.4+0`, `0.5+0`, `0.6+1`<sup> [1](#1)</sup>, `0.7+1`, `0.8+1` |
+| `0.9`                     | `0.1`, `0.2+0`<sup> [0](#0)</sup>, `0.3+0`                     |
 
-#### Save format changes (since `0.15`)
+#### Snapshot Version
 
-1. <a id="1"></a> `bevy` changed [`Entity`]'s on-disk representation
-2. <a id="2"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
-3. <a id="3"></a> `bevy_save` removed the `checkpoints` field from [`Snapshot`], instead saving [`Checkpoints`] as a resource via [`Reflect`]. Use the `version` method on [`SnapshotDeserializer`] to load a snapshot created in the previous version. Types implementing [`Migrate`] will deserialize from snapshots created in the previous version automatically.
+0. <a id="0"></a> `bevy_save` introduced serialization support
+1. <a id="1"></a> `bevy_save` introduced a new [`Snapshot`] format
+2. <a id="2"></a> `bevy` changed [`Entity`]'s on-disk representation
+3. <a id="3"></a> `bevy_save` began using [`FromReflect`] when taking snapshots
+4. <a id="4"></a> `bevy_save` introduced a new [`Snapshot`] format, see below
 
-### Migration
+### Migrating
 
-#### `0.18` -> `0.19`
+<details>
+<summary>0.18+3 -> 0.19+3</summary>
 
 This version introduced [`Pathway`], which is effectively a superset of [`Pipeline`].
 
@@ -540,14 +550,33 @@ This version introduced [`Pathway`], which is effectively a superset of [`Pipeli
 - If you're using `default-features = false`, you'll need to add the `reflect` and `checkpoints` features in order to get parity with the last version
 - `SnapshotBuilder` and `SnapshotApplier` have been renamed to [`BuilderRef`] and [`ApplierRef`], respectively.
 
-#### `0.19` -> `1.0`
+</details>
+
+<details>
+<summary>0.19+3 -> 1.0+4</summary>
 
 This version introduced versioning and migrations.
 
-- `SnapshotVersion::V0_16` can be used with the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version if the snapshot had checkpoints.
+- Removed the `checkpoints` field from [`Snapshot`], instead saving [`Checkpoints`] as a resource via [`Reflect`].
+- `SnapshotVersion::V3` can be used with the `version` method on [`SnapshotDeserializer`] to load a snapshot created in a previous version (since `0.16`) if the snapshot had checkpoints.
 - Snapshots created in a previous version without checkpoints should load as expected.
 - The fields for all serializers and deserializers have been made private. Use the `new` methods to construct them.
 - Non self-describing formats such as `postcard` should now work as expected.
+- Deserialization of [`Snapshot`] will fail for this version if `PartialReflect::reflect_clone` is not implemented for all contained types. While this is typically automatically implemented, opaque types must now manually add the attribute `#[reflect(Clone)]` in order for `Snapshot::from_reflect` to succeed.
+
+</details>
+
+<details open>
+<summary>1.0+4 -> 2.0+4 (latest)</summary>
+
+This version made some ergonomic changes and fixed a few bugs.
+
+- `Applier` now respects `ReflectMapEntities` for `Component`s.
+- `BoxedPartialReflect` is now `DynamicValue`.
+- The `CloneReflect` trait has been removed. [`Snapshot`], [`Checkpoints`], and all the wrapper types now implement `Clone`.
+- `WorldCheckpointExt::rollback_with` has been removed, use `WorldCheckpointExt::rollback` instead.
+- Deserialization of [`Snapshot`] **will no longer fail** if `PartialReflect::reflect_clone` is not implemented for any contained types.
+</details>
 
 ### Platforms
 

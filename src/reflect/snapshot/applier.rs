@@ -133,7 +133,8 @@ impl<'w, 'i> ApplierRef<'w, 'i> {
 }
 
 impl<'i> ApplierRef<'_, 'i> {
-    /// Providing an entity map allows you to map ids of spawned entities and see what entities have been spawned.
+    /// Providing an entity map allows you to map ids of spawned entities and
+    /// see what entities have been spawned.
     #[must_use]
     pub fn entity_map(
         mut self,
@@ -165,7 +166,7 @@ impl<'i> ApplierRef<'_, 'i> {
 
     /// Add a [`Hook`] that will run for each entity after applying.
     #[must_use]
-    pub fn hook<F: Hook + 'static>(mut self, hook: F) -> Self {
+    pub fn hook(mut self, hook: impl Hook + 'static) -> Self {
         self.input.hooks.push(Box::new(hook));
         self
     }
@@ -187,6 +188,39 @@ impl<'i> ApplierRef<'_, 'i> {
             },
         );
         self
+    }
+}
+
+struct MapEntitiesMapper<'m, 'w> {
+    map: &'m mut EntityHashMap<Entity>,
+    world: &'w mut World,
+}
+
+impl<'m, 'w> MapEntitiesMapper<'m, 'w> {
+    fn new(map: &'m mut EntityHashMap<Entity>, world: &'w mut World) -> Self {
+        Self { map, world }
+    }
+}
+
+impl EntityMapper for MapEntitiesMapper<'_, '_> {
+    fn get_mapped(&mut self, source: Entity) -> Entity {
+        *self
+            .map
+            .entry(source)
+            .or_insert_with(|| self.world.spawn_empty().id())
+    }
+
+    fn set_mapped(&mut self, source: Entity, target: Entity) {
+        self.map.insert(source, target);
+    }
+}
+
+impl Drop for MapEntitiesMapper<'_, '_> {
+    fn drop(&mut self) {
+        // WORKAROUND: We've already mapped, don't do it again.
+        for mapped in self.map.values().copied().collect::<Vec<_>>() {
+            self.map.insert(mapped, mapped);
+        }
     }
 }
 
@@ -251,13 +285,13 @@ impl ApplierRef<'_, '_> {
                 })?;
 
                 if self.input.prefabs.contains_key(&type_id) {
-                    let mut prefab =
-                        clone_reflect_value(component.as_partial_reflect(), type_registry);
+                    let mut prefab = clone_reflect_value(&**component, type_registry);
 
                     if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
-                        SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
-                            map_entities.map_entities(prefab.as_partial_reflect_mut(), mapper);
-                        });
+                        map_entities.map_entities(
+                            &mut *prefab,
+                            &mut MapEntitiesMapper::new(entity_map, self.world),
+                        );
                     }
 
                     prefab_entities
@@ -268,15 +302,14 @@ impl ApplierRef<'_, '_> {
                     continue;
                 }
 
-                let reflect_component =
-                    registration.data::<ReflectComponent>().ok_or_else(|| {
-                        SceneSpawnError::UnregisteredComponent {
-                            type_path: type_info.type_path().to_string(),
-                        }
-                    })?;
+                let reflect = registration.data::<ReflectComponent>().ok_or_else(|| {
+                    SceneSpawnError::UnregisteredComponent {
+                        type_path: type_info.type_path().to_string(),
+                    }
+                })?;
 
                 {
-                    let component_id = reflect_component.register_component(self.world);
+                    let component_id = reflect.register_component(self.world);
                     // SAFETY: we registered the component above. the info exists
                     let component_info =
                         unsafe { self.world.components().get_info_unchecked(component_id) };
@@ -285,27 +318,36 @@ impl ApplierRef<'_, '_> {
                     }
                 }
 
-                let mut component =
-                    clone_reflect_value(component.as_partial_reflect(), type_registry);
+                let mut cloned = None;
 
-                if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
-                    SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
-                        map_entities.map_entities(component.as_partial_reflect_mut(), mapper);
-                    });
-                }
+                // If this component references entities in the scene, update
+                // them to the entities in the world.
+                let component = registration
+                    .data::<ReflectMapEntities>()
+                    .and_then(|map_entities| {
+                        cloned = Some(clone_reflect_value(&**component, type_registry));
+
+                        map_entities.map_entities(
+                            cloned.as_deref_mut()?,
+                            &mut MapEntitiesMapper::new(entity_map, self.world),
+                        );
+
+                        cloned.as_deref()
+                    })
+                    .unwrap_or(&**component);
 
                 SceneEntityMapper::world_scope(entity_map, self.world, |world, mapper| {
                     let entity_mut = &mut world.entity_mut(entity);
 
                     // WORKAROUND: apply_or_insert doesn't actually apply
-                    reflect_component.remove(entity_mut);
+                    reflect.remove(entity_mut);
 
-                    reflect_component.apply_or_insert_mapped(
+                    reflect.apply_or_insert_mapped(
                         entity_mut,
-                        component.as_partial_reflect(),
+                        component,
                         type_registry,
                         mapper,
-                        RelationshipHookMode::Skip,
+                        RelationshipHookMode::Run,
                     );
                 });
             }
@@ -325,30 +367,33 @@ impl ApplierRef<'_, '_> {
                     type_path: type_info.type_path().to_string(),
                 }
             })?;
-            let reflect_resource = registration.data::<ReflectResource>().ok_or_else(|| {
+            let reflect = registration.data::<ReflectResource>().ok_or_else(|| {
                 SceneSpawnError::UnregisteredResource {
                     type_path: type_info.type_path().to_string(),
                 }
             })?;
 
+            let mut cloned = None;
+
             // If this resource references entities in the scene, update
             // them to the entities in the world.
-            let mut cloned_resource;
-            let partial_reflect_resource = if let Some(map_entities) =
-                registration.data::<ReflectMapEntities>()
-            {
-                cloned_resource = clone_reflect_value(resource.as_partial_reflect(), type_registry);
-                SceneEntityMapper::world_scope(entity_map, self.world, |_, mapper| {
-                    map_entities.map_entities(cloned_resource.as_partial_reflect_mut(), mapper);
-                });
-                cloned_resource.as_partial_reflect()
-            } else {
-                resource.as_partial_reflect()
-            };
+            let resource = registration
+                .data::<ReflectMapEntities>()
+                .and_then(|map_entities| {
+                    cloned = Some(clone_reflect_value(&**resource, type_registry));
+
+                    map_entities.map_entities(
+                        cloned.as_deref_mut()?,
+                        &mut MapEntitiesMapper::new(entity_map, self.world),
+                    );
+
+                    cloned.as_deref()
+                })
+                .unwrap_or(&**resource);
 
             // If the world already contains an instance of the given resource
             // just apply the (possibly) new value, otherwise insert the resource
-            reflect_resource.apply_or_insert(self.world, partial_reflect_resource, type_registry);
+            reflect.apply_or_insert(self.world, resource, type_registry);
         }
 
         // Prefab hooks

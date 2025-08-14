@@ -17,7 +17,9 @@ use crate::{
 
 /// A collection of serializable entities and resources.
 ///
-/// Can be serialized via [`SnapshotSerializer`](crate::reflect::SnapshotSerializer) and deserialized via [`SnapshotDeserializer`](crate::reflect::SnapshotDeserializer).
+/// Can be serialized via
+/// [`SnapshotSerializer`](crate::reflect::SnapshotSerializer) and deserialized
+/// via [`SnapshotDeserializer`](crate::reflect::SnapshotDeserializer).
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Clone)]
 #[type_path = "bevy_save"]
@@ -49,7 +51,8 @@ impl Snapshot {
         Self::builder(world).extract_all().build()
     }
 
-    /// Create a [`BuilderRef`] from the [`World`], allowing you to create partial or filtered snapshots.
+    /// Create a [`BuilderRef`] from the [`World`], allowing you to create
+    /// partial or filtered snapshots.
     ///
     /// # Example
     /// ```
