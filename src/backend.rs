@@ -115,17 +115,17 @@ impl AppBackendExt for App {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop {
-    use async_std::{
+    use bevy::prelude::*;
+    use smol::{
         fs::{
             File,
             create_dir_all,
         },
         io::{
-            ReadExt,
-            WriteExt,
+            AsyncReadExt,
+            AsyncWriteExt,
         },
     };
-    use bevy::prelude::*;
 
     #[allow(clippy::wildcard_imports)]
     use super::*;
@@ -244,8 +244,11 @@ mod wasm {
         }
     }
 
-    impl<'a> Backend<&'a str> for WebStorage {
-        async fn save<F: Format, T: Serialize>(&self, key: &str, value: &T) -> Result<(), Error> {
+    impl<K> Backend<K> for WebStorage
+    where
+        K: AsRef<str>,
+    {
+        async fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error> {
             let mut buf: Vec<u8> = Vec::new();
 
             F::serialize(&mut buf, value)?;
@@ -253,7 +256,7 @@ mod wasm {
             self.storage
                 .get()
                 .set_item(
-                    &format!("{WORKSPACE}.{key}"),
+                    &format!("{WORKSPACE}.{}", key.as_ref()),
                     &serde_json::to_string(&buf).map_err(Error::saving)?,
                 )
                 .expect("Failed to save");
@@ -263,13 +266,13 @@ mod wasm {
 
         async fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
             &self,
-            key: &str,
+            key: K,
             seed: S,
         ) -> Result<T, Error> {
             let value = self
                 .storage
                 .get()
-                .get_item(&format!("{WORKSPACE}.{key}"))
+                .get_item(&format!("{WORKSPACE}.{}", key.as_ref()))
                 .expect("Failed to load")
                 .ok_or(Error::custom("Invalid key"))?;
 

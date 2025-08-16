@@ -1,5 +1,7 @@
-use async_std::task::block_on;
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    tasks::block_on,
+};
 
 use crate::{
     backend::AppBackend,
