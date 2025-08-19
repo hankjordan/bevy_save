@@ -4,6 +4,7 @@ mod clone;
 pub mod migration;
 pub mod pipeline;
 pub mod prefab;
+pub mod relationship;
 pub mod remote;
 pub mod serde;
 pub mod snapshot;
@@ -48,3 +49,13 @@ pub use self::{
         Snapshot,
     },
 };
+
+/// Register this [`TypeData`](bevy::reflect::TypeData) to prevent inclusion in [`Snapshot`].
+#[derive(Clone)]
+pub struct ReflectIgnore;
+
+impl<T> bevy::reflect::FromType<T> for ReflectIgnore {
+    fn from_type() -> Self {
+        Self
+    }
+}

@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use crate::{
     backend::AppBackend,
     error::Error,
+    plugins::SaveReflectPlugin,
     prelude::*,
 };
 
@@ -59,6 +60,11 @@ pub trait AppPipelineExt {
 
 impl AppPipelineExt for App {
     fn init_pipeline<P: Pipeline>(&mut self) -> &mut Self {
+        // `Snapshot` must be registered to use the pipeline
+        if !self.is_plugin_added::<SaveReflectPlugin>() {
+            self.add_plugins(SaveReflectPlugin);
+        }
+
         P::build(self);
         self
     }

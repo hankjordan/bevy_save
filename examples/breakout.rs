@@ -271,6 +271,8 @@ impl Prefab for BallPrefab {
     type Marker = Ball;
 
     fn spawn(self, target: Entity, world: &mut World) {
+        // Some entities will need initialization from world state, such as mesh assets.
+        // We can do that here.
         let mesh = world.resource_mut::<Assets<Mesh>>().add(Circle::default());
         let material = world
             .resource_mut::<Assets<ColorMaterial>>()
@@ -287,6 +289,8 @@ impl Prefab for BallPrefab {
     }
 
     fn extract(builder: BuilderRef) -> BuilderRef {
+        // We don't actually need to save all of those runtime components.
+        // Only save the translation and velocity of the Ball.
         builder.extract_prefab(|entity| {
             Some(BallPrefab {
                 position: entity.get::<Transform>()?.translation,

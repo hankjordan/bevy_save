@@ -2,7 +2,7 @@
 members = [".", "crates/*"]
 
 [workspace.package]
-version = "2.0.1+4"
+version = "3.0.0+4"
 edition = "2024"
 description = "A framework for saving and loading application state in Bevy."
 license = "MIT OR Apache-2.0"
@@ -28,9 +28,17 @@ all-features = true
 uninlined_format_args = "allow"
 
 [features]
-default = ["reflect", "checkpoints", "bevy_asset", "bevy_render", "bevy_sprite"]
+default = [
+    "reflect",
+    "checkpoints",
+    "log",
+    "bevy_asset",
+    "bevy_render",
+    "bevy_sprite",
+]
 reflect = ["bevy/bevy_scene"]
 checkpoints = ["reflect"]
+log = ["bevy/bevy_log"]
 bevy_asset = ["bevy/bevy_asset"]
 bevy_render = ["bevy/bevy_render"]
 bevy_sprite = ["bevy/bevy_sprite"]
@@ -39,7 +47,7 @@ brotli = ["dep:brotli"]
 [workspace.dependencies]
 bevy = { version = "0.16.1", default-features = false }
 bevy_macro_utils = "0.16.1"
-bevy_save_macros = { version = "2.0.0", path = "crates/bevy_save_macros" }
+bevy_save_macros = { version = "3.0.0", path = "crates/bevy_save_macros" }
 variadics_please = { version = "1.1" }
 
 [dependencies]

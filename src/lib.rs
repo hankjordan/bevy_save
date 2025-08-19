@@ -51,13 +51,14 @@ pub mod prelude {
     #[cfg(all(feature = "reflect", feature = "checkpoints"))]
     #[doc(inline)]
     pub use crate::reflect::checkpoint::{
-        AppCheckpointExt,
+        ReflectIgnoreCheckpoint,
         WorldCheckpointExt,
     };
     #[cfg(feature = "reflect")]
     #[doc(inline)]
     pub use crate::reflect::{
         Pipeline,
+        ReflectIgnore,
         migration::{
             Migrate,
             Migrator,
@@ -68,6 +69,10 @@ pub mod prelude {
             CommandsPrefabExt,
             Prefab,
             WithPrefab,
+        },
+        relationship::{
+            ReflectRelationship,
+            ReflectRelationshipTarget,
         },
         snapshot::{
             Applier,
@@ -117,7 +122,7 @@ pub mod prelude {
         },
         middleware::*,
         plugins::{
-            SavePlugin,
+            SaveCorePlugin,
             SavePlugins,
         },
     };

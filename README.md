@@ -45,7 +45,10 @@ Applications can change over the history of development. Users expect that saves
 
 `bevy_save` provides support for reflection-based migrations with the [`Migrate`] trait:
 
-```rust,ignore
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
+
 // `#[reflect(Migrate)]` registers `ReflectMigrate` with the `TypeRegistry`
 // This allows `Snapshot`s to save the type version and apply migrations automatically
 #[derive(Reflect, Component, Debug, PartialEq)]
@@ -120,13 +123,30 @@ The [`Checkpoints`] resource also gives you fine-tuned control of the currently 
 #### Type registration
 
 No special traits or NewTypes necessary, `bevy_save` takes full advantage of Bevy's built-in reflection.
-As long as the type implements [`Reflect`], it can be registered and used with `bevy_save`.
+As long as the type implements [`Reflect`] and it's not filtered out, it will automatically be included in [`Snapshot`]s.
 
-`bevy_save` provides extension traits for [`App`] allowing you to do so.
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
 
-- [`App.init_pipeline::<P>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppPipelineExt.html#tymethod.init_pipeline) initializes a [`Pipeline`] for use with save / load.
-- [`App.allow_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.allow_checkpoint) allows a type to roll back.
-- [`App.deny_checkpoint::<T>()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/trait.AppCheckpointExt.html#tymethod.deny_checkpoint) denies a type from rolling back.
+/// `#[reflect(Ignore)]` prevents the type from being included in any snapshots or checkpoints.
+#[derive(Component, Reflect)]
+#[reflect(Component, Ignore)]
+struct NotIncluded {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+/// `#[reflect(IgnoreCheckpoint)]` prevents the type from being included in checkpoints (but they will still be in snapshots).
+#[derive(Component, Reflect)]
+#[reflect(Component, IgnoreCheckpoint)]
+struct NotInCheckpoints {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+```
 
 #### Pipeline
 
@@ -134,7 +154,18 @@ The [`Pipeline`] trait allows you to use multiple different configurations of [`
 
 Using [`Pipeline`] also lets you re-use [`Snapshot`] appliers and builders.
 
-```rust,ignore
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+struct Head;
+
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+struct Player;
+
 struct HeirarchyPipeline;
 
 impl Pipeline for HeirarchyPipeline {
@@ -168,7 +199,16 @@ While `bevy_save` aims to make it as easy as possible to save your entire world,
 
 [`Builder`] allows you to manually create snapshots like [`DynamicSceneBuilder`]:
 
-```rust,ignore
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
+
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+struct FancyMap {
+    map: Vec<(u32, String)>,
+}
+
 fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> Snapshot {
     Snapshot::builder(world)
         // Extract all resources
@@ -185,6 +225,33 @@ fn build_snapshot(world: &World, target: Entity, children: Query<&Children>) -> 
         // Build the `Snapshot`
         .build()
 }
+
+/// You are also able to extract resources by type
+fn build_snapshot_resource(world: &World) -> Snapshot {
+    Snapshot::builder(world)
+        // Extract the resource by the type
+        .extract_resource::<FancyMap>()
+
+        // Build the `Snapshot`
+        // It will only contain the one resource we extracted
+        .build()
+}
+
+// Additionally, explicit type filtering like `ApplierRef` is available when building snapshots
+fn build_snapshot_filter(world: &World) -> Snapshot {
+    Snapshot::builder(world)
+        // Exclude `Transform` from this `Snapshot`
+        .deny::<Transform>()
+
+        // Extract all matching entities and resources
+        .extract_all()
+
+        // Clear all extracted entities without any components
+        .clear_empty()
+
+        // Build the `Snapshot`
+        .build()
+}
 ```
 
 #### Entity hooks
@@ -193,70 +260,90 @@ You are also able to add hooks when applying snapshots, similar to `bevy-scene-h
 
 This can be used for many things, like spawning the snapshot as a child of an entity:
 
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
 
-snapshot
-    .applier(world)
+fn apply_snapshot(world: &mut World, root: Entity, snapshot: Snapshot) {
+    snapshot
+        .applier(world)
 
-    // This will be run for every Entity in the snapshot
-    // It runs after the Entity's Components are loaded
-    .hook(move |entity, cmds| {
-        // You can use the hook to add, get, or remove Components
-        if !entity.contains::<Parent>() {
-            cmds.set_parent(parent);
-        }
-    })
+        // This will be run for every Entity in the snapshot
+        // It runs after the Entity's Components are loaded
+        .hook(move |entity, cmds| {
+            // You can use the hook to add, get, or remove Components
+            if !entity.contains::<ChildOf>() {
+                cmds.insert(ChildOf(root));
+            }
+        })
 
-    .apply();
+        .apply();
+}
 ```
 
 Hooks may also despawn entities:
 
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
 
-snapshot
-    .applier(world)
+fn apply_snapshot(world: &mut World, snapshot: Snapshot) {
+    snapshot
+        .applier(world)
 
-    .hook(|entity, cmds| {
-        if entity.contains::<A>() {
-            cmds.despawn();
-        }
-    })
+        .hook(|entity, cmds| {
+            if entity.contains::<Transform>() {
+                cmds.despawn();
+            }
+        })
+
+        // Alternatively, you could do the following:
+        // .despawn::<With<Transform>>()
+
+        .apply();
+}
 ```
 
 #### Entity mapping
 
 As Entity ids are not intended to be used as unique identifiers, `bevy_save` supports mapping Entity ids.
 
-First, you'll need to get a [`ApplierRef`]:
+This is done transparently by utilizing [`MapEntities`].
 
-- [`Snapshot::applier()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.Snapshot.html#method.applier)
-- [`ApplierRef::new()`](https://docs.rs/bevy_save/latest/bevy_save/prelude/struct.ApplierRef.html#method.new)
+```rust
+use bevy::{ecs::{entity::MapEntities, reflect::ReflectMapEntities}, prelude::*};
+use bevy_save::prelude::*;
+use std::collections::HashMap;
 
-The [`ApplierRef`] will then allow you to configure the entity map (and other settings) before applying:
+/// It is required to register `#[reflect(MapEntities)]`
+#[derive(Component, Reflect)]
+#[reflect(Component, MapEntities)]
+struct ExampleMap {
+    data: HashMap<u32, Entity>,
+}
 
-```rust,ignore
-let snapshot = Snapshot::from_world(world);
+impl MapEntities for ExampleMap {
+    fn map_entities<E: EntityMapper>(&mut self, entity_mapper: &mut E) {
+        self.data.values_mut().for_each(|e| {
+            *e = entity_mapper.get_mapped(*e);
+        });
+    }
+}
 
-snapshot
-    .applier(world)
+/// While `bevy_save` supports entity maps, it is not necessary even if you are using `MapEntities`.
+fn apply_snapshot(world: &mut World, snapshot: Snapshot) {
+    snapshot
+        .applier(world)
 
-    // Your entity map
-    .entity_map(HashMap::default())
+        // An entity map may be desired if you are already doing something like using persistent uuid entity identifiers
+        // .entity_map(entity_map)
 
-    // Despawn all entities matching (With<A>, Without<B>)
-    .despawn::<(With<A>, Without<B>)>()
+        // Otherwise, you should just despawn existing entities
+        .despawn::<With<ExampleMap>>()
 
-    .apply();
+        .apply();
+}
 ```
-
-#### MapEntities
-
-`bevy_save` also supports [`MapEntities`](https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html) via reflection to allow you to update entity ids within components and resources.
-
-See [Bevy's Parent Component](https://github.com/bevyengine/bevy/blob/v0.15.3/crates/bevy_hierarchy/src/components/parent.rs) for a simple example.
 
 ### Flows
 
@@ -268,34 +355,46 @@ They are defined similar to Bevy systems, but they require an input and an outpu
 
 Additionally, the introduction of [`Flow`]s allows reflection to become optional - bring your own serialization if you so wish!
 
-```rust,ignore
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
+use serde::{Serialize, Deserialize};
+
+// Flow labels don't encode any behavior by themselves, only point to flows
+#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy, FlowLabel)]
+pub struct CaptureFlow;
+
 fn main() {
     App::new()
-        .add_flows(CaptureFlow, (capture_tiles, capture_players, capture_cameras))
-        .add_flows(ApplyFlow, (apply_tiles, apply_monsters));
+        .add_flows(CaptureFlow, capture_tiles);
+}
+
+#[derive(Component, Clone, Serialize, Deserialize)]
+enum Tile {
+    Air,
+    Dirt,
+    Stone,
 }
 
 // User-defined captures make reflection unnecessary
 #[derive(Serialize, Deserialize)]
 struct MyCapture {
     // ... but then you'll need to specify everything you extract
-    tiles: Vec<(Entity, Tile)>,
-    players: Vec<(Entity, Transform, Visibility)>,
-    cameras: Vec<(Entity, Camera)>,
+    tiles: Vec<(u64, Tile)>,
 }
 
 // Flow systems have full access to the ECS (even write access)
-fn capture_tiles(In(cap): In<MyCapture>, tiles: Query<(Entity, &Tile)>) -> MyCapture {
-    cap.tiles.extend(query.iter().map(|(e, t)| (e, t.clone())));
+fn capture_tiles(In(mut cap): In<MyCapture>, tiles: Query<(Entity, &Tile)>) -> MyCapture {
+    cap.tiles.extend(tiles.iter().map(|(e, t)| (e.to_bits(), t.clone())));
     cap
 }
 
-// Flow systems can be added to flows from anywhere, not just in one location
+// Flow systems can be added to flows from anywhere in your application
 struct PluginA;
 
 impl Plugin for PluginA {
     fn build(&self, app: &mut App) {
-        app.add_flows(CaptureFlow, another_capture);
+        app.add_flows(CaptureFlow, capture_tiles);
     }
 }
 ```
@@ -304,16 +403,19 @@ impl Plugin for PluginA {
 
 [`Pathway`] is the more flexible version of [`Pipeline`] which allows you to specify your own capture type and use [`Flow`]s.
 
-```rust,ignore
-// Pathways look very similar to pipelines, but there are a few key differences
-pub struct RONPathway;
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
 
-impl Pathway for RONPathway {
+// Pathways look very similar to pipelines, but there are a few key differences
+pub struct SimplePathway;
+
+impl Pathway for SimplePathway {
     // The capture type allows you to save anything you want to disk, even without using reflection
     type Capture = Snapshot;
 
     type Backend = DefaultDebugBackend;
-    type Format = RONFormat;
+    type Format = DefaultDebugFormat;
     type Key<'a> = &'a str;
 
     fn key(&self) -> Self::Key<'_> {
@@ -345,9 +447,12 @@ The [`Backend`] is the interface between your application and persistent storage
 
 Some example backends may include [`FileIO`], sqlite, [`LocalStorage`], or network storage.
 
-```rust,ignore
-#[derive(Default, Resource)]
-pub struct FileIO;
+```rust
+use bevy_save::prelude::*;
+use serde::{de::DeserializeSeed, Serialize};
+use smol::{fs::{File, create_dir_all}, io::{AsyncReadExt, AsyncWriteExt}};
+
+struct FileIO;
 
 impl<K: std::fmt::Display + Send> Backend<K> for FileIO {
     async fn save<F: Format, T: Serialize>(&self, key: K, value: &T) -> Result<(), Error> {
@@ -380,7 +485,12 @@ impl<K: std::fmt::Display + Send> Backend<K> for FileIO {
 
 [`Format`]s can either be human-readable like [`JSON`] or binary like [`MessagePack`].
 
-```rust,ignore
+```rust
+use bevy_save::prelude::*;
+use io_adapters::WriteExtension;
+use serde::{de::DeserializeSeed, Serialize};
+use std::io::{Read, Write};
+
 pub struct RONFormat;
 
 impl Format for RONFormat {
@@ -413,14 +523,37 @@ impl Format for RONFormat {
 
 The [`Prefab`] trait allows you to easily spawn entities from a blueprint.
 
-```rust,ignore
+```rust
+use bevy::prelude::*;
+use bevy_save::prelude::*;
+
+const BALL_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
+const BALL_DIAMETER: f32 = 30.;
+const BALL_SPEED: f32 = 400.0;
+const BALL_COLOR: Color = Color::srgb(1.0, 0.5, 0.5);
+const INITIAL_BALL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
+
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct Ball;
 
+#[derive(Component, Reflect, Deref, DerefMut)]
+#[reflect(Component)]
+struct Velocity(Vec2);
+
 #[derive(Reflect)]
 struct BallPrefab {
     position: Vec3,
+    velocity: Vec2,
+}
+
+impl Default for BallPrefab {
+    fn default() -> Self {
+        Self {
+            position: BALL_STARTING_POSITION,
+            velocity: INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED,
+        }
+    }
 }
 
 impl Prefab for BallPrefab {
@@ -440,50 +573,21 @@ impl Prefab for BallPrefab {
             Transform::from_translation(self.position)
                 .with_scale(Vec2::splat(BALL_DIAMETER).extend(1.)),
             Ball,
-            Velocity(INITIAL_BALL_DIRECTION.normalize() * BALL_SPEED),
+            Velocity(self.velocity),
         ));
     }
 
     fn extract(builder: BuilderRef) -> BuilderRef {
         // We don't actually need to save all of those runtime components.
-        // Only save the translation of the Ball.
+        // Only save the translation and velocity of the Ball.
         builder.extract_prefab(|entity| {
             Some(BallPrefab {
                 position: entity.get::<Transform>()?.translation,
+                velocity: entity.get::<Velocity>()?.0,
             })
         })
     }
 }
-```
-
-You are also able to extract resources by type:
-
-```rust,ignore
-Snapshot::builder(world)
-    // Extract the resource by the type name
-    // In this case, we extract the resource from the `manual` example
-    .extract_resource::<FancyMap>()
-
-    // Build the `Snapshot`
-    // It will only contain the one resource we extracted
-    .build()
-```
-
-Additionally, explicit type filtering like [`ApplierRef`] is available when building snapshots:
-
-```rust,ignore
-Snapshot::builder(world)
-    // Exclude `Transform` from this `Snapshot`
-    .deny::<Transform>()
-
-    // Extract all matching entities and resources
-    .extract_all()
-
-    // Clear all extracted entities without any components
-    .clear_empty()
-
-    // Build the `Snapshot`
-    .build()
 ```
 
 ## Stability
@@ -519,16 +623,16 @@ Changing what entities have what components or how you use your entities or reso
 
 ### Bevy
 
-| Bevy Version              | Crate Version                                                  |
-| ------------------------- | -------------------------------------------------------------- |
-| `0.16`                    | `0.18+3`, `0.19+3`, `1.0+4`<sup> [4](#4)</sup>, `2.0+4`        |
-| `0.15`                    | `0.16+3`<sup> [3](#3)</sup>, `0.17+3`                          |
-| `0.14`<sup> [2](#2)</sup> | `0.15+2`                                                       |
-| `0.13`                    | `0.14+1`                                                       |
-| `0.12`                    | `0.10+1`, `0.11+1`, `0.12+1`, `0.13+1`                         |
-| `0.11`                    | `0.9+1`                                                        |
-| `0.10`                    | `0.4+0`, `0.5+0`, `0.6+1`<sup> [1](#1)</sup>, `0.7+1`, `0.8+1` |
-| `0.9`                     | `0.1`, `0.2+0`<sup> [0](#0)</sup>, `0.3+0`                     |
+| Bevy Version              | Crate Version                                                    |
+| ------------------------- | ---------------------------------------------------------------- |
+| `0.16`                    | `0.18+3`, `0.19+3`, `1.0+4`<sup> [4](#4)</sup>, `2.0+4`, `3.0+4` |
+| `0.15`                    | `0.16+3`<sup> [3](#3)</sup>, `0.17+3`                            |
+| `0.14`<sup> [2](#2)</sup> | `0.15+2`                                                         |
+| `0.13`                    | `0.14+1`                                                         |
+| `0.12`                    | `0.10+1`, `0.11+1`, `0.12+1`, `0.13+1`                           |
+| `0.11`                    | `0.9+1`                                                          |
+| `0.10`                    | `0.4+0`, `0.5+0`, `0.6+1`<sup> [1](#1)</sup>, `0.7+1`, `0.8+1`   |
+| `0.9`                     | `0.1`, `0.2+0`<sup> [0](#0)</sup>, `0.3+0`                       |
 
 #### Snapshot Version
 
@@ -566,8 +670,8 @@ This version introduced versioning and migrations.
 
 </details>
 
-<details open>
-<summary>1.0+4 -> 2.0+4 (latest)</summary>
+<details>
+<summary>1.0+4 -> 2.0+4</summary>
 
 This version made some ergonomic changes and fixed a few bugs.
 
@@ -576,6 +680,19 @@ This version made some ergonomic changes and fixed a few bugs.
 - The `CloneReflect` trait has been removed. [`Snapshot`], [`Checkpoints`], and all the wrapper types now implement `Clone`.
 - `WorldCheckpointExt::rollback_with` has been removed, use `WorldCheckpointExt::rollback` instead.
 - Deserialization of [`Snapshot`] **will no longer fail** if `PartialReflect::reflect_clone` is not implemented for any contained types.
+</details>
+
+<details open>
+<summary>2.0+4 -> 3.0+4 (latest)</summary>
+
+This version improved support for `Relationship`s and introduced `ReflectIgnore` and `ReflectIgnoreCheckpoint`.
+
+- Types with `Relationship`s must be registered to act correctly. Register `#[reflect(Relationship)]` and `#[reflect(RelationshipTarget)]` accordingly.
+- Both the `Relationship` and `RelationshipTarget` types must be registered. A warning will be logged if this is not the case.
+- If registered, `RelationshipTarget` types will no longer be included in [`Snapshot`] or applied on load. The `Relationship` type is the "source of truth" and the "target" entities will be populated from those values.
+- `CheckpointRegistry` has been removed. Instead, register `#[reflect(IgnoreCheckpoint)]`.
+- `SavePlugin` is now `SaveCorePlugin` to differentiate from `SavePlugins`.
+
 </details>
 
 ### Platforms
@@ -595,6 +712,7 @@ This version made some ergonomic changes and fixed a few bugs.
 | ------------- | --------------------------------------- | -------- |
 | `reflect`     | Enables reflection-based snapshots      | Yes      |
 | `checkpoints` | Enables reflection-based checkpoints    | Yes      |
+| `log`         | Enables logging of warnings             | Yes      |
 | `bevy_asset`  | Enables `bevy_asset` type registration  | Yes      |
 | `bevy_render` | Enables `bevy_render` type registration | Yes      |
 | `bevy_sprite` | Enables `bevy_sprite` type registration | Yes      |
@@ -642,4 +760,5 @@ This version made some ergonomic changes and fixed a few bugs.
 [`Reflect`]: https://docs.rs/bevy/latest/bevy/prelude/trait.Reflect.html
 [`ReflectDeserialize`]: https://docs.rs/bevy/latest/bevy/prelude/struct.ReflectDeserialize.html
 [`World`]: https://docs.rs/bevy/latest/bevy/prelude/struct.World.html
+[`MapEntities`]: https://docs.rs/bevy/latest/bevy/ecs/entity/trait.MapEntities.html
 [`LocalStorage`]: https://docs.rs/web-sys/latest/web_sys/struct.Storage.html

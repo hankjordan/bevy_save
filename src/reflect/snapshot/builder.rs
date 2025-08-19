@@ -16,8 +16,6 @@ use bevy::{
     scene::DynamicEntity,
 };
 
-#[cfg(feature = "checkpoints")]
-use crate::reflect::checkpoint::CheckpointRegistry;
 use crate::{
     clone_reflect_value,
     prelude::*,
@@ -85,7 +83,7 @@ impl Builder {
 /// A snapshot builder that can extract entities and resources from a [`World`].
 pub struct BuilderRef<'a> {
     world: &'a World,
-    type_registry: Option<&'a TypeRegistry>,
+    registry: Option<&'a TypeRegistry>,
     input: Builder,
 }
 
@@ -117,7 +115,7 @@ impl<'a> BuilderRef<'a> {
     pub fn new(world: &'a World) -> Self {
         Self {
             world,
-            type_registry: None,
+            registry: None,
             input: Builder::new(),
         }
     }
@@ -153,7 +151,7 @@ impl<'a> BuilderRef<'a> {
     pub fn checkpoint(world: &'a World) -> Self {
         Self {
             world,
-            type_registry: None,
+            registry: None,
             input: Builder::checkpoint(),
         }
     }
@@ -163,7 +161,7 @@ impl<'a> BuilderRef<'a> {
     pub fn from_parts(world: &'a World, input: Builder) -> Self {
         Self {
             world,
-            type_registry: None,
+            registry: None,
             input,
         }
     }
@@ -183,8 +181,8 @@ impl<'a> BuilderRef<'a> {
     ///
     /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
     #[must_use]
-    pub fn type_registry(mut self, type_registry: &'a TypeRegistry) -> Self {
-        self.type_registry = Some(type_registry);
+    pub fn type_registry(mut self, registry: &'a TypeRegistry) -> Self {
+        self.registry = Some(registry);
         self
     }
 }
@@ -280,18 +278,15 @@ impl BuilderRef<'_> {
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     #[must_use]
     pub fn extract_entities(mut self, entities: impl Iterator<Item = Entity>) -> Self {
-        let app_type_registry = self
+        let app_registry = self
             .world
             .get_resource::<AppTypeRegistry>()
             .map(|r| r.read());
 
-        let type_registry = self
-            .type_registry
-            .or(app_type_registry.as_deref())
+        let registry = self
+            .registry
+            .or(app_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
-
-        #[cfg(feature = "checkpoints")]
-        let checkpoints = self.world.get_resource::<CheckpointRegistry>();
 
         for entity in entities.filter_map(|e| self.world.get_entity(e).ok()) {
             let id = entity.id();
@@ -301,31 +296,26 @@ impl BuilderRef<'_> {
             };
 
             for component in entity.archetype().components() {
-                let reflect = self
+                let ty = self
                     .world
                     .components()
                     .get_info(component)
                     .and_then(|info| info.type_id())
-                    .filter(|id| self.input.filter.is_allowed_by_id(*id));
+                    .filter(|id| self.input.filter.is_allowed_by_id(*id))
+                    .and_then(|id| registry.get(id))
+                    .filter(|ty| !ty.contains::<ReflectIgnore>())
+                    .filter(|ty| !ty.contains::<ReflectRelationshipTarget>());
 
                 #[cfg(feature = "checkpoints")]
-                let reflect = reflect.filter(|id| {
-                    if self.input.is_checkpoint {
-                        checkpoints.is_none_or(|rb| rb.is_allowed_by_id(*id))
-                    } else {
-                        true
-                    }
-                });
+                let ty = ty.filter(|ty| !ty.contains::<ReflectIgnoreCheckpoint>());
 
-                let reflect = reflect.and_then(|id| type_registry.get(id)).and_then(|r| {
+                if let Some(component) = ty.and_then(|r| {
                     Some(clone_reflect_value(
                         r.data::<ReflectComponent>()?.reflect(entity)?,
-                        type_registry,
+                        registry,
                     ))
-                });
-
-                if let Some(reflect) = reflect {
-                    entry.components.push(reflect);
+                }) {
+                    entry.components.push(component);
                 }
             }
 
@@ -351,6 +341,8 @@ impl BuilderRef<'_> {
     }
 
     /// Extract all entities with a custom extraction function.
+    ///
+    /// This will bypass all filters.
     #[must_use]
     pub fn extract_entities_manual(
         mut self,
@@ -426,19 +418,19 @@ impl BuilderRef<'_> {
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     #[must_use]
     pub fn extract_resources_by_path(self, type_paths: impl Iterator<Item: AsRef<str>>) -> Self {
-        let app_type_registry = self
+        let app_registry = self
             .world
             .get_resource::<AppTypeRegistry>()
             .map(|r| r.read());
 
-        let type_registry = self
-            .type_registry
-            .or(app_type_registry.as_deref())
+        let registry = self
+            .registry
+            .or(app_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
 
         self.extract_resources_by_type_id(
             type_paths
-                .filter_map(|p| type_registry.get_with_type_path(p.as_ref()))
+                .filter_map(|p| registry.get_with_type_path(p.as_ref()))
                 .map(|r| r.type_id()),
         )
     }
@@ -449,38 +441,31 @@ impl BuilderRef<'_> {
     /// If `type_registry` is not set or the [`AppTypeRegistry`] resource does not exist.
     #[must_use]
     pub fn extract_resources_by_type_id(mut self, type_ids: impl Iterator<Item = TypeId>) -> Self {
-        let app_type_registry = self
+        let app_registry = self
             .world
             .get_resource::<AppTypeRegistry>()
             .map(|r| r.read());
 
-        let type_registry = self
-            .type_registry
-            .or(app_type_registry.as_deref())
+        let registry = self
+            .registry
+            .or(app_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to extract.");
 
+        let tys = type_ids
+            .filter_map(|id| registry.get(id))
+            .filter(|r| self.input.filter.is_allowed_by_id((*r).type_id()))
+            .filter(|ty| !ty.contains::<ReflectIgnore>())
+            .filter(|ty| !ty.contains::<ReflectRelationshipTarget>());
+
         #[cfg(feature = "checkpoints")]
-        let checkpoints = self.world.get_resource::<CheckpointRegistry>();
+        let tys = tys.filter(|ty| !ty.contains::<ReflectIgnoreCheckpoint>());
 
-        let f = type_ids
-            .filter_map(|id| type_registry.get(id))
-            .filter(|r| self.input.filter.is_allowed_by_id((*r).type_id()));
-
-        #[cfg(feature = "checkpoints")]
-        let f = f.filter(|r| {
-            if self.input.is_checkpoint {
-                checkpoints.is_none_or(|rb| rb.is_allowed_by_id((*r).type_id()))
-            } else {
-                true
-            }
-        });
-
-        f.filter_map(|r| {
+        tys.filter_map(|ty| {
             Some((
-                self.world.components().get_resource_id(r.type_id())?,
+                self.world.components().get_resource_id(ty.type_id())?,
                 clone_reflect_value(
-                    r.data::<ReflectResource>()?.reflect(self.world).ok()?,
-                    type_registry,
+                    ty.data::<ReflectResource>()?.reflect(self.world).ok()?,
+                    registry,
                 ),
             ))
         })
