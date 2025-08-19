@@ -67,7 +67,7 @@ type SpawnPrefabFn = fn(Box<dyn PartialReflect>, Entity, &mut World);
 pub struct Applier<'a> {
     pub(crate) snapshot: MaybeRef<'a, Snapshot>,
     entity_map: Option<MaybeMut<'a, EntityHashMap<Entity>>>,
-    type_registry: Option<MaybeRef<'a, TypeRegistry>>,
+    registry: Option<MaybeRef<'a, TypeRegistry>>,
     despawns: Vec<fn(&mut World)>,
     hooks: Vec<BoxedHook>,
     prefabs: HashMap<TypeId, SpawnPrefabFn>,
@@ -80,7 +80,7 @@ impl<'a> Applier<'a> {
         Self {
             snapshot: snapshot.into(),
             entity_map: None,
-            type_registry: None,
+            registry: None,
             despawns: Vec::new(),
             hooks: Vec::new(),
             prefabs: HashMap::new(),
@@ -135,6 +135,9 @@ impl<'w, 'i> ApplierRef<'w, 'i> {
 impl<'i> ApplierRef<'_, 'i> {
     /// Providing an entity map allows you to map ids of spawned entities and
     /// see what entities have been spawned.
+    ///
+    /// Most applications will not need to build an entity map - instead,
+    /// prefer to [despawn existing entities](Self::despawn).
     #[must_use]
     pub fn entity_map(
         mut self,
@@ -148,8 +151,8 @@ impl<'i> ApplierRef<'_, 'i> {
     ///
     /// If this is not provided, the [`AppTypeRegistry`] resource is used as a default.
     #[must_use]
-    pub fn type_registry(mut self, type_registry: &'i TypeRegistry) -> Self {
-        self.input.type_registry = Some(type_registry.into());
+    pub fn type_registry(mut self, registry: &'i TypeRegistry) -> Self {
+        self.input.registry = Some(registry.into());
         self
     }
 
@@ -233,15 +236,15 @@ impl ApplierRef<'_, '_> {
     /// # Errors
     /// If a type included in the [`Snapshot`] has not been registered with the type registry.
     pub fn apply(&mut self) -> Result<(), Error> {
-        let app_type_registry_arc = self.world.get_resource::<AppTypeRegistry>().cloned();
+        let app_registry_arc = self.world.get_resource::<AppTypeRegistry>().cloned();
 
-        let app_type_registry = app_type_registry_arc.as_ref().map(|r| r.read());
+        let app_registry = app_registry_arc.as_ref().map(|r| r.read());
 
-        let type_registry = self
+        let registry = self
             .input
-            .type_registry
+            .registry
             .as_deref()
-            .or(app_type_registry.as_deref())
+            .or(app_registry.as_deref())
             .expect("Must set `type_registry` or insert `AppTypeRegistry` resource to apply.");
 
         let entity_map = self.input.entity_map.get_or_insert_default();
@@ -278,14 +281,20 @@ impl ApplierRef<'_, '_> {
                     }
                 })?;
                 let type_id = type_info.type_id();
-                let registration = type_registry.get(type_id).ok_or_else(|| {
+                let registration = registry.get(type_id).ok_or_else(|| {
                     SceneSpawnError::UnregisteredButReflectedType {
                         type_path: type_info.type_path().to_string(),
                     }
                 })?;
 
+                if registration.contains::<ReflectIgnore>()
+                    || registration.contains::<ReflectRelationshipTarget>()
+                {
+                    continue;
+                }
+
                 if self.input.prefabs.contains_key(&type_id) {
-                    let mut prefab = clone_reflect_value(&**component, type_registry);
+                    let mut prefab = clone_reflect_value(&**component, registry);
 
                     if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
                         map_entities.map_entities(
@@ -325,7 +334,7 @@ impl ApplierRef<'_, '_> {
                 let component = registration
                     .data::<ReflectMapEntities>()
                     .and_then(|map_entities| {
-                        cloned = Some(clone_reflect_value(&**component, type_registry));
+                        cloned = Some(clone_reflect_value(&**component, registry));
 
                         map_entities.map_entities(
                             cloned.as_deref_mut()?,
@@ -345,7 +354,7 @@ impl ApplierRef<'_, '_> {
                     reflect.apply_or_insert_mapped(
                         entity_mut,
                         component,
-                        type_registry,
+                        registry,
                         mapper,
                         RelationshipHookMode::Run,
                     );
@@ -362,11 +371,18 @@ impl ApplierRef<'_, '_> {
                     type_path: resource.reflect_type_path().to_string(),
                 }
             })?;
-            let registration = type_registry.get(type_info.type_id()).ok_or_else(|| {
+            let registration = registry.get(type_info.type_id()).ok_or_else(|| {
                 SceneSpawnError::UnregisteredButReflectedType {
                     type_path: type_info.type_path().to_string(),
                 }
             })?;
+
+            if registration.contains::<ReflectIgnore>()
+                || registration.contains::<ReflectRelationshipTarget>()
+            {
+                continue;
+            }
+
             let reflect = registration.data::<ReflectResource>().ok_or_else(|| {
                 SceneSpawnError::UnregisteredResource {
                     type_path: type_info.type_path().to_string(),
@@ -380,7 +396,7 @@ impl ApplierRef<'_, '_> {
             let resource = registration
                 .data::<ReflectMapEntities>()
                 .and_then(|map_entities| {
-                    cloned = Some(clone_reflect_value(&**resource, type_registry));
+                    cloned = Some(clone_reflect_value(&**resource, registry));
 
                     map_entities.map_entities(
                         cloned.as_deref_mut()?,
@@ -393,7 +409,7 @@ impl ApplierRef<'_, '_> {
 
             // If the world already contains an instance of the given resource
             // just apply the (possibly) new value, otherwise insert the resource
-            reflect.apply_or_insert(self.world, resource, type_registry);
+            reflect.apply_or_insert(self.world, resource, registry);
         }
 
         // Prefab hooks

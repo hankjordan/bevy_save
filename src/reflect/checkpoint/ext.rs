@@ -1,42 +1,9 @@
-use std::any::Any;
-
 use bevy::prelude::*;
 
 use crate::{
     prelude::*,
-    reflect::checkpoint::{
-        CheckpointRegistry,
-        Checkpoints,
-    },
+    reflect::checkpoint::Checkpoints,
 };
-
-/// Extension trait that adds rollback checkpoint-related methods to Bevy's
-/// [`App`].
-pub trait AppCheckpointExt {
-    /// Set a type to allow rollback - it will be included in rollback
-    /// checkpoints and affected by save/load.
-    fn allow_checkpoint<T: Any>(&mut self) -> &mut Self;
-
-    /// Set a type to ignore rollback - it will be included in save/load but it
-    /// won't change during rollback.
-    fn deny_checkpoint<T: Any>(&mut self) -> &mut Self;
-}
-
-impl AppCheckpointExt for App {
-    fn allow_checkpoint<T: Any>(&mut self) -> &mut Self {
-        self.world_mut()
-            .resource_mut::<CheckpointRegistry>()
-            .allow::<T>();
-        self
-    }
-
-    fn deny_checkpoint<T: Any>(&mut self) -> &mut Self {
-        self.world_mut()
-            .resource_mut::<CheckpointRegistry>()
-            .deny::<T>();
-        self
-    }
-}
 
 /// Extension trait that adds rollback checkpoint-related methods to Bevy's
 /// [`World`].
