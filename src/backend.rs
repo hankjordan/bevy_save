@@ -170,6 +170,49 @@ mod desktop {
         }
     }
 
+    #[cfg(test)]
+    mod io_test {
+        use super::*;
+        use bevy::tasks::block_on;
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct TestData {
+            a: u32,
+            b: String,
+        }
+
+        #[test]
+        fn test_file_io_save_load_multiple_times() {
+            let backend = FileIO;
+
+            let data = TestData {
+                a: 42,
+                b: "Hello, world!".to_string(),
+            };
+
+            for i in 0..20 {
+                block_on(async {
+                    backend
+                        .save::<DefaultFormat, _>("test_data", &data)
+                        .await
+                        .expect(format!("Failed to save data on {i}th iteration").as_str());
+
+                    let world = World::new();
+
+                    let seed = TestData::seed(&world);
+
+                    let loaded_data: TestData = backend
+                        .load::<DefaultFormat, _, TestData>("test_data", seed)
+                        .await
+                        .expect(format!("Failed to load data on {i}th iteration").as_str());
+
+                    assert_eq!(data, loaded_data);
+                });
+            }
+        }
+    }
+
     /// Debug filesystem backend.
     ///
     /// Each name corresponds to an individual file on the disk.
