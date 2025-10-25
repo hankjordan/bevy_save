@@ -150,8 +150,8 @@ mod desktop {
             F::serialize(&mut buf, value)?;
 
             let mut file = File::create(path).await?;
-
-            Ok(file.write_all(&buf).await?)
+            file.write_all(&buf).await?;
+            Ok(file.sync_all().await?)
         }
 
         async fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
@@ -228,8 +228,8 @@ mod desktop {
             F::serialize(&mut buf, value)?;
 
             let mut file = File::create(format!("{key}{}", F::extension())).await?;
-
-            Ok(file.write_all(&buf).await?)
+            file.write_all(&buf).await?;
+            Ok(file.sync_all().await?)
         }
 
         async fn load<F: Format, S: for<'de> DeserializeSeed<'de, Value = T>, T>(
