@@ -74,7 +74,7 @@ fn main() {
         }))
         .insert_resource(Score(0))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .add_event::<CollisionEvent>()
+        .add_message::<CollisionEvent>()
         .add_systems(Startup, setup)
         // Add our gameplay simulation systems to the fixed timestep schedule
         .add_systems(
@@ -135,7 +135,7 @@ struct Velocity(Vec2);
 #[reflect(Component)]
 struct Collider;
 
-#[derive(Event, Default)]
+#[derive(Default, Message)]
 struct CollisionEvent;
 
 #[derive(Component, Default, Reflect)]
@@ -468,7 +468,7 @@ fn check_for_collisions(
     mut score: ResMut<Score>,
     ball_query: Single<(&mut Velocity, &Transform), With<Ball>>,
     collider_query: Query<(Entity, &Transform, Option<&Brick>), With<Collider>>,
-    mut collision_events: EventWriter<CollisionEvent>,
+    mut collision_events: MessageWriter<CollisionEvent>,
 ) {
     let (mut ball_velocity, ball_transform) = ball_query.into_inner();
 
@@ -519,7 +519,7 @@ fn check_for_collisions(
 
 fn play_collision_sound(
     mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionEvent>,
     sound: Res<CollisionSound>,
 ) {
     // Play a sound once per frame if a collision occurred.

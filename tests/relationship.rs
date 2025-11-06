@@ -132,8 +132,8 @@ fn dump_snapshot(registry: &TypeRegistry, snapshot: &Snapshot) {
     );
 }
 
-fn dump_entities(world: &World) {
-    for entity in world.iter_entities() {
+fn dump_entities(world: &mut World) {
+    for entity in world.query::<EntityRef>().iter(world) {
         println!(
             "Entity {:?}: {:?}",
             entity.id(),

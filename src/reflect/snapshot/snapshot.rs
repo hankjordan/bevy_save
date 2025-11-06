@@ -112,7 +112,7 @@ impl Snapshot {
     /// # app.add_plugins(MinimalPlugins);
     /// # app.add_plugins(SavePlugins);
     /// # let world = app.world_mut();
-    /// # let parent = Entity::from_raw(0);
+    /// # let parent = Entity::from_raw_u32(0).unwrap();
     /// let snapshot = Snapshot::from_world(world);
     ///
     /// snapshot

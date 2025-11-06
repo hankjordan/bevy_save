@@ -10,10 +10,6 @@ fn bevy_save_path() -> syn::Path {
     format_ident!("bevy_save").into()
 }
 
-fn bevy_path() -> syn::Path {
-    format_ident!("bevy").into()
-}
-
 /// Derive macro generating an impl of the trait `FlowLabel`.
 ///
 /// This does not work for unions.
@@ -25,9 +21,5 @@ pub fn derive_flow_label(input: TokenStream) -> TokenStream {
     label.segments.push(format_ident!("flows").into());
     label.segments.push(format_ident!("FlowLabel").into());
 
-    let mut dyn_eq = bevy_path();
-    dyn_eq.segments.push(format_ident!("app").into());
-    dyn_eq.segments.push(format_ident!("DynEq").into());
-
-    derive_label(input, "FlowLabel", &label, &dyn_eq)
+    derive_label(input, "FlowLabel", &label)
 }

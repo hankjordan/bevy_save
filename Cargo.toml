@@ -8,7 +8,7 @@ description = "A framework for saving and loading application state in Bevy."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/hankjordan/bevy_save"
-rust-version = "1.85.0"
+rust-version = "1.88.0"
 
 [package]
 name = "bevy_save"
@@ -45,8 +45,8 @@ bevy_sprite = ["bevy/bevy_sprite"]
 brotli = ["dep:brotli"]
 
 [workspace.dependencies]
-bevy = { version = "0.16.1", default-features = false }
-bevy_macro_utils = "0.16.1"
+bevy = { version = "0.17.0", default-features = false }
+bevy_macro_utils = "0.17.0"
 bevy_save_macros = { version = "3.0.0", path = "crates/bevy_save_macros" }
 variadics_please = { version = "1.1" }
 
@@ -77,9 +77,9 @@ uuid = { version = "1.16", features = ["js"] }
 
 [dev-dependencies]
 bevy = { workspace = true, default-features = true, features = ["serialize"] }
-bevy-inspector-egui = "0.33.1"
-bevy_egui = "0.36"
+bevy-inspector-egui = "0.35.0"
+bevy_egui = "0.38.0"
 anyhow = "1.0"
-ron = "0.10"
+ron = "0.11.0"
 postcard = { version = "1.1", features = ["use-std"] }
 io-adapters = "0.4"

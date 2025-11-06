@@ -85,9 +85,9 @@ fn init_app() -> (App, Vec<Entity>) {
                 },
                 Collect {
                     data: vec![
-                        Entity::from_raw(3),
-                        Entity::from_raw(4),
-                        Entity::from_raw(5),
+                        Entity::from_raw_u32(3).unwrap(),
+                        Entity::from_raw_u32(4).unwrap(),
+                        Entity::from_raw_u32(5).unwrap(),
                     ],
                 },
                 Unit,
@@ -96,10 +96,10 @@ fn init_app() -> (App, Vec<Entity>) {
         world
             .spawn((
                 Basic {
-                    data: Entity::from_raw(42),
+                    data: Entity::from_raw_u32(42).unwrap(),
                 },
                 Nullable {
-                    data: Some(Entity::from_raw(77)),
+                    data: Some(Entity::from_raw_u32(77).unwrap()),
                 },
                 Unit,
             ))

@@ -66,10 +66,10 @@ fn interact(world: &mut World) {
         world.load(&HeirarchyPipeline).expect("Failed to load");
     } else if keys.just_pressed(KeyCode::KeyE) {
         info!("Info");
-        for entity in world.iter_entities() {
+        for entity in world.query::<EntityRef>().iter(&world) {
             info!("Entity: {:?}", entity.id());
             for component_id in entity.archetype().components() {
-                if let Some(component) = world.components().get_info(component_id) {
+                if let Some(component) = world.components().get_info(*component_id) {
                     info!("  {:?}: {:?}", entity.id(), component.name());
                 }
             }

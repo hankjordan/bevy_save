@@ -63,9 +63,9 @@ fn json_serialize<T: Serialize>(value: &T) -> String {
 fn test_opaque_clone() {
     let orig = Example {
         values: [
-            (1, Entity::from_raw(10)),
-            (2, Entity::from_raw(20)),
-            (3, Entity::from_raw(30)),
+            (1, Entity::from_raw_u32(10).unwrap()),
+            (2, Entity::from_raw_u32(20).unwrap()),
+            (3, Entity::from_raw_u32(30).unwrap()),
         ]
         .into(),
     };
@@ -84,9 +84,9 @@ fn test_opaque_value() {
 
     let orig = Example {
         values: [
-            (1, Entity::from_raw(10)),
-            (2, Entity::from_raw(20)),
-            (3, Entity::from_raw(30)),
+            (1, Entity::from_raw_u32(10).unwrap()),
+            (2, Entity::from_raw_u32(20).unwrap()),
+            (3, Entity::from_raw_u32(30).unwrap()),
         ]
         .into(),
     };
@@ -122,9 +122,9 @@ fn test_opaque_map() {
     let map_a: ReflectMap = vec![
         Box::new(Example {
             values: [
-                (1, Entity::from_raw(10)),
-                (2, Entity::from_raw(20)),
-                (3, Entity::from_raw(30)),
+                (1, Entity::from_raw_u32(10).unwrap()),
+                (2, Entity::from_raw_u32(20).unwrap()),
+                (3, Entity::from_raw_u32(30).unwrap()),
             ]
             .into(),
         })
@@ -152,9 +152,9 @@ fn test_opaque_snapshot() {
 
     app.insert_resource(Example {
         values: [
-            (1, Entity::from_raw(10)),
-            (2, Entity::from_raw(20)),
-            (3, Entity::from_raw(30)),
+            (1, Entity::from_raw_u32(10).unwrap()),
+            (2, Entity::from_raw_u32(20).unwrap()),
+            (3, Entity::from_raw_u32(30).unwrap()),
         ]
         .into(),
     });
@@ -178,9 +178,9 @@ fn test_opaque_snapshot() {
     drop(registry);
 
     let mut map: EntityHashMap<Entity> = [
-        (Entity::from_raw(10), Entity::from_raw(100)),
-        (Entity::from_raw(20), Entity::from_raw(200)),
-        (Entity::from_raw(30), Entity::from_raw(300)),
+        (Entity::from_raw_u32(10).unwrap(), Entity::from_raw_u32(100).unwrap()),
+        (Entity::from_raw_u32(20).unwrap(), Entity::from_raw_u32(200).unwrap()),
+        (Entity::from_raw_u32(30).unwrap(), Entity::from_raw_u32(300).unwrap()),
     ]
     .into_iter()
     .collect();
@@ -199,9 +199,9 @@ fn test_opaque_snapshot() {
         Example::from_reflect(&**snap_c.resources().first().unwrap()).unwrap(),
         Example {
             values: [
-                (1, Entity::from_raw(100)),
-                (2, Entity::from_raw(200)),
-                (3, Entity::from_raw(300))
+                (1, Entity::from_raw_u32(100).unwrap()),
+                (2, Entity::from_raw_u32(200).unwrap()),
+                (3, Entity::from_raw_u32(300).unwrap())
             ]
             .into()
         }

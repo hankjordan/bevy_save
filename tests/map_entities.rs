@@ -71,9 +71,9 @@ fn test_map_entities_components() {
 
     let orig = ExampleComponent {
         targets: [
-            (0, Entity::from_raw(10)),
-            (1, Entity::from_raw(20)),
-            (2, Entity::from_raw(30)),
+            (0, Entity::from_raw_u32(10).unwrap()),
+            (1, Entity::from_raw_u32(20).unwrap()),
+            (2, Entity::from_raw_u32(30).unwrap()),
         ]
         .into_iter()
         .collect(),
@@ -84,9 +84,9 @@ fn test_map_entities_components() {
     let snap_a = Snapshot::from_world(app.world());
 
     let mut map: EntityHashMap<Entity> = [
-        (Entity::from_raw(10), Entity::from_raw(100)),
-        (Entity::from_raw(20), Entity::from_raw(200)),
-        (Entity::from_raw(30), Entity::from_raw(300)),
+        (Entity::from_raw_u32(10).unwrap(), Entity::from_raw_u32(100).unwrap()),
+        (Entity::from_raw_u32(20).unwrap(), Entity::from_raw_u32(200).unwrap()),
+        (Entity::from_raw_u32(30).unwrap(), Entity::from_raw_u32(300).unwrap()),
     ]
     .into_iter()
     .collect();
@@ -132,9 +132,9 @@ fn test_map_entities_components() {
 
     assert_eq!(b, ExampleComponent {
         targets: [
-            (0, Entity::from_raw(100)),
-            (1, Entity::from_raw(200)),
-            (2, Entity::from_raw(300))
+            (0, Entity::from_raw_u32(100).unwrap()),
+            (1, Entity::from_raw_u32(200).unwrap()),
+            (2, Entity::from_raw_u32(300).unwrap())
         ]
         .into_iter()
         .collect()
@@ -147,9 +147,9 @@ fn test_map_entities_resources() {
 
     let orig = ExampleResource {
         targets: [
-            (0, Entity::from_raw(10)),
-            (1, Entity::from_raw(20)),
-            (2, Entity::from_raw(30)),
+            (0, Entity::from_raw_u32(10).unwrap()),
+            (1, Entity::from_raw_u32(20).unwrap()),
+            (2, Entity::from_raw_u32(30).unwrap()),
         ]
         .into_iter()
         .collect(),
@@ -160,9 +160,9 @@ fn test_map_entities_resources() {
     let snap_a = Snapshot::from_world(app.world());
 
     let mut map: EntityHashMap<Entity> = [
-        (Entity::from_raw(10), Entity::from_raw(100)),
-        (Entity::from_raw(20), Entity::from_raw(200)),
-        (Entity::from_raw(30), Entity::from_raw(300)),
+        (Entity::from_raw_u32(10).unwrap(), Entity::from_raw_u32(100).unwrap()),
+        (Entity::from_raw_u32(20).unwrap(), Entity::from_raw_u32(200).unwrap()),
+        (Entity::from_raw_u32(30).unwrap(), Entity::from_raw_u32(300).unwrap()),
     ]
     .into_iter()
     .collect();
@@ -195,9 +195,9 @@ fn test_map_entities_resources() {
 
     assert_eq!(b, ExampleResource {
         targets: [
-            (0, Entity::from_raw(100)),
-            (1, Entity::from_raw(200)),
-            (2, Entity::from_raw(300))
+            (0, Entity::from_raw_u32(100).unwrap()),
+            (1, Entity::from_raw_u32(200).unwrap()),
+            (2, Entity::from_raw_u32(300).unwrap())
         ]
         .into_iter()
         .collect()
@@ -209,10 +209,10 @@ fn test_map_entities_simple() {
     let mut app = init_app();
 
     let orig_comp = SimpleComponent {
-        target: Entity::from_raw(10),
+        target: Entity::from_raw_u32(10).unwrap(),
     };
     let orig_res = SimpleResource {
-        target: Entity::from_raw(10),
+        target: Entity::from_raw_u32(10).unwrap(),
     };
 
     app.world_mut().spawn(orig_comp.clone());
@@ -221,9 +221,9 @@ fn test_map_entities_simple() {
     let snap_a = Snapshot::from_world(app.world());
 
     let mut map: EntityHashMap<Entity> = [
-        (Entity::from_raw(10), Entity::from_raw(100)),
-        (Entity::from_raw(20), Entity::from_raw(200)),
-        (Entity::from_raw(30), Entity::from_raw(300)),
+        (Entity::from_raw_u32(10).unwrap(), Entity::from_raw_u32(100).unwrap()),
+        (Entity::from_raw_u32(20).unwrap(), Entity::from_raw_u32(200).unwrap()),
+        (Entity::from_raw_u32(30).unwrap(), Entity::from_raw_u32(300).unwrap()),
     ]
     .into_iter()
     .collect();
@@ -267,7 +267,7 @@ fn test_map_entities_simple() {
 
     assert_eq!(comp_a, orig_comp);
     assert_eq!(comp_b, SimpleComponent {
-        target: Entity::from_raw(100)
+        target: Entity::from_raw_u32(100).unwrap()
     });
 
     let res_a = SimpleResource::from_reflect(
@@ -282,6 +282,6 @@ fn test_map_entities_simple() {
 
     assert_eq!(res_a, orig_res);
     assert_eq!(res_b, SimpleResource {
-        target: Entity::from_raw(100)
+        target: Entity::from_raw_u32(100).unwrap()
     });
 }
