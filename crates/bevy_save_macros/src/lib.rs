@@ -1,17 +1,10 @@
 use bevy_macro_utils::derive_label;
 use proc_macro::TokenStream;
 use quote::format_ident;
-use syn::{
-    DeriveInput,
-    parse_macro_input,
-};
+use syn::{DeriveInput, parse_macro_input};
 
 fn bevy_save_path() -> syn::Path {
     format_ident!("bevy_save").into()
-}
-
-fn bevy_path() -> syn::Path {
-    format_ident!("bevy").into()
 }
 
 /// Derive macro generating an impl of the trait `FlowLabel`.
@@ -25,9 +18,6 @@ pub fn derive_flow_label(input: TokenStream) -> TokenStream {
     label.segments.push(format_ident!("flows").into());
     label.segments.push(format_ident!("FlowLabel").into());
 
-    let mut dyn_eq = bevy_path();
-    dyn_eq.segments.push(format_ident!("app").into());
-    dyn_eq.segments.push(format_ident!("DynEq").into());
-
-    derive_label(input, "FlowLabel", &label, &dyn_eq)
+    // In Bevy 0.17.3, derive_label only takes 3 arguments (dyn_eq removed)
+    derive_label(input, "FlowLabel", &label)
 }

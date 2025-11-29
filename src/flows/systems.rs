@@ -1,23 +1,15 @@
 #![expect(unexpected_cfgs)]
 
-use std::borrow::Cow;
-
 use bevy::{
     ecs::{
-        archetype::ArchetypeComponentId,
-        component::{
-            ComponentId,
-            Tick,
-        },
-        query::Access,
+        component::{CheckChangeTicks, Tick},
+        query::FilteredAccessSet,
         schedule::InternedSystemSet,
-        system::SystemParamValidationError,
-        world::{
-            DeferredWorld,
-            unsafe_world_cell::UnsafeWorldCell,
-        },
+        system::{RunSystemError, SystemParamValidationError, SystemStateFlags},
+        world::{DeferredWorld, unsafe_world_cell::UnsafeWorldCell},
     },
     prelude::*,
+    utils::prelude::DebugName,
 };
 use variadics_please::all_tuples;
 
@@ -27,20 +19,16 @@ use crate::prelude::*;
 /// system to system, modified by each one.
 pub struct Flow<F> {
     systems: Vec<FlowSystem<F>>,
-    components: Access<ComponentId>,
-    archetypes: Access<ArchetypeComponentId>,
     initialized: bool,
-    name: Cow<'static, str>,
+    name: String,
 }
 
 impl<F> Default for Flow<F> {
     fn default() -> Self {
         Self {
             systems: Vec::new(),
-            components: Access::new(),
-            archetypes: Access::new(),
             initialized: false,
-            name: "Flow[]".into(),
+            name: "Flow[]".to_string(),
         }
     }
 }
@@ -64,15 +52,12 @@ where
     fn update(&mut self) {
         self.initialized = false;
 
-        self.name = format!(
-            "Flow[{}]",
-            self.systems
-                .iter()
-                .map(|s| s.name())
-                .collect::<Vec<_>>()
-                .join(",")
-        )
-        .into();
+        let names: Vec<String> = self
+            .systems
+            .iter()
+            .map(|sys| sys.name().to_string())
+            .collect();
+        self.name = format!("Flow[{}]", names.join(","));
     }
 
     /// Add a boxed [`System`] to the [`Flow`]
@@ -96,8 +81,15 @@ where
     ///
     /// Returns `None` if the system has not been initialized yet
     pub fn is_readonly(&self) -> Option<bool> {
-        self.initialized
-            .then(|| !self.components.has_any_write() && !self.archetypes.has_any_write())
+        // In Bevy 0.17, we check if a system has deferred buffers or is exclusive
+        // to determine if it's read-only (no writes).
+        // A system is read-only if it's not exclusive and has no deferred buffers.
+        self.initialized.then(|| {
+            self.systems.iter().all(|sys| {
+                let flags = sys.flags();
+                !flags.intersects(SystemStateFlags::EXCLUSIVE | SystemStateFlags::DEFERRED)
+            })
+        })
     }
 }
 
@@ -108,53 +100,68 @@ where
     type In = In<F>;
     type Out = F;
 
-    fn name(&self) -> Cow<'static, str> {
-        self.name.clone()
+    fn name(&self) -> DebugName {
+        DebugName::from(self.name.clone())
     }
 
-    fn component_access(&self) -> &Access<ComponentId> {
-        &self.components
-    }
+    fn flags(&self) -> SystemStateFlags {
+        let mut flags = SystemStateFlags::empty();
 
-    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> {
-        &self.archetypes
+        // A flow is non-send if any system is non-send
+        if self.systems.iter().any(|sys| sys.flags().contains(SystemStateFlags::NON_SEND)) {
+            flags |= SystemStateFlags::NON_SEND;
+        }
+
+        // A flow is exclusive if any system is exclusive
+        if self.systems.iter().any(|sys| sys.flags().contains(SystemStateFlags::EXCLUSIVE)) {
+            flags |= SystemStateFlags::EXCLUSIVE;
+        }
+
+        // A flow has deferred if any system has deferred
+        if self.systems.iter().any(|sys| sys.flags().contains(SystemStateFlags::DEFERRED)) {
+            flags |= SystemStateFlags::DEFERRED;
+        }
+
+        flags
     }
 
     fn is_send(&self) -> bool {
-        self.systems.iter().all(|s| s.is_send())
+        self.systems.iter().all(|sys| sys.is_send())
     }
 
     fn is_exclusive(&self) -> bool {
-        self.systems.iter().any(|s| s.is_exclusive())
+        self.systems.iter().any(|sys| sys.is_exclusive())
     }
 
     fn has_deferred(&self) -> bool {
-        self.systems.iter().any(|s| s.has_deferred())
+        self.systems.iter().any(|sys| sys.has_deferred())
     }
 
     unsafe fn run_unsafe(
         &mut self,
         input: SystemIn<'_, Self>,
         world: UnsafeWorldCell,
-    ) -> Self::Out {
+    ) -> Result<Self::Out, RunSystemError> {
         // SAFETY: Delegate to each contained system
         unsafe {
-            self.systems
-                .iter_mut()
-                .fold(input, |last, system| system.run_unsafe(last, world))
+            let mut current = input;
+            for system in &mut self.systems {
+                current = system.run_unsafe(current, world)?;
+            }
+            Ok(current)
         }
     }
 
     fn apply_deferred(&mut self, world: &mut World) {
         self.systems
             .iter_mut()
-            .for_each(|s| s.apply_deferred(world));
+            .for_each(|sys| sys.apply_deferred(world));
     }
 
     fn queue_deferred(&mut self, mut world: DeferredWorld) {
         self.systems
             .iter_mut()
-            .for_each(|s| s.queue_deferred(world.reborrow()));
+            .for_each(|sys| sys.queue_deferred(world.reborrow()));
     }
 
     unsafe fn validate_param_unsafe(
@@ -165,56 +172,52 @@ where
         unsafe {
             self.systems
                 .iter_mut()
-                .try_for_each(|s| s.validate_param_unsafe(world))
+                .try_for_each(|sys| sys.validate_param_unsafe(world))
         }
     }
 
     fn validate_param(&mut self, world: &World) -> Result<(), SystemParamValidationError> {
         self.systems
             .iter_mut()
-            .try_for_each(|s| s.validate_param(world))
+            .try_for_each(|sys| sys.validate_param(world))
     }
 
-    fn initialize(&mut self, world: &mut World) {
-        self.systems.iter_mut().for_each(|s| {
-            s.initialize(world);
-            self.components.extend(s.component_access());
-        });
+    fn initialize(&mut self, world: &mut World) -> FilteredAccessSet {
+        let mut combined_access = FilteredAccessSet::default();
+
+        for sys in &mut self.systems {
+            let access = sys.initialize(world);
+            combined_access.extend(access);
+        }
 
         self.initialized = true;
+        combined_access
     }
 
-    fn update_archetype_component_access(&mut self, world: UnsafeWorldCell) {
-        self.systems.iter_mut().for_each(|s| {
-            s.update_archetype_component_access(world);
-            self.archetypes.extend(s.archetype_component_access());
-        });
-    }
-
-    fn check_change_tick(&mut self, change_tick: Tick) {
+    fn check_change_tick(&mut self, check: CheckChangeTicks) {
         self.systems
             .iter_mut()
-            .for_each(|s| s.check_change_tick(change_tick));
+            .for_each(|sys| sys.check_change_tick(check));
     }
 
     fn default_system_sets(&self) -> Vec<InternedSystemSet> {
         self.systems
             .iter()
-            .flat_map(|s| s.default_system_sets())
+            .flat_map(|sys| sys.default_system_sets())
             .collect()
     }
 
     fn get_last_run(&self) -> Tick {
         self.systems
             .first()
-            .map(|s| s.get_last_run())
+            .map(|sys| sys.get_last_run())
             .unwrap_or_default()
     }
 
     fn set_last_run(&mut self, last_run: Tick) {
         self.systems
             .iter_mut()
-            .for_each(|s| s.set_last_run(last_run));
+            .for_each(|sys| sys.set_last_run(last_run));
     }
 }
 

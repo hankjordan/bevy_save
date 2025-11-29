@@ -45,8 +45,8 @@ bevy_sprite = ["bevy/bevy_sprite"]
 brotli = ["dep:brotli"]
 
 [workspace.dependencies]
-bevy = { version = "0.16.1", default-features = false }
-bevy_macro_utils = "0.16.1"
+bevy = { version = "0.17.3", default-features = false }
+bevy_macro_utils = "0.17.3"
 bevy_save_macros = { version = "3.0.0", path = "crates/bevy_save_macros" }
 variadics_please = { version = "1.1" }
 
@@ -77,8 +77,8 @@ uuid = { version = "1.16", features = ["js"] }
 
 [dev-dependencies]
 bevy = { workspace = true, default-features = true, features = ["serialize"] }
-bevy-inspector-egui = "0.33.1"
-bevy_egui = "0.36"
+bevy-inspector-egui = "0.34"
+bevy_egui = "0.37"
 anyhow = "1.0"
 ron = "0.10"
 postcard = { version = "1.1", features = ["use-std"] }

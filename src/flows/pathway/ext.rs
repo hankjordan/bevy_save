@@ -106,7 +106,8 @@ impl WorldPathwayExt for World {
             .and_then(|mut r| r.take_flow(label))
         {
             flow.initialize(self);
-            out = flow.run(builder, self);
+            // In Bevy 0.17, run() returns Result. Unwrap since flow errors are unexpected here.
+            out = flow.run(builder, self).expect("Flow system execution failed");
 
             self.resource_mut::<Flows<Builder<P>>>()
                 .insert_flow(label, flow);
@@ -146,7 +147,8 @@ impl WorldPathwayExt for World {
             .and_then(|mut r| r.take_flow(label))
         {
             flow.initialize(self);
-            out = flow.run(seed, self);
+            // In Bevy 0.17, run() returns Result. Unwrap since flow errors are unexpected here.
+            out = flow.run(seed, self).expect("Flow system execution failed");
 
             self.resource_mut::<Flows<Builder<P>>>()
                 .insert_flow(label, flow);

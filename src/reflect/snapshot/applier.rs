@@ -322,7 +322,9 @@ impl ApplierRef<'_, '_> {
                     // SAFETY: we registered the component above. the info exists
                     let component_info =
                         unsafe { self.world.components().get_info_unchecked(component_id) };
-                    if *component_info.clone_behavior() == ComponentCloneBehavior::Ignore {
+                    // ComponentCloneBehavior doesn't implement PartialEq in Bevy 0.17,
+                    // so we use matches! macro instead
+                    if matches!(component_info.clone_behavior(), ComponentCloneBehavior::Ignore) {
                         continue;
                     }
                 }

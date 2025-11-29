@@ -169,11 +169,6 @@ impl PartialReflect for DynamicValue {
         self.0.reflect_kind()
     }
 
-    fn clone_value(&self) -> Box<dyn PartialReflect> {
-        #[expect(deprecated)]
-        self.0.clone_value()
-    }
-
     fn to_dynamic(&self) -> Box<dyn PartialReflect> {
         self.0.to_dynamic()
     }
