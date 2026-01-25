@@ -35,7 +35,7 @@ fn test_overwrite_collect() {
         world.entity(entity).get::<Collect>(),
         Some(&Collect { data: vec![1] })
     );
-    assert_eq!(world.iter_entities().count(), 1);
+    assert_eq!(world.query::<EntityRef>().iter(world).count(), 1);
 
     let snapshot = Snapshot::builder(world).extract_entity(entity).build();
 
@@ -62,7 +62,7 @@ fn test_overwrite_collect() {
         world.entity(entity).get::<Collect>(),
         Some(&Collect { data: vec![1] })
     );
-    assert_eq!(world.iter_entities().count(), 1);
+    assert_eq!(world.query::<EntityRef>().iter(world).count(), 1);
 }
 
 #[derive(Component, Reflect, Default, Debug, Clone, PartialEq, Eq)]
@@ -88,7 +88,7 @@ fn test_overwrite_basic() {
         world.entity(entity).get::<Basic>(),
         Some(&Basic { data: 0 })
     );
-    assert_eq!(world.iter_entities().count(), 1);
+    assert_eq!(world.query::<EntityRef>().iter(world).count(), 1);
 
     world.entity_mut(entity).get_mut::<Basic>().unwrap().data = 1;
 
@@ -112,5 +112,5 @@ fn test_overwrite_basic() {
         world.entity(entity).get::<Basic>(),
         Some(&Basic { data: 1 })
     );
-    assert_eq!(world.iter_entities().count(), 1);
+    assert_eq!(world.query::<EntityRef>().iter(world).count(), 1);
 }

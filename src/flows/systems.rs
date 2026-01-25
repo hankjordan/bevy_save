@@ -4,14 +4,14 @@ use std::borrow::Cow;
 
 use bevy::{
     ecs::{
-        archetype::ArchetypeComponentId,
         component::{
-            ComponentId,
+            
             Tick,
         },
-        query::Access,
-        schedule::InternedSystemSet,
-        system::SystemParamValidationError,
+    query::{Access, FilteredAccessSet},
+    schedule::InternedSystemSet,
+    component::CheckChangeTicks,
+    system::{SystemParamValidationError, RunSystemError, SystemStateFlags},
         world::{
             DeferredWorld,
             unsafe_world_cell::UnsafeWorldCell,
@@ -27,8 +27,8 @@ use crate::prelude::*;
 /// system to system, modified by each one.
 pub struct Flow<F> {
     systems: Vec<FlowSystem<F>>,
-    components: Access<ComponentId>,
-    archetypes: Access<ArchetypeComponentId>,
+    components: Access,
+    archetypes: Access,
     initialized: bool,
     name: Cow<'static, str>,
 }
@@ -68,7 +68,7 @@ where
             "Flow[{}]",
             self.systems
                 .iter()
-                .map(|s| s.name())
+                .map(|s| s.name().to_string())
                 .collect::<Vec<_>>()
                 .join(",")
         )
@@ -108,16 +108,8 @@ where
     type In = In<F>;
     type Out = F;
 
-    fn name(&self) -> Cow<'static, str> {
-        self.name.clone()
-    }
-
-    fn component_access(&self) -> &Access<ComponentId> {
-        &self.components
-    }
-
-    fn archetype_component_access(&self) -> &Access<ArchetypeComponentId> {
-        &self.archetypes
+    fn name(&self) -> DebugName {
+        DebugName::from(self.name.clone())
     }
 
     fn is_send(&self) -> bool {
@@ -136,12 +128,14 @@ where
         &mut self,
         input: SystemIn<'_, Self>,
         world: UnsafeWorldCell,
-    ) -> Self::Out {
-        // SAFETY: Delegate to each contained system
+    ) -> Result<Self::Out, RunSystemError> {
+        // SAFETY: Delegate to each contained system and propagate errors
         unsafe {
-            self.systems
-                .iter_mut()
-                .fold(input, |last, system| system.run_unsafe(last, world))
+            let mut last = input;
+            for system in self.systems.iter_mut() {
+                last = system.run_unsafe(last, world)?;
+            }
+            Ok(last)
         }
     }
 
@@ -175,26 +169,32 @@ where
             .try_for_each(|s| s.validate_param(world))
     }
 
-    fn initialize(&mut self, world: &mut World) {
-        self.systems.iter_mut().for_each(|s| {
-            s.initialize(world);
-            self.components.extend(s.component_access());
-        });
+    fn initialize(&mut self, world: &mut World) -> FilteredAccessSet {
+        let mut access_set = FilteredAccessSet::default();
+
+        for s in self.systems.iter_mut() {
+            let child_set = s.initialize(world);
+            // Merge the child's filtered access into our combined set
+            access_set.extend(child_set.clone());
+            // Update our component and archetype access from the child's combined access
+            self.components.extend(child_set.combined_access());
+            self.archetypes.extend(child_set.combined_access());
+        }
 
         self.initialized = true;
+        access_set
     }
 
-    fn update_archetype_component_access(&mut self, world: UnsafeWorldCell) {
-        self.systems.iter_mut().for_each(|s| {
-            s.update_archetype_component_access(world);
-            self.archetypes.extend(s.archetype_component_access());
-        });
-    }
-
-    fn check_change_tick(&mut self, change_tick: Tick) {
+    fn check_change_tick(&mut self, change_tick: CheckChangeTicks) {
         self.systems
             .iter_mut()
             .for_each(|s| s.check_change_tick(change_tick));
+    }
+
+    fn flags(&self) -> SystemStateFlags {
+        self.systems
+            .iter()
+            .fold(SystemStateFlags::empty(), |acc, s| acc | s.flags())
     }
 
     fn default_system_sets(&self) -> Vec<InternedSystemSet> {
@@ -340,7 +340,7 @@ mod test {
         assert_eq!(flow_cmds.is_readonly(), Some(true));
         assert_eq!(flow_write.is_readonly(), Some(false));
 
-        let out = flow_read.run(Builder::default(), world);
+        let out = flow_read.run(Builder::default(), world).unwrap();
 
         assert_eq!(out.entities.len(), 5);
     }

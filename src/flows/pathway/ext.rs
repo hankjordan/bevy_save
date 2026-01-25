@@ -106,7 +106,9 @@ impl WorldPathwayExt for World {
             .and_then(|mut r| r.take_flow(label))
         {
             flow.initialize(self);
-            out = flow.run(builder, self);
+            // `System::run` now returns Result<Out, RunSystemError> in bevy 0.17
+            // Convert or propagate errors as appropriate. For capture we treat a run failure as fatal.
+            out = flow.run(builder, self).expect("Flow run failed during capture");
 
             self.resource_mut::<Flows<Builder<P>>>()
                 .insert_flow(label, flow);
@@ -146,7 +148,10 @@ impl WorldPathwayExt for World {
             .and_then(|mut r| r.take_flow(label))
         {
             flow.initialize(self);
-            out = flow.run(seed, self);
+            // `System::run` returns Result; propagate into our Result by mapping the error to `Error`.
+            out = flow
+                .run(seed, self)
+                .map_err(|_| Error::custom("Flow run failed during apply"))?;
 
             self.resource_mut::<Flows<Builder<P>>>()
                 .insert_flow(label, flow);
